@@ -11,7 +11,7 @@ function DailyChart({ dailyRevenue, stores }) {
 
   const dates = [...new Set(dailyRevenue.map(r => r.date))].sort();
   const storeIds = [...new Set(dailyRevenue.map(r => r.store_id))];
-  const COLORS = ['#7c3aed', '#06b6d4', '#16a34a', '#f59e0b', '#ef4444', '#ec4899'];
+  const COLORS = ['#0064ff', '#06b6d4', '#16a34a', '#f59e0b', '#ef4444', '#ec4899'];
 
   const byDate = {};
   for (const r of dailyRevenue) {

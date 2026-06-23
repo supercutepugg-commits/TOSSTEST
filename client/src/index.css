@@ -13,8 +13,8 @@
   --border:      #e2e8f0;
   --border-input:#d1d5db;
   --shadow:      0 1px 4px rgba(0,0,0,0.08);
-  --purple:      #cc1f24;
-  --purple-light:#fde8e8;
+  --purple:      #0064ff;
+  --purple-light:#e8f1ff;
 }
 
 /* ── 다크 테마 ──────────────────────────────────────── */
@@ -30,8 +30,8 @@
   --border:      #334155;
   --border-input:#475569;
   --shadow:      0 1px 4px rgba(0,0,0,0.3);
-  --purple:      #e23a3f;
-  --purple-light:#3a1414;
+  --purple:      #3182f6;
+  --purple-light:#102a4c;
 }
 
 body {
@@ -43,8 +43,8 @@ body {
 
 /* ── 레이아웃 (EasyPOS/KICC 스타일: 상단 가로 메뉴) ──────*/
 :root {
-  --kicc-red: #cc1f24;
-  --kicc-red-dark: #a3151a;
+  --kicc-red: #0064ff;
+  --kicc-red-dark: #0050cc;
 }
 
 .kicc-layout { display: flex; flex-direction: column; min-height: 100vh; }
