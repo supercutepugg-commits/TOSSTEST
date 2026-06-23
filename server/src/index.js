@@ -83,7 +83,7 @@ initDb().then(async () => {
   setInterval(runOverdueCheck, 60 * 60 * 1000);
 
   // Toss Place 과거/누락 매출 자동 동기화: 토스플레이스 매장 ID가 등록된 가맹점만 3분마다 재동기화
-  // 한 번도 동기화 안 한 가맹점은 최근 90일치를, 이후엔 최근 2일치만 다시 가져옴
+  // 한 번도 동기화 안 한 가맹점은 전체 매출(최근 5년)을, 이후엔 최근 2일치만 다시 가져옴
   const runAutoSync = async () => {
     try {
       const stores = await knex('stores').whereNotNull('toss_store_id').where('toss_store_id', '!=', '');
@@ -91,7 +91,7 @@ initDb().then(async () => {
       for (const store of stores) {
         const fromDate = store.last_synced_at
           ? new Date(Date.now() - 2 * 86400000).toISOString().split('T')[0]
-          : new Date(Date.now() - 90 * 86400000).toISOString().split('T')[0];
+          : new Date(Date.now() - 5 * 365 * 86400000).toISOString().split('T')[0];
         try {
           const inserted = await apiRoutes.syncStoreSales(store, fromDate, toDate);
           await knex('stores').where({ id: store.id }).update({ last_synced_at: new Date().toISOString() });

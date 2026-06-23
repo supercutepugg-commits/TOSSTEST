@@ -443,8 +443,9 @@ router.post('/stores/:id/sync', requireAuth, async (req, res) => {
   const store = await knex('stores').where({ id: req.params.id, brand_id: req.user.brand_id }).first();
   if (!store) return res.status(404).json({ error: '가맹점 없음' });
 
+  // 기간 미지정 시 전체 매출 기준으로 넉넉히 5년 전부터 가져옴
   const { from, to } = req.body;
-  const fromDate = from || new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0];
+  const fromDate = from || new Date(Date.now() - 5 * 365 * 86400000).toISOString().split('T')[0];
   const toDate = to || new Date().toISOString().split('T')[0];
 
   try {

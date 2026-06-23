@@ -4,7 +4,7 @@ import { api } from '../api';
 import { useStore } from '../StoreContext';
 
 function SyncModal({ store, onClose }) {
-  const [from, setFrom] = useState(() => new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0]);
+  const [from, setFrom] = useState(() => new Date(Date.now() - 5 * 365 * 86400000).toISOString().split('T')[0]);
   const [to, setTo] = useState(() => new Date().toISOString().split('T')[0]);
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
