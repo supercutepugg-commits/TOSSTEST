@@ -1,3 +1,4 @@
+import { toast } from '../toast';
 import { useEffect, useState } from 'react';
 import { api } from '../api';
 import { useAuth } from '../AuthContext';
@@ -32,9 +33,9 @@ function RiskSettingsPanel() {
     try {
       const next = await api.updateRiskSettings(settings);
       setSettings(next);
-      alert('저장되었습니다');
+      toast('저장되었습니다', 'success');
     } catch (e) {
-      alert(e.message || '저장에 실패했습니다');
+      toast(e.message || '저장에 실패했습니다', 'error');
     } finally {
       setSaving(false);
     }

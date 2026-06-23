@@ -1,3 +1,4 @@
+import { toast } from '../toast';
 import { useEffect, useState } from 'react';
 import { api } from '../api';
 import { useAuth } from '../AuthContext';
@@ -68,7 +69,7 @@ export default function Products() {
   }, []);
 
   const handleSave = async (form) => {
-    if (!form.name?.trim()) return alert('상품명을 입력해주세요');
+    if (!form.name?.trim()) { toast('상품명을 입력해주세요', 'error'); return; }
     const data = {
       ...form,
       unit_conversion: Number(form.unit_conversion),
@@ -81,7 +82,7 @@ export default function Products() {
       setModal(null);
       load();
     } catch (e) {
-      alert(e.message || '저장에 실패했습니다');
+      toast(e.message || '저장에 실패했습니다', 'error');
     }
   };
 

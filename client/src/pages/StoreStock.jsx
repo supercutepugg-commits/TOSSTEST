@@ -1,3 +1,4 @@
+import { toast } from '../toast';
 import { useEffect, useState } from 'react';
 import { api } from '../api';
 import { useAuth } from '../AuthContext';
@@ -24,7 +25,7 @@ export default function StoreStock() {
 
   const addToCart = (ingredient) => {
     const product = findProduct(ingredient);
-    if (!product) return alert('연결된 발주 상품이 없어 자동 주문할 수 없습니다. 매입발주 메뉴에서 상품을 등록해주세요.');
+    if (!product) { toast('연결된 발주 상품이 없어 자동 주문할 수 없습니다. 매입발주 메뉴에서 상품을 등록해주세요.', 'error'); return; }
     const quantity = Number(qty[ingredient.id]) || 1;
     setCart(c => {
       const existing = c.find(e => e.product.id === product.id);
@@ -55,10 +56,10 @@ export default function StoreStock() {
           unit: e.product.unit, unit_price: e.product.price, quantity: e.quantity,
         })),
       });
-      alert('발주가 완료되었습니다');
+      toast('발주가 완료되었습니다', 'success');
       setCart([]);
     } catch (e) {
-      alert(e.message || '발주에 실패했습니다');
+      toast(e.message || '발주에 실패했습니다', 'error');
     } finally {
       setSubmitting(false);
     }

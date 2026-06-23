@@ -1,24 +1,7 @@
+import { toast } from '../toast';
 import { useEffect, useState } from 'react';
-import { loadTossPayments } from '@tosspayments/tosspayments-sdk';
 import { api } from '../api';
-
-const TOSS_CLIENT_KEY = import.meta.env.VITE_TOSS_CLIENT_KEY;
-
-async function payForOrder(order) {
-  if (!TOSS_CLIENT_KEY) return alert('결제 설정이 완료되지 않았습니다 (VITE_TOSS_CLIENT_KEY 미설정)');
-  const { orderId, amount, orderName } = await api.preparePayment(order.id);
-  const tossPayments = await loadTossPayments(TOSS_CLIENT_KEY);
-  const widget = tossPayments.payment({ customerKey: `store-${order.store_id}` });
-  const origin = window.location.origin;
-  await widget.requestPayment({
-    method: 'CARD',
-    amount: { currency: 'KRW', value: amount },
-    orderId,
-    orderName,
-    successUrl: `${origin}/store/payment/${order.id}/result`,
-    failUrl: `${origin}/store/payment/${order.id}/result`,
-  });
-}
+import { payForOrder } from '../payment';
 
 const STATUS_LABEL = {
   DRAFT: '임시저장', ORDERED: '발주완료', REVIEWING: '검토중',
@@ -92,7 +75,7 @@ export default function StoreOrder() {
   const resetCart = () => { setCart([]); setMemo(''); setEditingOrderId(null); };
 
   const submitOrder = async (draft) => {
-    if (cart.length === 0) return alert('상품을 선택해주세요');
+    if (cart.length === 0) { toast('상품을 선택해주세요', 'error'); return; }
     const payload = {
       memo, submit: !draft,
       items: cart.map(i => ({
@@ -102,7 +85,7 @@ export default function StoreOrder() {
     };
     if (editingOrderId) await api.updateOrder(editingOrderId, payload);
     else await api.createOrder(payload);
-    alert(draft ? '임시저장 완료' : '발주 완료');
+    toast(draft ? '임시저장 완료' : '발주 완료', 'success');
     resetCart();
     loadOrders();
     if (!draft) setTab('history');
@@ -241,8 +224,22 @@ export default function StoreOrder() {
               <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
                 <StatusBadge status={detailOrder.status} />
                 {['CONFIRMED', 'PAYMENT_PENDING'].includes(detailOrder.status) && (
-                  <button className="primary small" onClick={() => payForOrder(detailOrder).catch(e => alert(e.message || '결제 실패'))}>
-                    결제하기
+                  <button className="primary small" onClick={() => payForOrder(detailOrder).catch(e => toast(e.message || '결제 실패', 'error'))}>
+                    {detailOrder.status === 'PAYMENT_PENDING' ? '다시 결제하기' : '결제하기'}
+                  </button>
+                )}
+                {detailOrder.status === 'PAYMENT_PENDING' && (
+                  <button className="secondary small" onClick={async () => {
+                    if (!confirm('발주를 취소하시겠습니까?')) return;
+                    try {
+                      await api.cancelOrder(detailOrder.id);
+                      setDetailOrder(null);
+                      loadOrders();
+                    } catch (e) {
+                      toast(e.message || '취소에 실패했습니다', 'error');
+                    }
+                  }}>
+                    발주 취소
                   </button>
                 )}
               </div>

@@ -1,3 +1,4 @@
+import { toast } from '../toast';
 import { useEffect, useState } from 'react';
 import { api } from '../api';
 import { useAuth } from '../AuthContext';
@@ -35,8 +36,8 @@ export default function Waste() {
   };
 
   const handleSave = async () => {
-    if (!form.ingredient_id) return alert('식자재를 선택해주세요');
-    if (!form.quantity) return alert('수량을 입력해주세요');
+    if (!form.ingredient_id) { toast('식자재를 선택해주세요', 'error'); return; }
+    if (!form.quantity) { toast('수량을 입력해주세요', 'error'); return; }
     await api.createWaste({ ...form, quantity: Number(form.quantity) });
     setModal(false);
     setForm({ waste_date: new Date().toISOString().slice(0, 10), ingredient_id: '', ingredient_name: '', quantity: '', unit: 'g', reason: REASONS[0], memo: '' });

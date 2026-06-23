@@ -1,3 +1,4 @@
+import { toast } from '../toast';
 import { useEffect, useState } from 'react';
 import { api } from '../api';
 import { useStore } from '../StoreContext';
@@ -83,7 +84,7 @@ export default function Ingredients() {
   useEffect(() => { load(); }, [currentStore?.id]);
 
   const handleSave = async (form) => {
-    if (!form.name?.trim()) return alert('재료명을 입력해주세요');
+    if (!form.name?.trim()) { toast('재료명을 입력해주세요', 'error'); return; }
     const data = { ...form, stock: Number(form.stock), threshold: Number(form.threshold), store_id: currentStore.id };
     try {
       if (modal?.edit) await api.updateIngredient(modal.edit.id, data);
@@ -91,7 +92,7 @@ export default function Ingredients() {
       setModal(null);
       load();
     } catch (e) {
-      alert(e.message || '저장에 실패했습니다');
+      toast(e.message || '저장에 실패했습니다', 'error');
     }
   };
 

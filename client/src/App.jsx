@@ -21,6 +21,7 @@ import PurchaseAnomalies from './pages/PurchaseAnomalies';
 import AuditLog from './pages/AuditLog';
 import Login from './pages/Login';
 import StockAlert from './components/StockAlert';
+import ToastHost from './components/ToastHost';
 
 function TopBar({ name, currentStore }) {
   const { logout } = useAuth();
@@ -216,6 +217,7 @@ export default function App() {
       <ThemeProvider>
         <AuthProvider>
           <AppRoutes />
+          <ToastHost />
         </AuthProvider>
       </ThemeProvider>
     </BrowserRouter>
