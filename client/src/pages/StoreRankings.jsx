@@ -120,6 +120,45 @@ export default function StoreRankings() {
           </table>
         )}
       </div>
+
+      <div className="card">
+        <div style={{ fontWeight: 700, marginBottom: 4 }}>매출 대비 발주율</div>
+        <div className="text-muted" style={{ fontSize: 12, marginBottom: 12 }}>
+          발주율 = 발주금액 ÷ 매출. 매출에 비해 발주(원가 지출)가 얼마나 큰지 보여줍니다 — 높을수록 마진이 줄어들거나 과다 발주일 가능성, 매출이 있는데 발주율이 너무 낮으면 재고 소진/품절 위험이 있을 수 있습니다.
+        </div>
+        {!data || data.efficiencyRanking.length === 0 ? (
+          <div className="empty">데이터 없음</div>
+        ) : (
+          <table>
+            <thead>
+              <tr><th>순위</th><th>가맹점</th><th>매출</th><th>발주금액</th><th>발주율</th><th>평가</th></tr>
+            </thead>
+            <tbody>
+              {data.efficiencyRanking.map((r, i) => (
+                <tr key={r.store_id}>
+                  <td><b>{i + 1}</b></td>
+                  <td>{r.store_name}</td>
+                  <td>{won(r.revenue)}</td>
+                  <td>{won(r.order_amount)}</td>
+                  <td>
+                    <b style={{ color: r.ratio === null ? 'var(--text-3)' : r.ratio > 80 ? '#dc2626' : r.ratio < 30 ? '#dc2626' : 'var(--text)' }}>
+                      {r.ratio === null ? '-' : `${r.ratio}%`}
+                    </b>
+                  </td>
+                  <td>
+                    {r.ratio === null
+                      ? <span className="badge">매출 없음</span>
+                      : r.ratio > 80 ? <span className="badge red">발주 과다 의심</span>
+                      : r.ratio < 30 ? <span className="badge red">발주 부족 의심</span>
+                      : r.ratio <= 50 ? <span className="badge green">양호</span>
+                      : <span className="badge yellow">주의</span>}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
     </div>
   );
 }

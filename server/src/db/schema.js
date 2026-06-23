@@ -24,6 +24,7 @@ async function initDb() {
     t.string('code').unique();
     t.datetime('created_at').defaultTo(knex.fn.now());
   });
+  await addColumnIfMissing('brands', 'risk_settings', t => t.text('risk_settings').nullable());
   const defaultBrand = await knex('brands').first();
   let defaultBrandId = defaultBrand?.id;
   if (!defaultBrand) {

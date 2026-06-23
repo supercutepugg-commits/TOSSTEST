@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api';
+import { useAuth } from '../AuthContext';
 
 const TYPE_LABEL = {
   OVER_PURCHASE: '과다 사입', SALES_DOWN_ORDER_UP: '매출감소·발주증가',
@@ -11,9 +12,63 @@ const STATUS_LABEL = {
 };
 const SEVERITY_COLOR = { HIGH: '#ef4444', MEDIUM: '#f59e0b', LOW: '#6366f1' };
 
+const SETTING_FIELDS = [
+  { key: 'salesDropRatio', label: '매출 감소 기준', suffix: '배 (예: 0.8 = 최근 7일 판매가 이전 7일의 80% 미만)', step: 0.05 },
+  { key: 'orderSpikeRatio', label: '발주 증가 기준', suffix: '배 (예: 1.2 = 최근 7일 발주금액이 이전 7일의 120% 초과)', step: 0.05 },
+  { key: 'overPurchaseRatio', label: '과다 사입 기준', suffix: '배 (예상 소진량 대비 발주량)', step: 0.1 },
+  { key: 'highWasteThreshold', label: '폐기 과다 기준', suffix: '(재료 단위, 7일 합계)', step: 100 },
+  { key: 'paymentOverdueDays', label: '결제 미완료 기준', suffix: '일 (확정 후 경과일)', step: 1 },
+];
+
+function RiskSettingsPanel() {
+  const [settings, setSettings] = useState(null);
+  const [saving, setSaving] = useState(false);
+
+  const load = () => api.getRiskSettings().then(setSettings).catch(() => {});
+  useEffect(() => { load(); }, []);
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      const next = await api.updateRiskSettings(settings);
+      setSettings(next);
+      alert('저장되었습니다');
+    } catch (e) {
+      alert(e.message || '저장에 실패했습니다');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!settings) return null;
+
+  return (
+    <div className="card" style={{ marginBottom: 20 }}>
+      <div style={{ fontWeight: 700, marginBottom: 4 }}>리스크 감지 기준 설정</div>
+      <div className="text-muted" style={{ fontSize: 12, marginBottom: 16 }}>
+        아래 기준값을 넘으면 자동으로 리스크 알림이 생성됩니다. 가맹점 특성에 맞게 본사에서 직접 조정하세요.
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16, marginBottom: 16 }}>
+        {SETTING_FIELDS.map(f => (
+          <div className="form-group" key={f.key}>
+            <label>{f.label}</label>
+            <input type="number" step={f.step} value={settings[f.key]}
+              onChange={e => setSettings(s => ({ ...s, [f.key]: Number(e.target.value) }))} />
+            <div className="text-muted" style={{ fontSize: 11, marginTop: 4 }}>{f.suffix}</div>
+          </div>
+        ))}
+      </div>
+      <button className="primary" onClick={save} disabled={saving}>{saving ? '저장 중...' : '저장'}</button>
+    </div>
+  );
+}
+
 export default function Risks() {
+  const { user } = useAuth();
+  const canEditSettings = ['SUPER_ADMIN', 'HQ_ADMIN'].includes(user?.role);
   const [risks, setRisks] = useState([]);
   const [filter, setFilter] = useState('OPEN');
+  const [showSettings, setShowSettings] = useState(false);
 
   const load = () => api.getRisks({ status: filter }).then(setRisks).catch(() => {});
   useEffect(() => { load(); }, [filter]);
@@ -26,7 +81,17 @@ export default function Risks() {
 
   return (
     <div>
-      <h2>리스크 알림</h2>
+      <div className="top-bar">
+        <h2>리스크 알림</h2>
+        {canEditSettings && (
+          <button className="secondary" onClick={() => setShowSettings(s => !s)}>
+            {showSettings ? '기준 설정 닫기' : '기준 설정'}
+          </button>
+        )}
+      </div>
+
+      {showSettings && canEditSettings && <RiskSettingsPanel />}
+
       <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
         {Object.entries(STATUS_LABEL).map(([k, v]) => (
           <button key={k} className={filter === k ? 'primary' : 'secondary'} onClick={() => setFilter(k)}>{v}</button>

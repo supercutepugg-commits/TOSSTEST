@@ -2,7 +2,7 @@ const createAsyncRouter = require('../middleware/asyncRouter');
 const router = createAsyncRouter();
 const { knex } = require('../db/schema');
 const { requireAuth } = require('../middleware/auth');
-const { createRisk } = require('./risks');
+const { createRisk, getRiskSettings } = require('./risks');
 const crypto = require('crypto');
 
 const TOSS_SECRET_KEY = process.env.TOSS_SECRET_KEY || '';
@@ -30,10 +30,9 @@ async function checkSalesDownOrderUp(brand_id, store_id) {
   const recentOrderAmt = Number(recentOrder?.total || 0);
   const prevOrderAmt = Number(prevOrder?.total || 0);
 
-  // 매출 20% 감소 & 발주 20% 증가
-  const SALES_DROP_RATIO = 0.8;   // 최근 7일 판매건수가 이전 7일의 80% 미만
-  const ORDER_SPIKE_RATIO = 1.2;  // 최근 7일 발주금액이 이전 7일의 120% 초과
-  if (olderCnt > 0 && recentCnt < olderCnt * SALES_DROP_RATIO && prevOrderAmt > 0 && recentOrderAmt > prevOrderAmt * ORDER_SPIKE_RATIO) {
+  // 매출 감소 & 발주 증가 — 본사가 설정한 비율 기준
+  const settings = await getRiskSettings(brand_id);
+  if (olderCnt > 0 && recentCnt < olderCnt * settings.salesDropRatio && prevOrderAmt > 0 && recentOrderAmt > prevOrderAmt * settings.orderSpikeRatio) {
     await createRisk(brand_id, store_id, 'SALES_DOWN_ORDER_UP', 'HIGH',
       `매출 감소·발주 증가: 판매 ${olderCnt}건→${recentCnt}건, 발주 ${Math.round(prevOrderAmt).toLocaleString()}원→${Math.round(recentOrderAmt).toLocaleString()}원`,
       { older_sales: olderCnt, recent_sales: recentCnt, prev_order: prevOrderAmt, recent_order: recentOrderAmt }

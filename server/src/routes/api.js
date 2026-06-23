@@ -383,12 +383,12 @@ router.get('/analytics', requireAuth, async (req, res) => {
     return { ...c, total_ordered: totalOrdered, ratio };
   });
 
-  // 과다 사입 리스크 자동 생성
-  const OVER_PURCHASE_RATIO = 2.0; // 발주량이 예상 소진량의 2배를 초과하면 경보
+  // 과다 사입 리스크 자동 생성 — 본사가 설정한 배수 기준
   if (sid) {
+    const { createRisk, getRiskSettings } = require('./risks');
+    const settings = await getRiskSettings(brand_id);
     for (const c of comparison) {
-      if (c.ratio !== null && c.ratio > OVER_PURCHASE_RATIO && c.estimated > 0) {
-        const { createRisk } = require('./risks');
+      if (c.ratio !== null && c.ratio > settings.overPurchaseRatio && c.estimated > 0) {
         createRisk(brand_id, sid, 'OVER_PURCHASE', 'MEDIUM',
           `과다 사입 가능성: ${c.name} — 예상 소진 ${Math.round(c.estimated)}${c.unit} 대비 발주 ${Math.round(c.total_ordered)}${c.unit} (${c.ratio}배)`,
           { ingredient: c.name, estimated: c.estimated, ordered: c.total_ordered }
@@ -591,9 +591,28 @@ router.get('/store-rankings', requireAuth, async (req, res) => {
     .count('po.id as order_count')
     .orderBy('order_amount', 'desc');
 
+  const salesByStore = new Map(salesRows.map(r => [r.store_id, { store_name: r.store_name, revenue: Number(r.revenue || 0) }]));
+  const orderByStore = new Map(orderRows.map(r => [r.store_id, { store_name: r.store_name, order_amount: Number(r.order_amount || 0) }]));
+  const allStoreIds = new Set([...salesByStore.keys(), ...orderByStore.keys()]);
+
+  // 발주율 = 발주금액 / 매출 — 높을수록 매출에 비해 발주(원가 지출)가 많다는 뜻
+  const efficiencyRanking = [...allStoreIds].map(store_id => {
+    const sale = salesByStore.get(store_id);
+    const order = orderByStore.get(store_id);
+    const revenue = sale?.revenue || 0;
+    const order_amount = order?.order_amount || 0;
+    return {
+      store_id,
+      store_name: sale?.store_name || order?.store_name,
+      revenue, order_amount,
+      ratio: revenue > 0 ? Math.round((order_amount / revenue) * 1000) / 10 : null, // %
+    };
+  }).sort((a, b) => (b.ratio ?? -1) - (a.ratio ?? -1));
+
   res.json({
     salesRanking: salesRows.map(r => ({ store_id: r.store_id, store_name: r.store_name, revenue: Number(r.revenue || 0), order_count: Number(r.order_count || 0) })),
     orderRanking: orderRows.map(r => ({ store_id: r.store_id, store_name: r.store_name, order_amount: Number(r.order_amount || 0), order_count: Number(r.order_count || 0) })),
+    efficiencyRanking,
     period: { from: fromISO, to: toISO },
   });
 });
