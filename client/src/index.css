@@ -54,6 +54,19 @@ body {
 
 .kicc-layout { display: flex; flex-direction: column; min-height: 100vh; }
 
+.admin-back-bar {
+  background: #1a1a2e;
+  padding: 4px 20px;
+  text-align: right;
+  flex-shrink: 0;
+}
+.admin-back-bar a {
+  color: rgba(255,255,255,0.75);
+  font-size: 12px;
+  text-decoration: none;
+}
+.admin-back-bar a:hover { color: #fff; }
+
 .topnav {
   display: flex;
   align-items: stretch;

@@ -1,5 +1,24 @@
 import { useEffect, useState } from 'react';
+import { loadTossPayments } from '@tosspayments/tosspayments-sdk';
 import { api } from '../api';
+
+const TOSS_CLIENT_KEY = import.meta.env.VITE_TOSS_CLIENT_KEY;
+
+async function payForOrder(order) {
+  if (!TOSS_CLIENT_KEY) return alert('결제 설정이 완료되지 않았습니다 (VITE_TOSS_CLIENT_KEY 미설정)');
+  const { orderId, amount, orderName } = await api.preparePayment(order.id);
+  const tossPayments = await loadTossPayments(TOSS_CLIENT_KEY);
+  const widget = tossPayments.payment({ customerKey: `store-${order.store_id}` });
+  const origin = window.location.origin;
+  await widget.requestPayment({
+    method: 'CARD',
+    amount: { currency: 'KRW', value: amount },
+    orderId,
+    orderName,
+    successUrl: `${origin}/store/payment/${order.id}/result`,
+    failUrl: `${origin}/store/payment/${order.id}/result`,
+  });
+}
 
 const STATUS_LABEL = {
   DRAFT: '임시저장', ORDERED: '발주완료', REVIEWING: '검토중',
@@ -219,7 +238,14 @@ export default function StoreOrder() {
                 <div style={{ fontWeight: 700 }}>발주서 #{detailOrder.id}</div>
                 <button className="secondary small" onClick={() => setDetailOrder(null)}>닫기</button>
               </div>
-              <div style={{ marginBottom: 12 }}><StatusBadge status={detailOrder.status} /></div>
+              <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
+                <StatusBadge status={detailOrder.status} />
+                {['CONFIRMED', 'PAYMENT_PENDING'].includes(detailOrder.status) && (
+                  <button className="primary small" onClick={() => payForOrder(detailOrder).catch(e => alert(e.message || '결제 실패'))}>
+                    결제하기
+                  </button>
+                )}
+              </div>
               <table style={{ marginBottom: 12 }}>
                 <thead><tr><th>상품</th><th>수량</th><th>금액</th></tr></thead>
                 <tbody>

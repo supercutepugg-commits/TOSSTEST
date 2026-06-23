@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BrowserRouter, Routes, Route, NavLink, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, NavLink, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './AuthContext';
 import { StoreProvider, useStore } from './StoreContext';
 import { ThemeProvider, useTheme } from './ThemeContext';
@@ -10,6 +10,7 @@ import Stores from './pages/Stores';
 import Users from './pages/Users';
 import HQOrders from './pages/HQOrders';
 import StoreOrder from './pages/StoreOrder';
+import PaymentResult from './pages/PaymentResult';
 import StoreStock from './pages/StoreStock';
 import Waste from './pages/Waste';
 import Risks from './pages/Risks';
@@ -60,37 +61,55 @@ function NavTab({ to, end, icon, label, disabled }) {
   );
 }
 
-const SIDE_GROUPS = [
-  { title: '운영', items: [
-    { to: '/', end: true, icon: '🏪', label: '가맹점 선택' },
-    { to: '/dashboard', icon: '🏠', label: '대시보드' },
+// 상단 탭 하나당 좌측 사이드바에 보일 세부 그룹. 키는 경로의 첫 segment ('/' 포함)
+const SIDE_MENU_MAP = {
+  '/': { title: '가맹점', items: [
+    { to: '/', end: true, icon: '🏪', label: '가맹점 목록' },
   ] },
-  { title: '발주 · 주문', items: [
-    { to: '/orders', icon: '✅', label: '주문 관리' },
-    { to: '/products', icon: '📦', label: '매입 발주' },
+  '/dashboard': { title: '대시보드', items: [
+    { to: '/dashboard', end: true, icon: '🏠', label: '대시보드 홈' },
   ] },
-  { title: '재고 · 메뉴', items: [
-    { to: '/ingredients', icon: '🥬', label: '재고 관리' },
-    { to: '/menus', icon: '🍽', label: '메뉴 관리' },
-    { to: '/waste', icon: '🗑', label: '폐기 관리' },
+  '/analytics': { title: '매출분석', items: [
+    { to: '/analytics', end: true, icon: '📊', label: '매출 분석' },
   ] },
-  { title: '분석 · 관리', items: [
-    { to: '/analytics', icon: '📊', label: '매출 분석' },
-    { to: '/risks', icon: '⚠️', label: '리스크 알림' },
-    { to: '/users', icon: '👤', label: '사용자 관리' },
+  '/orders': { title: '주문관리', items: [
+    { to: '/orders', end: true, icon: '✅', label: '주문 목록' },
   ] },
-];
+  '/products': { title: '매입발주', items: [
+    { to: '/products', end: true, icon: '📦', label: '발주 상품' },
+  ] },
+  '/ingredients': { title: '재고관리', items: [
+    { to: '/ingredients', end: true, icon: '🥬', label: '재료 목록' },
+  ] },
+  '/menus': { title: '메뉴관리', items: [
+    { to: '/menus', end: true, icon: '🍽', label: '메뉴 & 레시피' },
+  ] },
+  '/waste': { title: '폐기관리', items: [
+    { to: '/waste', end: true, icon: '🗑', label: '폐기 입력' },
+  ] },
+  '/risks': { title: '리스크', items: [
+    { to: '/risks', end: true, icon: '⚠️', label: '리스크 알림' },
+  ] },
+  '/users': { title: '사용자', items: [
+    { to: '/users', end: true, icon: '👤', label: '사용자 관리' },
+  ] },
+};
 
 function SideMenu({ collapsed, onToggle, storeSelected }) {
+  const location = useLocation();
+  const topKey = '/' + (location.pathname.split('/')[1] || '');
+  const group = SIDE_MENU_MAP[topKey];
+  if (!group) return null;
+
   return (
     <aside className={'side-menu' + (collapsed ? ' collapsed' : '')}>
       <button className="side-menu-collapse" onClick={onToggle} title={collapsed ? '펼치기' : '접기'}>
         {collapsed ? '»' : '«'}
       </button>
-      {!collapsed && SIDE_GROUPS.map(g => (
-        <div key={g.title} className="side-menu-group">
-          <div className="side-menu-group-title">{g.title}</div>
-          {g.items.map(item => (
+      {!collapsed && (
+        <div className="side-menu-group">
+          <div className="side-menu-group-title">{group.title}</div>
+          {group.items.map(item => (
             storeSelected || item.to === '/' ? (
               <NavLink key={item.to} to={item.to} end={item.end}
                 className={({ isActive }) => 'side-menu-item' + (isActive ? ' active' : '')}>
@@ -105,7 +124,7 @@ function SideMenu({ collapsed, onToggle, storeSelected }) {
             )
           ))}
         </div>
-      ))}
+      )}
     </aside>
   );
 }
@@ -118,6 +137,9 @@ function HQLayout() {
 
   return (
     <div className="kicc-layout">
+      <div className="admin-back-bar">
+        <NavLink to="/">← 관리자로 돌아가기</NavLink>
+      </div>
       <header className="topnav">
         <div className="topnav-brand">🧾 포스모스</div>
         <nav className="topnav-menu">
@@ -180,6 +202,7 @@ function StoreLayout() {
         <div className="kicc-main-inner">
           <Routes>
             <Route path="/store" element={<StoreOrder />} />
+            <Route path="/store/payment/:id/result" element={<PaymentResult />} />
             <Route path="/store/stock" element={<StoreStock />} />
             <Route path="/store/waste" element={<Waste />} />
             <Route path="*" element={<Navigate to="/store" />} />
