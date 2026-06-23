@@ -57,7 +57,8 @@ function HQLayout() {
 
         <nav style={{ marginTop: 4 }}>
           <div className="sidebar-section">운영</div>
-          <NavLink to="/" end className={({ isActive }) => isActive ? 'active' : ''}>🏠 대시보드</NavLink>
+          <NavLink to="/" end className={({ isActive }) => isActive ? 'active' : ''}>🏪 가맹점 선택</NavLink>
+          <NavLink to="/dashboard" className={({ isActive }) => isActive ? 'active' : ''}>🏠 대시보드</NavLink>
           <NavLink to="/orders" className={({ isActive }) => isActive ? 'active' : ''}>📋 주문 관리</NavLink>
           <NavLink to="/risks" className={({ isActive }) => isActive ? 'active' : ''}>⚠️ 리스크 알림</NavLink>
           <div className="sidebar-section">재고 · 메뉴</div>
@@ -67,7 +68,6 @@ function HQLayout() {
           <NavLink to="/waste" className={({ isActive }) => isActive ? 'active' : ''}>🗑 폐기 관리</NavLink>
           <div className="sidebar-section">분석 · 설정</div>
           <NavLink to="/analytics" className={({ isActive }) => isActive ? 'active' : ''}>📊 판매 분석</NavLink>
-          <NavLink to="/stores" className={({ isActive }) => isActive ? 'active' : ''}>🏪 가맹점 관리</NavLink>
           <NavLink to="/users" className={({ isActive }) => isActive ? 'active' : ''}>👤 사용자 관리</NavLink>
         </nav>
 
@@ -75,7 +75,8 @@ function HQLayout() {
       </aside>
       <main className="main">
         <Routes>
-          <Route path="/" element={<Dashboard />} />
+          <Route path="/" element={<Stores />} />
+          <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/orders" element={<HQOrders />} />
           <Route path="/risks" element={<Risks />} />
           <Route path="/ingredients" element={<Ingredients />} />
@@ -83,7 +84,6 @@ function HQLayout() {
           <Route path="/products" element={<Products />} />
           <Route path="/analytics" element={<Analytics />} />
           <Route path="/waste" element={<Waste />} />
-          <Route path="/stores" element={<Stores />} />
           <Route path="/users" element={<Users />} />
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>

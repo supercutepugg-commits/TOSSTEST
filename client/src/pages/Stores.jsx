@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import { useStore } from '../StoreContext';
 
@@ -162,9 +163,15 @@ function StoreModal({ item, onClose, onSave }) {
 
 export default function Stores() {
   const { stores, currentStore, selectStore, reloadStores } = useStore();
+  const navigate = useNavigate();
   const [modal, setModal] = useState(null);
   const [syncTarget, setSyncTarget] = useState(null);
   const [search, setSearch] = useState('');
+
+  const handleSelect = (store) => {
+    selectStore(store);
+    navigate('/dashboard');
+  };
 
   const filteredStores = stores.filter(s => {
     if (!search.trim()) return true;
@@ -246,7 +253,7 @@ export default function Stores() {
                   <td className="text-sub" style={{ fontSize: 13 }}>{s.order_deadline || '-'}</td>
                   <td className="text-sub" style={{ fontSize: 13 }}>{days}</td>
                   <td style={{ display: 'flex', gap: 6 }}>
-                    <button className="secondary small" onClick={() => selectStore(s)}>선택</button>
+                    <button className="secondary small" onClick={() => handleSelect(s)}>선택</button>
                     <button className="secondary small" onClick={() => setModal({ edit: s })}>수정</button>
                     <button className="secondary small" onClick={() => setSyncTarget(s)}>📥 동기화</button>
                     <button className="danger small" onClick={() => handleDelete(s)}>삭제</button>
