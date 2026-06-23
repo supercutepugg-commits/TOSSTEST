@@ -17,6 +17,7 @@ import Risks from './pages/Risks';
 import Products from './pages/Products';
 import Analytics from './pages/Analytics';
 import StoreRankings from './pages/StoreRankings';
+import PurchaseAnomalies from './pages/PurchaseAnomalies';
 import Login from './pages/Login';
 import StockAlert from './components/StockAlert';
 
@@ -87,6 +88,11 @@ const SIDE_MENU_MAP = {
   ] },
   '/risks': { title: '리스크', items: [
     { to: '/risks', end: true, icon: '⚠️', label: '리스크 알림' },
+    { to: '/purchase-anomalies', end: true, icon: '🔍', label: '사입 이상 모니터링' },
+  ] },
+  '/purchase-anomalies': { title: '리스크', items: [
+    { to: '/risks', end: true, icon: '⚠️', label: '리스크 알림' },
+    { to: '/purchase-anomalies', end: true, icon: '🔍', label: '사입 이상 모니터링' },
   ] },
   '/users': { title: '사용자', items: [
     { to: '/users', end: true, icon: '👤', label: '사용자 관리' },
@@ -171,6 +177,7 @@ function HQLayout() {
                   <Route path="/dashboard" element={<Dashboard />} />
                   <Route path="/orders" element={<HQOrders />} />
                   <Route path="/risks" element={<Risks />} />
+                  <Route path="/purchase-anomalies" element={<PurchaseAnomalies />} />
                   <Route path="/ingredients" element={<Ingredients />} />
                   <Route path="/menus" element={<Menus />} />
                   <Route path="/products" element={<Products />} />

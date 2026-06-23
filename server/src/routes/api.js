@@ -373,6 +373,83 @@ router.get('/analytics', requireAuth, async (req, res) => {
   res.json({ salesByMenu, dailyRevenue: dailyRows, comparison, period: { from: fromISO, to: toISO } });
 });
 
+// 가맹점 하나의 식자재별 "예상 소진 vs 실제 발주" 비교 (사입 이상 감지용, /analytics와 동일 로직)
+async function getIngredientComparison(brand_id, store_id, fromISO, toISO) {
+  const salesQ = knex('sales_items')
+    .where({ brand_id, store_id })
+    .where('sold_at', '>=', fromISO).where('sold_at', '<=', toISO)
+    .select('menu_name', 'toss_menu_id', knex.raw('SUM(quantity) as total_qty'))
+    .groupBy('menu_name', 'toss_menu_id');
+  const salesRows = await salesQ;
+
+  const menus = await knex('menus').where({ brand_id, store_id }).select('id', 'name', 'toss_menu_id');
+  const recipes = await knex('recipes')
+    .join('ingredients', 'recipes.ingredient_id', 'ingredients.id')
+    .select('recipes.menu_id', 'recipes.amount', 'ingredients.name as ing_name', 'ingredients.unit');
+
+  const consumptionMap = {};
+  for (const row of salesRows) {
+    const menu = menus.find(m => m.name === row.menu_name || (m.toss_menu_id && m.toss_menu_id === row.toss_menu_id));
+    if (!menu) continue;
+    const qty = Number(row.total_qty);
+    for (const r of recipes.filter(r => r.menu_id === menu.id)) {
+      if (!consumptionMap[r.ing_name]) consumptionMap[r.ing_name] = { name: r.ing_name, unit: r.unit, estimated: 0 };
+      consumptionMap[r.ing_name].estimated += r.amount * qty;
+    }
+  }
+
+  const orderedItems = await knex('purchase_order_items as poi')
+    .join('purchase_orders as po', 'poi.order_id', 'po.id')
+    .join('products as p', 'poi.product_id', 'p.id')
+    .leftJoin('ingredients as i', 'p.ingredient_id', 'i.id')
+    .where('po.brand_id', brand_id).where('po.store_id', store_id)
+    .whereNotIn('po.status', ['DRAFT', 'CANCELED'])
+    .where('po.created_at', '>=', fromISO).where('po.created_at', '<=', toISO)
+    .select('i.name as ing_name', knex.raw('SUM(poi.quantity * p.unit_conversion) as total_ordered'))
+    .groupBy('i.id');
+
+  return Object.values(consumptionMap).map(c => {
+    const ordered = orderedItems.find(o => o.ing_name === c.name);
+    const totalOrdered = ordered ? Number(ordered.total_ordered) : 0;
+    const ratio = c.estimated > 0 ? Math.round((totalOrdered / c.estimated) * 100) / 100 : null;
+    return { ...c, total_ordered: totalOrdered, ratio };
+  });
+}
+
+// ─── 가맹점별 사입 이상 모니터링 ────────────────────────
+router.get('/purchase-anomalies', requireAuth, requireRole(...HQ_ROLES), async (req, res) => {
+  const { from, to } = req.query;
+  const brand_id = req.user.brand_id;
+  const toISO = (to ? new Date(to) : new Date()).toISOString();
+  const fromISO = (from ? new Date(from) : new Date(Date.now() - 30 * 86400000)).toISOString();
+  const OVER_RATIO = 2.0, UNDER_RATIO = 0.7;
+
+  const stores = await knex('stores').where({ brand_id }).select('id', 'name');
+
+  const riskCounts = await knex('risk_alerts')
+    .where({ brand_id, type: 'OVER_PURCHASE' })
+    .where('created_at', '>=', fromISO).where('created_at', '<=', toISO)
+    .select('store_id', knex.raw('COUNT(*) as cnt'))
+    .groupBy('store_id');
+
+  const result = [];
+  for (const s of stores) {
+    const comparison = await getIngredientComparison(brand_id, s.id, fromISO, toISO);
+    const overItems = comparison.filter(c => c.ratio !== null && c.ratio > OVER_RATIO);
+    const underItems = comparison.filter(c => c.ratio !== null && c.ratio < UNDER_RATIO);
+    const riskRow = riskCounts.find(r => r.store_id === s.id);
+    result.push({
+      store_id: s.id, store_name: s.name,
+      over_count: overItems.length, under_count: underItems.length,
+      worst_over: overItems.sort((a, b) => b.ratio - a.ratio)[0] || null,
+      risk_alert_count: riskRow ? Number(riskRow.cnt) : 0,
+    });
+  }
+  result.sort((a, b) => (b.over_count + b.risk_alert_count) - (a.over_count + a.risk_alert_count));
+
+  res.json({ anomalies: result, period: { from: fromISO, to: toISO } });
+});
+
 // ─── Toss Place 과거 데이터 동기화 ────────────────────
 async function syncStoreSales(store, fromDate, toDate) {
   const accessKey = process.env.TOSS_ACCESS_KEY;

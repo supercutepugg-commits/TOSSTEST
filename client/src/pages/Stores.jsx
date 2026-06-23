@@ -3,53 +3,69 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import { useStore } from '../StoreContext';
 
-function SyncModal({ store, onClose }) {
+function BulkSyncModal({ stores, onClose }) {
   const [from, setFrom] = useState(() => new Date(Date.now() - 5 * 365 * 86400000).toISOString().split('T')[0]);
   const [to, setTo] = useState(() => new Date().toISOString().split('T')[0]);
-  const [result, setResult] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [running, setRunning] = useState(false);
+  const [results, setResults] = useState([]);
 
-  const run = async () => {
-    setLoading(true); setError(''); setResult(null);
-    try {
-      const r = await api.syncStore(store.id, { from, to });
-      setResult(r);
-    } catch (e) {
-      setError(e.message);
-    } finally {
-      setLoading(false);
+  const targets = stores.filter(s => s.toss_store_id);
+
+  const runAll = async () => {
+    setRunning(true);
+    setResults(targets.map(s => ({ store_id: s.id, store_name: s.name, status: 'pending' })));
+    for (const store of targets) {
+      setResults(prev => prev.map(r => r.store_id === store.id ? { ...r, status: 'running' } : r));
+      try {
+        const r = await api.syncStore(store.id, { from, to });
+        setResults(prev => prev.map(x => x.store_id === store.id ? { ...x, status: 'done', inserted: r.inserted } : x));
+      } catch (e) {
+        setResults(prev => prev.map(x => x.store_id === store.id ? { ...x, status: 'error', error: e.message } : x));
+      }
     }
+    setRunning(false);
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay" onClick={running ? undefined : onClose}>
       <div className="modal" onClick={e => e.stopPropagation()}>
-        <h3>📥 매출 데이터 동기화 — {store.name}</h3>
+        <h3>📥 전체 가맹점 매출 동기화</h3>
         <p className="text-muted" style={{ fontSize: 13, marginBottom: 16 }}>
-          Toss Place API에서 과거 주문 데이터를 가져옵니다.<br />
-          API 키가 설정되어 있어야 합니다.
+          토스플레이스 매장 ID가 등록된 가맹점({targets.length}개)을 순서대로 하나씩 동기화합니다.
         </p>
         <div className="form-row">
           <div className="form-group">
             <label>시작일</label>
-            <input type="date" value={from} onChange={e => setFrom(e.target.value)} />
+            <input type="date" value={from} onChange={e => setFrom(e.target.value)} disabled={running} />
           </div>
           <div className="form-group">
             <label>종료일</label>
-            <input type="date" value={to} onChange={e => setTo(e.target.value)} />
+            <input type="date" value={to} onChange={e => setTo(e.target.value)} disabled={running} />
           </div>
         </div>
-        {error && <div style={{ color: '#ef4444', fontSize: 13, marginBottom: 12 }}>{error}</div>}
-        {result && (
-          <div className="elevated-card" style={{ padding: 12, fontSize: 13, marginBottom: 12 }}>
-            ✅ 동기화 완료 — {result.inserted.toLocaleString()}건 저장 ({result.from} ~ {result.to})
+
+        {results.length > 0 && (
+          <div className="elevated-card" style={{ padding: 12, marginBottom: 16, maxHeight: 240, overflowY: 'auto' }}>
+            {results.map(r => (
+              <div key={r.store_id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
+                <span>{r.store_name}</span>
+                {r.status === 'pending' && <span className="text-muted">대기중</span>}
+                {r.status === 'running' && <span style={{ color: 'var(--purple)' }}>동기화 중...</span>}
+                {r.status === 'done' && <span style={{ color: '#16a34a' }}>✅ {r.inserted.toLocaleString()}건</span>}
+                {r.status === 'error' && <span style={{ color: '#dc2626' }}>❌ {r.error}</span>}
+              </div>
+            ))}
           </div>
         )}
+
+        {targets.length === 0 && (
+          <div className="empty" style={{ padding: 16 }}>토스플레이스 매장 ID가 등록된 가맹점이 없습니다</div>
+        )}
+
         <div className="modal-footer">
-          <button className="secondary" onClick={onClose}>닫기</button>
-          <button className="primary" onClick={run} disabled={loading}>
-            {loading ? '동기화 중...' : '동기화 시작'}
+          <button className="secondary" onClick={onClose} disabled={running}>닫기</button>
+          <button className="primary" onClick={runAll} disabled={running || targets.length === 0}>
+            {running ? '동기화 진행 중...' : '동기화 시작'}
           </button>
         </div>
       </div>
@@ -169,7 +185,7 @@ export default function Stores() {
   const { stores, currentStore, selectStore, reloadStores } = useStore();
   const navigate = useNavigate();
   const [modal, setModal] = useState(null);
-  const [syncTarget, setSyncTarget] = useState(null);
+  const [bulkSyncOpen, setBulkSyncOpen] = useState(false);
 
   const [nameQuery, setNameQuery] = useState('');
   const [bizQuery, setBizQuery] = useState('');
@@ -213,7 +229,10 @@ export default function Stores() {
 
       <div className="top-bar">
         <h2>가맹점조회</h2>
-        <button className="primary" onClick={() => setModal('add')}>+ 가맹점 추가</button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="secondary" onClick={() => setBulkSyncOpen(true)}>📥 매출 동기화</button>
+          <button className="primary" onClick={() => setModal('add')}>+ 가맹점 추가</button>
+        </div>
       </div>
 
       {/* 검색 필터 패널 */}
@@ -295,7 +314,6 @@ export default function Stores() {
                   <td style={{ display: 'flex', gap: 6 }}>
                     <button className="secondary small" onClick={() => handleSelect(s)}>선택</button>
                     <button className="secondary small" onClick={() => setModal({ edit: s })}>수정</button>
-                    <button className="secondary small" onClick={() => setSyncTarget(s)}>📥 동기화</button>
                     <button className="danger small" onClick={() => handleDelete(s)}>삭제</button>
                   </td>
                 </tr>
@@ -320,8 +338,8 @@ export default function Stores() {
           onSave={handleSave}
         />
       )}
-      {syncTarget && (
-        <SyncModal store={syncTarget} onClose={() => setSyncTarget(null)} />
+      {bulkSyncOpen && (
+        <BulkSyncModal stores={stores} onClose={() => setBulkSyncOpen(false)} />
       )}
     </div>
   );

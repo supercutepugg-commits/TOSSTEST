@@ -108,6 +108,9 @@ export const api = {
   // 가맹점 순위
   getStoreRankings: (params) => a(`/store-rankings${qs(params)}`),
 
+  // 사입 이상 모니터링
+  getPurchaseAnomalies: (params) => a(`/purchase-anomalies${qs(params)}`),
+
   // 레시피 변경 이력
   getRecipeHistory: (menuId) => a(`/menus/${menuId}/recipe-history`),
 };
