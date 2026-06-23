@@ -28,13 +28,20 @@ router.get('/stores', requireAuth, async (req, res) => {
 });
 
 router.post('/stores', requireAuth, requireRole(...HQ_ROLES), async (req, res) => {
-  const { name, webhook_secret, toss_store_id, order_deadline, delivery_days } = req.body;
-  const [{ id }] = await knex('stores').insert({ brand_id: req.user.brand_id, name, webhook_secret: webhook_secret || '', toss_store_id: toss_store_id || '', order_deadline: order_deadline || null, delivery_days: delivery_days || null }).returning('id');
+  const { name, webhook_secret, toss_store_id, order_deadline, delivery_days, business_number, owner_name, phone, open_date, franchise_type, is_open } = req.body;
+  const [{ id }] = await knex('stores').insert({
+    brand_id: req.user.brand_id, name,
+    webhook_secret: webhook_secret || '', toss_store_id: toss_store_id || '',
+    order_deadline: order_deadline || null, delivery_days: delivery_days || null,
+    business_number: business_number || null, owner_name: owner_name || null,
+    phone: phone || null, open_date: open_date || null,
+    franchise_type: franchise_type || null, is_open: is_open ?? true,
+  }).returning('id');
   res.json({ id });
 });
 
 router.put('/stores/:id', requireAuth, requireRole(...HQ_ROLES), async (req, res) => {
-  const { name, webhook_secret, toss_store_id, order_deadline, delivery_days, toss_client_id, toss_client_secret } = req.body;
+  const { name, webhook_secret, toss_store_id, order_deadline, delivery_days, toss_client_id, toss_client_secret, business_number, owner_name, phone, open_date, franchise_type, is_open } = req.body;
   await knex('stores').where({ id: req.params.id, brand_id: req.user.brand_id })
     .update({
       name, webhook_secret, toss_store_id,
@@ -42,6 +49,12 @@ router.put('/stores/:id', requireAuth, requireRole(...HQ_ROLES), async (req, res
       delivery_days: delivery_days || null,
       toss_client_id: toss_client_id || null,
       toss_client_secret: toss_client_secret || null,
+      business_number: business_number || null,
+      owner_name: owner_name || null,
+      phone: phone || null,
+      open_date: open_date || null,
+      franchise_type: franchise_type || null,
+      is_open: is_open ?? true,
     });
   res.json({ ok: true });
 });

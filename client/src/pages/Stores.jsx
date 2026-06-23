@@ -58,8 +58,13 @@ function SyncModal({ store, onClose }) {
 
 const DAY_LABELS = ['일', '월', '화', '수', '목', '금', '토'];
 
+const FRANCHISE_TYPES = ['가맹점', '직영점'];
+
 function StoreModal({ item, onClose, onSave }) {
-  const [form, setForm] = useState(item || { name: '', webhook_secret: '', toss_store_id: '', order_deadline: '', delivery_days: '' });
+  const [form, setForm] = useState(item || {
+    name: '', webhook_secret: '', toss_store_id: '', order_deadline: '', delivery_days: '',
+    business_number: '', owner_name: '', phone: '', open_date: '', franchise_type: '', is_open: true,
+  });
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
   const toggleDay = (d) => {
@@ -77,6 +82,42 @@ function StoreModal({ item, onClose, onSave }) {
         <div className="form-group" style={{ marginBottom: 12 }}>
           <label>가맹점명</label>
           <input value={form.name} onChange={e => set('name', e.target.value)} placeholder="예: 강남점" />
+        </div>
+        <div className="form-row">
+          <div className="form-group" style={{ marginBottom: 12 }}>
+            <label>가맹형태</label>
+            <select value={form.franchise_type || ''} onChange={e => set('franchise_type', e.target.value)}>
+              <option value="">선택 안함</option>
+              {FRANCHISE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </div>
+          <div className="form-group" style={{ marginBottom: 12 }}>
+            <label>오픈여부</label>
+            <select value={form.is_open ? '1' : '0'} onChange={e => set('is_open', e.target.value === '1')}>
+              <option value="1">오픈</option>
+              <option value="0">폐점</option>
+            </select>
+          </div>
+        </div>
+        <div className="form-row">
+          <div className="form-group" style={{ marginBottom: 12 }}>
+            <label>대표자명</label>
+            <input value={form.owner_name || ''} onChange={e => set('owner_name', e.target.value)} placeholder="예: 홍길동" />
+          </div>
+          <div className="form-group" style={{ marginBottom: 12 }}>
+            <label>전화번호</label>
+            <input value={form.phone || ''} onChange={e => set('phone', e.target.value)} placeholder="02-1234-5678" />
+          </div>
+        </div>
+        <div className="form-row">
+          <div className="form-group" style={{ marginBottom: 12 }}>
+            <label>사업자번호</label>
+            <input value={form.business_number || ''} onChange={e => set('business_number', e.target.value)} placeholder="123-45-67890" />
+          </div>
+          <div className="form-group" style={{ marginBottom: 12 }}>
+            <label>개점일자</label>
+            <input type="date" value={form.open_date || ''} onChange={e => set('open_date', e.target.value)} />
+          </div>
         </div>
         <div className="form-group" style={{ marginBottom: 12 }}>
           <label>웹훅 시크릿 키 (토스플레이스 발급)</label>
@@ -123,6 +164,13 @@ export default function Stores() {
   const { stores, currentStore, selectStore, reloadStores } = useStore();
   const [modal, setModal] = useState(null);
   const [syncTarget, setSyncTarget] = useState(null);
+  const [search, setSearch] = useState('');
+
+  const filteredStores = stores.filter(s => {
+    if (!search.trim()) return true;
+    const q = search.trim().toLowerCase();
+    return [s.name, s.owner_name, s.business_number, s.phone].some(v => v && String(v).toLowerCase().includes(q));
+  });
 
   const handleSave = async (form) => {
     if (modal?.edit) await api.updateStore(modal.edit.id, form);
@@ -144,14 +192,32 @@ export default function Stores() {
         <button className="primary" onClick={() => setModal('add')}>+ 가맹점 추가</button>
       </div>
 
+      <div className="card" style={{ marginBottom: 12, padding: 12 }}>
+        <input
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="가맹점명 / 대표자명 / 사업자번호 / 전화번호 검색"
+          style={{ width: '100%' }}
+        />
+      </div>
+
       <div className="card">
         {stores.length === 0 ? (
           <div className="empty">가맹점을 추가해주세요</div>
+        ) : filteredStores.length === 0 ? (
+          <div className="empty">검색 결과가 없습니다</div>
         ) : (
           <table>
             <thead>
               <tr>
+                <th>NO</th>
                 <th>가맹점명</th>
+                <th>대표자명</th>
+                <th>전화번호</th>
+                <th>사업자번호</th>
+                <th>가맹형태</th>
+                <th>오픈여부</th>
+                <th>개점일</th>
                 <th>웹훅 URL</th>
                 <th>발주마감</th>
                 <th>납품요일</th>
@@ -159,14 +225,23 @@ export default function Stores() {
               </tr>
             </thead>
             <tbody>
-              {stores.map(s => {
+              {filteredStores.map((s, i) => {
                 const days = s.delivery_days ? s.delivery_days.split(',').filter(Boolean).map(d => DAY_LABELS[Number(d)]).join(' ') : '-';
                 return (
                 <tr key={s.id} style={{ background: s.id === currentStore?.id ? 'rgba(99,102,241,0.08)' : '' }}>
+                  <td className="text-sub" style={{ fontSize: 13 }}>{i + 1}</td>
                   <td>
                     <b>{s.name}</b>
                     {s.id === currentStore?.id && <span className="badge green" style={{ marginLeft: 8 }}>선택됨</span>}
                   </td>
+                  <td className="text-sub" style={{ fontSize: 13 }}>{s.owner_name || '-'}</td>
+                  <td className="text-sub" style={{ fontSize: 13 }}>{s.phone || '-'}</td>
+                  <td className="text-sub" style={{ fontSize: 13 }}>{s.business_number || '-'}</td>
+                  <td className="text-sub" style={{ fontSize: 13 }}>{s.franchise_type || '-'}</td>
+                  <td>
+                    <span className={`badge ${s.is_open === false ? 'red' : 'green'}`}>{s.is_open === false ? '폐점' : '오픈'}</span>
+                  </td>
+                  <td className="text-sub" style={{ fontSize: 13 }}>{s.open_date || '-'}</td>
                   <td className="text-sub" style={{ fontSize: 12 }}>/webhook/{s.id}</td>
                   <td className="text-sub" style={{ fontSize: 13 }}>{s.order_deadline || '-'}</td>
                   <td className="text-sub" style={{ fontSize: 13 }}>{days}</td>

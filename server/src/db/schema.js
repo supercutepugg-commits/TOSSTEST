@@ -47,6 +47,12 @@ async function initDb() {
   await addColumnIfMissing('stores', 'toss_client_id', t => t.string('toss_client_id').nullable());
   await addColumnIfMissing('stores', 'toss_client_secret', t => t.string('toss_client_secret').nullable());
   await addColumnIfMissing('stores', 'last_synced_at', t => t.datetime('last_synced_at').nullable());
+  await addColumnIfMissing('stores', 'business_number', t => t.string('business_number').nullable());
+  await addColumnIfMissing('stores', 'owner_name', t => t.string('owner_name').nullable());
+  await addColumnIfMissing('stores', 'phone', t => t.string('phone').nullable());
+  await addColumnIfMissing('stores', 'open_date', t => t.date('open_date').nullable());
+  await addColumnIfMissing('stores', 'franchise_type', t => t.string('franchise_type').nullable()); // 가맹점 / 직영점
+  await addColumnIfMissing('stores', 'is_open', t => t.boolean('is_open').defaultTo(true));
   const defaultStore = await knex('stores').first();
   let defaultStoreId = defaultStore?.id;
   if (!defaultStore) {
