@@ -65,7 +65,7 @@ const SIDE_MENU_GROUPS = [
   { title: '재고 · 메뉴', storeRequired: true, items: [
     { to: '/ingredients', end: true, label: '재료 목록' },
     { to: '/menus', end: true, label: '메뉴 & 레시피' },
-    { to: '/waste', end: true, label: '폐기 입력' },
+    { to: '/waste', end: true, label: '폐기 내역' },
   ] },
   { title: '리스크', storeRequired: true, items: [
     { to: '/risks', end: true, label: '리스크 알림' },
@@ -129,7 +129,7 @@ function HQLayout() {
           <NavTab to="/products" label="매입발주" />
           <NavTab to="/ingredients" label="재고관리" />
           <NavTab to="/menus" label="메뉴관리" />
-          <NavTab to="/waste" label="폐기관리" />
+          <NavTab to="/waste" label="폐기 내역" />
           <NavTab to="/risks" label="리스크" />
           <NavTab to="/users" label="사용자" />
         </nav>
