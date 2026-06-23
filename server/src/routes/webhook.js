@@ -47,14 +47,25 @@ async function handleWebhook(req, res, store) {
     const payload = Buffer.isBuffer(req.body) ? JSON.parse(rawBody) : req.body;
 
     // 시크릿키 검증 (시크릿이 설정된 가맹점은 서명 헤더가 반드시 있어야 하고 일치해야 함)
+    // 토스플레이스 웹훅 서명 규칙: HMAC-SHA256("<x-toss-timestamp>.<rawBody>") → hex → "v1=" 접두사
     const secret = store.webhook_secret;
     if (secret) {
-      const signature = req.headers['x-tossplace-signature'] || req.headers['x-signature'] || '';
-      if (!signature) return res.sendStatus(401);
-      const hmac = crypto.createHmac('sha256', secret).update(rawBody).digest('base64');
+      const signature = req.headers['x-toss-signature'] || '';
+      const timestamp = req.headers['x-toss-timestamp'] || '';
+      if (!signature || !timestamp) return res.sendStatus(401);
+
+      // 타임스탬프가 초/밀리초 단위 모두 올 수 있어 둘 다 처리, 5분 이상 차이나면 재전송 공격으로 간주해 거부
+      const tsNum = Number(timestamp);
+      const tsMs = tsNum < 10_000_000_000 ? tsNum * 1000 : tsNum;
+      if (!Number.isFinite(tsMs) || Math.abs(Date.now() - tsMs) > 5 * 60 * 1000) {
+        return res.sendStatus(401);
+      }
+
+      const hmac = crypto.createHmac('sha256', secret).update(`${timestamp}.${rawBody}`).digest('hex');
+      const expected = `v1=${hmac}`;
       const sigBuf = Buffer.from(signature);
-      const hmacBuf = Buffer.from(hmac);
-      if (sigBuf.length !== hmacBuf.length || !crypto.timingSafeEqual(sigBuf, hmacBuf)) {
+      const expectedBuf = Buffer.from(expected);
+      if (sigBuf.length !== expectedBuf.length || !crypto.timingSafeEqual(sigBuf, expectedBuf)) {
         return res.sendStatus(401);
       }
     }
