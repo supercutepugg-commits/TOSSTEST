@@ -1,6 +1,6 @@
 const createAsyncRouter = require('../middleware/asyncRouter');
 const router = createAsyncRouter();
-const { knex } = require('../db/schema');
+const { knex, isProduction } = require('../db/schema');
 const { requireAuth, requireRole, HQ_ROLES } = require('../middleware/auth');
 
 // ─── 브랜드 ───────────────────────────────────────────
@@ -241,18 +241,19 @@ router.get('/analytics', requireAuth, async (req, res) => {
   if (sid) salesQ.where({ store_id: sid });
   const salesRows = await salesQ;
 
-  // 매장별 일별 매출 (차트용)
+  // 매장별 일별 매출 (차트용) — sqlite는 strftime, postgres는 to_char로 날짜만 추출
+  const dateExpr = isProduction ? "to_char(sold_at, 'YYYY-MM-DD')" : "strftime('%Y-%m-%d', sold_at)";
   const dailyQ = knex('sales_items')
     .where({ brand_id })
     .where('sold_at', '>=', fromISO)
     .where('sold_at', '<=', toISO)
     .select(
-      knex.raw("strftime('%Y-%m-%d', sold_at) as date"),
+      knex.raw(`${dateExpr} as date`),
       'store_id',
       knex.raw('SUM(amount) as revenue'),
       knex.raw('SUM(quantity) as qty')
     )
-    .groupByRaw("strftime('%Y-%m-%d', sold_at), store_id")
+    .groupByRaw(`${dateExpr}, store_id`)
     .orderBy('date');
   if (sid) dailyQ.where({ store_id: sid });
   const dailyRows = await dailyQ;

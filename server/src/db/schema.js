@@ -302,4 +302,4 @@ async function initDb() {
   await knex('alert_log').whereNull('store_id').update({ store_id: defaultStoreId });
 }
 
-module.exports = { knex, initDb };
+module.exports = { knex, initDb, isProduction };
