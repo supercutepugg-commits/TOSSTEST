@@ -29,7 +29,7 @@ function BulkSyncModal({ stores, onClose }) {
   return (
     <div className="modal-overlay" onClick={running ? undefined : onClose}>
       <div className="modal" onClick={e => e.stopPropagation()}>
-        <h3>📥 전체 가맹점 매출 동기화</h3>
+        <h3>전체 가맹점 매출 동기화</h3>
         <p className="text-muted" style={{ fontSize: 13, marginBottom: 16 }}>
           토스플레이스 매장 ID가 등록된 가맹점({targets.length}개)을 순서대로 하나씩 동기화합니다.
         </p>
@@ -51,8 +51,8 @@ function BulkSyncModal({ stores, onClose }) {
                 <span>{r.store_name}</span>
                 {r.status === 'pending' && <span className="text-muted">대기중</span>}
                 {r.status === 'running' && <span style={{ color: 'var(--purple)' }}>동기화 중...</span>}
-                {r.status === 'done' && <span style={{ color: '#16a34a' }}>✅ {r.inserted.toLocaleString()}건</span>}
-                {r.status === 'error' && <span style={{ color: '#dc2626' }}>❌ {r.error}</span>}
+                {r.status === 'done' && <span style={{ color: '#16a34a' }}>{r.inserted.toLocaleString()}건</span>}
+                {r.status === 'error' && <span style={{ color: '#dc2626' }}>{r.error}</span>}
               </div>
             ))}
           </div>
@@ -235,7 +235,7 @@ export default function Stores() {
       <div className="top-bar">
         <h2>가맹점조회</h2>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button className="secondary" onClick={() => setBulkSyncOpen(true)}>📥 매출 동기화</button>
+          <button className="secondary" onClick={() => setBulkSyncOpen(true)}>매출 동기화</button>
           <button className="primary" onClick={() => setModal('add')}>+ 가맹점 추가</button>
         </div>
       </div>
@@ -266,7 +266,7 @@ export default function Stores() {
               <option value="closed">폐점</option>
             </select>
           </div>
-          <button className="primary kicc-search-btn" onClick={runSearch}>🔍 조회</button>
+          <button className="primary kicc-search-btn" onClick={runSearch}>조회</button>
         </div>
       </div>
 

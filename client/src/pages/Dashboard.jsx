@@ -12,14 +12,14 @@ const TYPE_LABEL = {
 };
 
 const QUICK_LINKS = [
-  { to: '/analytics', icon: '📊', label: '판매 분석' },
-  { to: '/rankings', icon: '🏆', label: '가맹점 순위' },
-  { to: '/orders', icon: '📋', label: '주문 관리' },
-  { to: '/products', icon: '📦', label: '발주 상품' },
-  { to: '/ingredients', icon: '🥬', label: '재료 관리' },
-  { to: '/menus', icon: '🍽', label: '메뉴관리' },
-  { to: '/waste', icon: '🗑', label: '폐기관리' },
-  { to: '/purchase-anomalies', icon: '🔍', label: '사입 이상 모니터링' },
+  { to: '/analytics', label: '판매 분석' },
+  { to: '/rankings', label: '가맹점 순위' },
+  { to: '/orders', label: '주문 관리' },
+  { to: '/products', label: '발주 상품' },
+  { to: '/ingredients', label: '재료 관리' },
+  { to: '/menus', label: '메뉴관리' },
+  { to: '/waste', label: '폐기관리' },
+  { to: '/purchase-anomalies', label: '사입 이상 모니터링' },
 ];
 
 const won = (v) => `${Math.round(v || 0).toLocaleString()}원`;
@@ -43,10 +43,10 @@ export default function Dashboard() {
   const maxRevenue = Math.max(cmp.lastWeekSameDay?.revenue || 0, cmp.yesterday?.revenue || 0, cmp.today?.revenue || 0, 1);
 
   const statTiles = [
-    { label: '재고부족', value: data.lowStock.length, icon: '🥬', warn: data.lowStock.length > 0 },
-    { label: '검토대기발주', value: data.pendingOrders, icon: '📋', warn: data.pendingOrders > 0 },
-    { label: '결제대기발주', value: data.paymentPending, icon: '💳', warn: data.paymentPending > 0 },
-    { label: '미처리리스크', value: data.risks.length, icon: '⚠️', warn: data.risks.length > 0 },
+    { label: '재고부족', value: data.lowStock.length, warn: data.lowStock.length > 0 },
+    { label: '검토대기발주', value: data.pendingOrders, warn: data.pendingOrders > 0 },
+    { label: '결제대기발주', value: data.paymentPending, warn: data.paymentPending > 0 },
+    { label: '미처리리스크', value: data.risks.length, warn: data.risks.length > 0 },
   ];
 
   return (
@@ -62,7 +62,6 @@ export default function Dashboard() {
         <div className="dash-stat-tiles">
           {statTiles.map(t => (
             <div key={t.label} className="dash-stat-tile">
-              <span className="dash-stat-icon">{t.icon}</span>
               <span className="dash-stat-label">{t.label}</span>
               <span className="dash-stat-value" style={{ color: t.warn ? '#dc2626' : 'var(--text)' }}>{t.value}</span>
             </div>
@@ -77,7 +76,6 @@ export default function Dashboard() {
         <div className="dash-quicklinks">
           {QUICK_LINKS.map(l => (
             <Link key={l.to} to={l.to} className="dash-quicklink">
-              <span className="dash-quicklink-icon">{l.icon}</span>
               <span>{l.label}</span>
             </Link>
           ))}
@@ -150,7 +148,7 @@ export default function Dashboard() {
 
         {data.lowStock.length > 0 && (
           <div className="card" style={{ borderLeft: '4px solid #dc2626' }}>
-            <div style={{ fontWeight: 700, marginBottom: 12, color: '#dc2626' }}>⚠ 재고 부족 재료</div>
+            <div style={{ fontWeight: 700, marginBottom: 12, color: '#dc2626' }}>재고 부족 재료</div>
             <table>
               <thead>
                 <tr><th>재료명</th><th>현재 재고</th><th>알림 기준</th><th>상태</th></tr>

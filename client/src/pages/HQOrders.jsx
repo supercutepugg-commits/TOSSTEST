@@ -211,7 +211,7 @@ export default function HQOrders() {
           </table>
 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <button className="secondary small" onClick={() => exportExcel(detail)}>📥 엑셀 다운로드</button>
+            <button className="secondary small" onClick={() => exportExcel(detail)}>엑셀 다운로드</button>
             <div style={{ fontWeight: 700 }}>
               확정금액: {(detail.confirmed_amount ?? detail.total_amount).toLocaleString()}원
             </div>

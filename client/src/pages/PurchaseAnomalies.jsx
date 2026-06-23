@@ -58,7 +58,7 @@ export default function PurchaseAnomalies() {
             </div>
           </div>
           <button className="primary kicc-search-btn" onClick={load} disabled={loading}>
-            {loading ? '조회 중...' : '🔍 조회'}
+            {loading ? '조회 중...' : '조회'}
           </button>
         </div>
       </div>

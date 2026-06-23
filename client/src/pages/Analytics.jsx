@@ -199,7 +199,7 @@ export default function Analytics() {
           </div>
         </div>
         <button className="primary analytics-search-btn" onClick={load} disabled={loading}>
-          {loading ? '조회 중...' : '🔍 조회'}
+          {loading ? '조회 중...' : '조회'}
         </button>
       </div>
 
@@ -251,7 +251,7 @@ export default function Analytics() {
                   {data.salesByMenu.map((m, i) => (
                     <tr key={i}>
                       <td><b>{m.menu_name}</b></td>
-                      <td>{m.is_key ? <span className="badge yellow">★</span> : '-'}</td>
+                      <td>{m.is_key ? <span className="badge yellow">핵심</span> : '-'}</td>
                       <td><span style={{ fontWeight: 700, color: 'var(--purple)' }}>{m.sold_qty.toLocaleString()}</span>개</td>
                       <td>{m.total_amount.toLocaleString()}원</td>
                       <td className="text-sub">{m.order_count}건</td>

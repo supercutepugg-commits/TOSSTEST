@@ -31,9 +31,6 @@ export default function PaymentResult() {
 
   return (
     <div className="card" style={{ maxWidth: 420, margin: '60px auto', textAlign: 'center', padding: 32 }}>
-      <div style={{ fontSize: 40, marginBottom: 16 }}>
-        {status === 'processing' ? '⏳' : status === 'success' ? '✅' : '❌'}
-      </div>
       <div style={{ fontWeight: 700, marginBottom: 8, fontSize: 16 }}>{message}</div>
       {status !== 'processing' && (
         <button className="primary" style={{ marginTop: 16 }} onClick={() => navigate('/store')}>발주 내역으로 돌아가기</button>

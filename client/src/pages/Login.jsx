@@ -30,7 +30,7 @@ export default function Login() {
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)' }}>
       <div style={{ position: 'absolute', top: 16, right: 16 }}>
         <button className="theme-toggle" onClick={toggle} style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text)' }}>
-          {theme === 'light' ? '🌙' : '☀️'}
+          {theme === 'light' ? '다크 모드' : '라이트 모드'}
         </button>
       </div>
       <div className="card" style={{ width: '100%', maxWidth: 400, padding: '40px 48px', boxShadow: '0 20px 60px rgba(0,0,0,0.12)' }}>

@@ -203,7 +203,7 @@ export default function Menus() {
                         loadMenus();
                       }}
                     >
-                      {m.is_key ? '★ 핵심' : '☆'}
+                      {m.is_key ? '핵심' : '일반'}
                     </button>
                   </td>
                   <td>

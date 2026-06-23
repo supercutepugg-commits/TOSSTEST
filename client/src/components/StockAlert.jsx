@@ -55,7 +55,6 @@ export default function StockAlert() {
           maxWidth: 420,
           width: '90vw',
         }}>
-          <div style={{ fontSize: 56, marginBottom: 12 }}>⚠️</div>
           <div style={{ fontSize: 28, fontWeight: 800, color: '#dc2626', marginBottom: 16 }}>
             재고 부족!
           </div>

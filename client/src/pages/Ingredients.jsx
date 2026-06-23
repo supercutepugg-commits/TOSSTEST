@@ -150,7 +150,7 @@ export default function Ingredients() {
                           load();
                         }}
                       >
-                        {i.is_key ? '★ 핵심' : '☆'}
+                        {i.is_key ? '핵심' : '일반'}
                       </button>
                     </td>
                     <td><span className={`badge ${low ? 'red' : 'green'}`}>{low ? '부족' : '정상'}</span></td>

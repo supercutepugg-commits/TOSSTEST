@@ -2,7 +2,6 @@ const express = require('express');
 const crypto = require('crypto');
 const router = express.Router();
 const { knex } = require('../db/schema');
-const { sendLowStockAlert } = require('../mailer');
 const { broadcast } = require('./sse');
 
 async function adjustStock(lineItems, multiplier, storeId) {
@@ -143,11 +142,6 @@ async function handleWebhook(req, res, store) {
           if (!recent) toAlert.push(i);
         }
         if (toAlert.length > 0) {
-          try {
-            await sendLowStockAlert(toAlert, store.name);
-          } catch (mailErr) {
-            console.error('Low stock email failed:', mailErr);
-          }
           await knex('alert_log').insert(toAlert.map(i => ({ ingredient_id: i.id, stock_at_alert: i.stock, store_id: store.id })));
           broadcast({ type: 'LOW_STOCK', storeId: store.id, storeName: store.name, ingredients: toAlert.map(i => ({ name: i.name, stock: i.stock, unit: i.unit, threshold: i.threshold })) });
         }

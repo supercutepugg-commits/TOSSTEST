@@ -60,13 +60,13 @@ export default function StoreRankings() {
             </div>
           </div>
           <button className="primary kicc-search-btn" onClick={load} disabled={loading}>
-            {loading ? '조회 중...' : '🔍 조회'}
+            {loading ? '조회 중...' : '조회'}
           </button>
         </div>
       </div>
 
       <div className="card">
-        <div style={{ fontWeight: 700, marginBottom: 12 }}>🏆 매출 순위</div>
+        <div style={{ fontWeight: 700, marginBottom: 12 }}>매출 순위</div>
         {!data || data.salesRanking.length === 0 ? (
           <div className="empty">데이터 없음</div>
         ) : (
@@ -94,7 +94,7 @@ export default function StoreRankings() {
       </div>
 
       <div className="card">
-        <div style={{ fontWeight: 700, marginBottom: 12 }}>📦 발주 순위</div>
+        <div style={{ fontWeight: 700, marginBottom: 12 }}>발주 순위</div>
         {!data || data.orderRanking.length === 0 ? (
           <div className="empty">데이터 없음</div>
         ) : (
