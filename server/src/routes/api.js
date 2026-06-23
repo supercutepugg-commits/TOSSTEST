@@ -400,7 +400,8 @@ async function syncStoreSales(store, fromDate, toDate) {
 
     const data = await resp.json();
     // 응답이 배열이거나 { orders: [...] } 구조 모두 처리
-    const orders = Array.isArray(data) ? data : (data.orders || data.content || data.data || []);
+    // 실제 토스플레이스 응답: { resultType: "SUCCESS", success: [...] }
+    const orders = Array.isArray(data) ? data : (data.success || data.orders || data.content || data.data || []);
 
     for (const order of orders) {
       const orderId = order.id || order.orderId;
