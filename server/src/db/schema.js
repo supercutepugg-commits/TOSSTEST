@@ -46,6 +46,7 @@ async function initDb() {
   await addColumnIfMissing('stores', 'toss_api_key', t => t.string('toss_api_key').nullable()); // deprecated
   await addColumnIfMissing('stores', 'toss_client_id', t => t.string('toss_client_id').nullable());
   await addColumnIfMissing('stores', 'toss_client_secret', t => t.string('toss_client_secret').nullable());
+  await addColumnIfMissing('stores', 'last_synced_at', t => t.datetime('last_synced_at').nullable());
   const defaultStore = await knex('stores').first();
   let defaultStoreId = defaultStore?.id;
   if (!defaultStore) {

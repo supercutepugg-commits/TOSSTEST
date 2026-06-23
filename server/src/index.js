@@ -19,8 +19,9 @@ const corsOriginCheck = (origin, callback) => {
 app.use(cors({ origin: corsOriginCheck }));
 app.use(express.json());
 
+const apiRoutes = require('./routes/api');
 app.use('/auth', require('./routes/auth'));
-app.use('/api', require('./routes/api'));
+app.use('/api', apiRoutes);
 app.use('/api/orders', require('./routes/orders'));
 app.use('/api/products', require('./routes/products'));
 app.use('/api/waste', require('./routes/waste'));
@@ -80,6 +81,27 @@ initDb().then(async () => {
   };
   runOverdueCheck();
   setInterval(runOverdueCheck, 60 * 60 * 1000);
+
+  // Toss Place 과거/누락 매출 자동 동기화: 토스플레이스 매장 ID가 등록된 가맹점만 1시간마다 재동기화
+  // 한 번도 동기화 안 한 가맹점은 최근 90일치를, 이후엔 최근 2일치만 다시 가져옴
+  const runAutoSync = async () => {
+    try {
+      const stores = await knex('stores').whereNotNull('toss_store_id').where('toss_store_id', '!=', '');
+      const toDate = new Date().toISOString().split('T')[0];
+      for (const store of stores) {
+        const fromDate = store.last_synced_at
+          ? new Date(Date.now() - 2 * 86400000).toISOString().split('T')[0]
+          : new Date(Date.now() - 90 * 86400000).toISOString().split('T')[0];
+        try {
+          const inserted = await apiRoutes.syncStoreSales(store, fromDate, toDate);
+          await knex('stores').where({ id: store.id }).update({ last_synced_at: new Date().toISOString() });
+          if (inserted > 0) console.log(`[자동 동기화] ${store.name}: ${inserted}건 (${fromDate} ~ ${toDate})`);
+        } catch (e) { console.error(`[자동 동기화] ${store.name} 오류:`, e.message); }
+      }
+    } catch (e) { console.error('[자동 동기화] 오류:', e.message); }
+  };
+  runAutoSync();
+  setInterval(runAutoSync, 60 * 60 * 1000);
 }).catch(err => {
   console.error('DB init failed:', err);
   process.exit(1);

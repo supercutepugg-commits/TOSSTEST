@@ -327,83 +327,82 @@ router.get('/analytics', requireAuth, async (req, res) => {
 });
 
 // ─── Toss Place 과거 데이터 동기화 ────────────────────
+async function syncStoreSales(store, fromDate, toDate) {
+  const accessKey = process.env.TOSS_ACCESS_KEY;
+  const secretKey = process.env.TOSS_SECRET_KEY;
+  if (!accessKey || !secretKey) throw new Error('TOSS_ACCESS_KEY / TOSS_SECRET_KEY 환경변수가 설정되지 않았습니다');
+  if (!store.toss_store_id) throw new Error('토스플레이스 매장 ID(toss_store_id)가 설정되지 않았습니다');
+
+  const TOSS_BASE = process.env.TOSS_PLACE_API_URL || 'https://open-api.tossplace.com';
+  const fromTs = new Date(fromDate + 'T00:00:00+09:00').getTime();
+  const toTs   = new Date(toDate   + 'T23:59:59+09:00').getTime();
+
+  let page = 1;
+  let inserted = 0;
+
+  while (true) {
+    // docs.tossplace.com 기준 실제 엔드포인트
+    const url = `${TOSS_BASE}/api-public/openapi/v1/merchants/${store.toss_store_id}/order/orders`
+      + `?from=${fromTs}&to=${toTs}&page=${page}&size=100&orderStates=COMPLETED`;
+
+    console.log(`[동기화] ${url}`);
+    const resp = await fetch(url, { headers: { 'x-access-key': accessKey, 'x-secret-key': secretKey } });
+
+    if (!resp.ok) {
+      const txt = await resp.text();
+      throw new Error(`Toss Place API 오류 (${resp.status}): ${txt}`);
+    }
+
+    const data = await resp.json();
+    // 응답이 배열이거나 { orders: [...] } 구조 모두 처리
+    const orders = Array.isArray(data) ? data : (data.orders || data.content || data.data || []);
+
+    for (const order of orders) {
+      const orderId = order.id || order.orderId;
+      const soldAt  = order.createdAt ? new Date(order.createdAt).toISOString()
+                    : new Date(fromTs).toISOString();
+      const lineItems = order.lineItems || order.orderItems || order.items || [];
+
+      await knex('orders').insert({
+        brand_id: store.brand_id, store_id: store.id,
+        toss_order_id: String(orderId), raw_payload: JSON.stringify(order),
+        processed_at: soldAt,
+      }).onConflict('toss_order_id').ignore();
+
+      for (const item of lineItems) {
+        const menuName  = (item.item?.title) || item.name || item.menuName || '';
+        const menuId    = (item.item?.id)    || item.menuId || null;
+        const qty       = item.quantity || 1;
+        const unitPrice = (item.itemPrice?.priceValue) || (item.item?.price) || item.unitPrice || item.price || 0;
+        if (!menuName) continue;
+
+        await knex('sales_items').insert({
+          brand_id: store.brand_id, store_id: store.id,
+          toss_order_id: String(orderId), menu_name: menuName, toss_menu_id: menuId,
+          quantity: qty, unit_price: unitPrice, amount: unitPrice * qty,
+          sold_at: soldAt,
+        }).onConflict(['toss_order_id', 'menu_name']).ignore();
+        inserted++;
+      }
+    }
+
+    if (orders.length < 100) break;
+    page++;
+  }
+
+  return inserted;
+}
+
 router.post('/stores/:id/sync', requireAuth, async (req, res) => {
   const store = await knex('stores').where({ id: req.params.id, brand_id: req.user.brand_id }).first();
   if (!store) return res.status(404).json({ error: '가맹점 없음' });
 
-  // Access Key 방식: 가맹점별 값 대신 환경변수(TOSS_ACCESS_KEY / TOSS_SECRET_KEY) 하나로 고정
-  const accessKey = process.env.TOSS_ACCESS_KEY;
-  const secretKey = process.env.TOSS_SECRET_KEY;
-  if (!accessKey || !secretKey) {
-    return res.status(400).json({ error: 'TOSS_ACCESS_KEY / TOSS_SECRET_KEY 환경변수가 설정되지 않았습니다' });
-  }
-  if (!store.toss_store_id) {
-    return res.status(400).json({ error: '토스플레이스 매장 ID(toss_store_id)가 설정되지 않았습니다' });
-  }
-
   const { from, to } = req.body;
   const fromDate = from || new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0];
   const toDate = to || new Date().toISOString().split('T')[0];
-  const TOSS_BASE = process.env.TOSS_PLACE_API_URL || 'https://open-api.tossplace.com';
 
   try {
-    // from/to를 timestamp(ms)로 변환
-    const fromTs = new Date(fromDate + 'T00:00:00+09:00').getTime();
-    const toTs   = new Date(toDate   + 'T23:59:59+09:00').getTime();
-
-    let page = 1;
-    let inserted = 0;
-
-    while (true) {
-      // docs.tossplace.com 기준 실제 엔드포인트
-      const url = `${TOSS_BASE}/api-public/openapi/v1/merchants/${store.toss_store_id}/order/orders`
-        + `?from=${fromTs}&to=${toTs}&page=${page}&size=100&orderStates=COMPLETED`;
-
-      console.log(`[동기화] ${url}`);
-      const resp = await fetch(url, { headers: { 'x-access-key': accessKey, 'x-secret-key': secretKey } });
-
-      if (!resp.ok) {
-        const txt = await resp.text();
-        return res.status(502).json({ error: `Toss Place API 오류 (${resp.status})`, detail: txt, url });
-      }
-
-      const data = await resp.json();
-      // 응답이 배열이거나 { orders: [...] } 구조 모두 처리
-      const orders = Array.isArray(data) ? data : (data.orders || data.content || data.data || []);
-
-      for (const order of orders) {
-        const orderId = order.id || order.orderId;
-        const soldAt  = order.createdAt ? new Date(order.createdAt).toISOString()
-                      : new Date(fromTs).toISOString();
-        const lineItems = order.lineItems || order.orderItems || order.items || [];
-
-        await knex('orders').insert({
-          brand_id: store.brand_id, store_id: store.id,
-          toss_order_id: String(orderId), raw_payload: JSON.stringify(order),
-          processed_at: soldAt,
-        }).onConflict('toss_order_id').ignore();
-
-        for (const item of lineItems) {
-          const menuName  = (item.item?.title) || item.name || item.menuName || '';
-          const menuId    = (item.item?.id)    || item.menuId || null;
-          const qty       = item.quantity || 1;
-          const unitPrice = (item.itemPrice?.priceValue) || (item.item?.price) || item.unitPrice || item.price || 0;
-          if (!menuName) continue;
-
-          await knex('sales_items').insert({
-            brand_id: store.brand_id, store_id: store.id,
-            toss_order_id: String(orderId), menu_name: menuName, toss_menu_id: menuId,
-            quantity: qty, unit_price: unitPrice, amount: unitPrice * qty,
-            sold_at: soldAt,
-          }).onConflict(['toss_order_id', 'menu_name']).ignore();
-          inserted++;
-        }
-      }
-
-      if (orders.length < 100) break;
-      page++;
-    }
-
+    const inserted = await syncStoreSales(store, fromDate, toDate);
     res.json({ ok: true, inserted, from: fromDate, to: toDate });
   } catch (err) {
     console.error('Sync error:', err);
@@ -412,3 +411,4 @@ router.post('/stores/:id/sync', requireAuth, async (req, res) => {
 });
 
 module.exports = router;
+module.exports.syncStoreSales = syncStoreSales;
