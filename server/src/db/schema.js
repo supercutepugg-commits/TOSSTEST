@@ -27,8 +27,8 @@ async function initDb() {
   const defaultBrand = await knex('brands').first();
   let defaultBrandId = defaultBrand?.id;
   if (!defaultBrand) {
-    const r = await knex('brands').insert({ name: '포스모스', code: 'posmos' });
-    defaultBrandId = r[0];
+    const [row] = await knex('brands').insert({ name: '포스모스', code: 'posmos' }).returning('id');
+    defaultBrandId = row.id;
   }
 
   // ── 가맹점 ────────────────────────────────────────────
@@ -49,8 +49,8 @@ async function initDb() {
   const defaultStore = await knex('stores').first();
   let defaultStoreId = defaultStore?.id;
   if (!defaultStore) {
-    const r = await knex('stores').insert({ name: '기본 가맹점', webhook_secret: process.env.TOSS_WEBHOOK_SECRET || '', brand_id: defaultBrandId });
-    defaultStoreId = r[0];
+    const [row] = await knex('stores').insert({ name: '기본 가맹점', webhook_secret: process.env.TOSS_WEBHOOK_SECRET || '', brand_id: defaultBrandId }).returning('id');
+    defaultStoreId = row.id;
   }
   await knex('stores').whereNull('brand_id').update({ brand_id: defaultBrandId });
 

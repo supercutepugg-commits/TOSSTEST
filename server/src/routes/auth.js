@@ -47,13 +47,13 @@ router.post('/users', requireAuth, requireRole('SUPER_ADMIN', 'HQ_ADMIN'), async
       return res.status(403).json({ error: '최고관리자만 최고관리자 계정을 생성할 수 있습니다' });
     }
     const hash = await bcrypt.hash(password, 10);
-    const [id] = await knex('users').insert({
+    const [{ id }] = await knex('users').insert({
       brand_id: req.user.brand_id,
       store_id: store_id || null,
       name, email,
       password_hash: hash,
       role: role || 'STORE_OWNER',
-    });
+    }).returning('id');
     res.json({ id });
   } catch (err) {
     res.status(400).json({ error: err.message });

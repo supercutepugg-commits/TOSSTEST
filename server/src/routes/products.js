@@ -12,12 +12,12 @@ router.get('/', requireAuth, async (req, res) => {
 
 router.post('/', requireAuth, async (req, res) => {
   const { name, unit, unit_conversion, base_unit, price, ingredient_id } = req.body;
-  const [id] = await knex('products').insert({
+  const [{ id }] = await knex('products').insert({
     brand_id: req.user.brand_id,
     name, unit, unit_conversion: unit_conversion || 1,
     base_unit: base_unit || unit, price: price || 0,
     ingredient_id: ingredient_id || null,
-  });
+  }).returning('id');
   res.json({ id });
 });
 

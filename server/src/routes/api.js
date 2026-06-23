@@ -11,7 +11,7 @@ router.get('/brands', requireAuth, async (req, res) => {
 
 router.post('/brands', requireAuth, requireRole('SUPER_ADMIN'), async (req, res) => {
   const { name, code } = req.body;
-  const [id] = await knex('brands').insert({ name, code });
+  const [{ id }] = await knex('brands').insert({ name, code }).returning('id');
   res.json({ id });
 });
 
@@ -29,7 +29,7 @@ router.get('/stores', requireAuth, async (req, res) => {
 
 router.post('/stores', requireAuth, requireRole(...HQ_ROLES), async (req, res) => {
   const { name, webhook_secret, toss_store_id, order_deadline, delivery_days } = req.body;
-  const [id] = await knex('stores').insert({ brand_id: req.user.brand_id, name, webhook_secret: webhook_secret || '', toss_store_id: toss_store_id || '', order_deadline: order_deadline || null, delivery_days: delivery_days || null });
+  const [{ id }] = await knex('stores').insert({ brand_id: req.user.brand_id, name, webhook_secret: webhook_secret || '', toss_store_id: toss_store_id || '', order_deadline: order_deadline || null, delivery_days: delivery_days || null }).returning('id');
   res.json({ id });
 });
 
@@ -71,7 +71,7 @@ router.get('/ingredients', requireAuth, async (req, res) => {
 
 router.post('/ingredients', requireAuth, async (req, res) => {
   const { name, unit, stock, threshold, store_id, order_unit, order_unit_conversion } = req.body;
-  const [id] = await knex('ingredients').insert({
+  const [{ id }] = await knex('ingredients').insert({
     brand_id: req.user.brand_id,
     store_id: store_id || req.user.store_id,
     name, unit,
@@ -79,7 +79,7 @@ router.post('/ingredients', requireAuth, async (req, res) => {
     threshold: threshold ?? 0,
     order_unit: order_unit || null,
     order_unit_conversion: order_unit_conversion || null,
-  });
+  }).returning('id');
   res.json({ id });
 });
 
@@ -116,11 +116,11 @@ router.get('/menus', requireAuth, async (req, res) => {
 
 router.post('/menus', requireAuth, async (req, res) => {
   const { name, toss_menu_id, store_id } = req.body;
-  const [id] = await knex('menus').insert({
+  const [{ id }] = await knex('menus').insert({
     brand_id: req.user.brand_id,
     store_id: store_id || req.user.store_id,
     name, toss_menu_id: toss_menu_id || null,
-  });
+  }).returning('id');
   res.json({ id });
 });
 

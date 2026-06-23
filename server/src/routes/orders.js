@@ -96,13 +96,13 @@ router.post('/', requireAuth, async (req, res) => {
   const total = items.reduce((s, i) => s + (i.unit_price * i.quantity), 0);
   const status = submit ? 'ORDERED' : 'DRAFT';
 
-  const [id] = await knex('purchase_orders').insert({
+  const [{ id }] = await knex('purchase_orders').insert({
     brand_id: req.user.brand_id,
     store_id,
     created_by: req.user.id,
     status, total_amount: total, memo,
     ordered_at: submit ? new Date().toISOString() : null,
-  });
+  }).returning('id');
 
   for (const item of items) {
     await knex('purchase_order_items').insert({
@@ -191,14 +191,14 @@ router.post('/:id/status', requireAuth, async (req, res) => {
           // 브랜드 공통 ingredient 복사해서 가맹점 전용으로 생성
           const base = await knex('ingredients').where({ id: product.ingredient_id }).first();
           if (base) {
-            const [newId] = await knex('ingredients').insert({
+            const [{ id: newId }] = await knex('ingredients').insert({
               brand_id: base.brand_id,
               store_id: order.store_id,
               name: base.name,
               unit: base.unit,
               stock: 0,
               threshold: base.threshold || 0,
-            });
+            }).returning('id');
             ing = { id: newId };
             // product도 이 가맹점 ingredient를 참조하도록 갱신
             await knex('purchase_order_items').where({ id: item.id }).update({ product_id: item.product_id });
@@ -212,14 +212,14 @@ router.post('/:id/status', requireAuth, async (req, res) => {
         let ing = await knex('ingredients')
           .where({ brand_id: order.brand_id, store_id: order.store_id, name: item.product_name }).first();
         if (!ing) {
-          const [newId] = await knex('ingredients').insert({
+          const [{ id: newId }] = await knex('ingredients').insert({
             brand_id: order.brand_id,
             store_id: order.store_id,
             name: item.product_name,
             unit: product.base_unit || product.unit || '개',
             stock: 0,
             threshold: 0,
-          });
+          }).returning('id');
           ing = { id: newId };
         }
         await knex('ingredients').where({ id: ing.id }).increment('stock', delta);

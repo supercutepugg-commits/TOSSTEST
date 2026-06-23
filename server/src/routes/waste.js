@@ -22,12 +22,12 @@ router.post('/', requireAuth, async (req, res) => {
   const { waste_date, ingredient_id, ingredient_name, quantity, unit, reason, memo } = req.body;
   const store_id = req.user.store_id;
   if (!store_id) return res.status(400).json({ error: '가맹점 정보 없음' });
-  const [id] = await knex('waste_logs').insert({
+  const [{ id }] = await knex('waste_logs').insert({
     brand_id: req.user.brand_id,
     store_id, ingredient_id: ingredient_id || null,
     ingredient_name, quantity, unit, reason, memo,
     waste_date, created_by: req.user.id,
-  });
+  }).returning('id');
 
   // 재고 차감
   if (ingredient_id) {
