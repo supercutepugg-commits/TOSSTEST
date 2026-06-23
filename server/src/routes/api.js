@@ -459,5 +459,40 @@ router.post('/stores/:id/sync', requireAuth, async (req, res) => {
   }
 });
 
+// ─── 가맹점별 매출/발주 순위 ────────────────────────────
+router.get('/store-rankings', requireAuth, async (req, res) => {
+  const { from, to } = req.query;
+  const brand_id = req.user.brand_id;
+  const toISO = (to ? new Date(to) : new Date()).toISOString();
+  const fromISO = (from ? new Date(from) : new Date(Date.now() - 30 * 86400000)).toISOString();
+
+  const salesRows = await knex('sales_items as si')
+    .join('stores as s', 'si.store_id', 's.id')
+    .where('si.brand_id', brand_id)
+    .where('si.sold_at', '>=', fromISO).where('si.sold_at', '<=', toISO)
+    .groupBy('si.store_id', 's.name')
+    .select('si.store_id', 's.name as store_name')
+    .sum('si.amount as revenue')
+    .countDistinct('si.toss_order_id as order_count')
+    .orderBy('revenue', 'desc');
+
+  const orderRows = await knex('purchase_orders as po')
+    .join('stores as s', 'po.store_id', 's.id')
+    .where('po.brand_id', brand_id)
+    .whereNotIn('po.status', ['DRAFT', 'CANCELED'])
+    .where('po.created_at', '>=', fromISO).where('po.created_at', '<=', toISO)
+    .groupBy('po.store_id', 's.name')
+    .select('po.store_id', 's.name as store_name')
+    .sum('po.total_amount as order_amount')
+    .count('po.id as order_count')
+    .orderBy('order_amount', 'desc');
+
+  res.json({
+    salesRanking: salesRows.map(r => ({ store_id: r.store_id, store_name: r.store_name, revenue: Number(r.revenue || 0), order_count: Number(r.order_count || 0) })),
+    orderRanking: orderRows.map(r => ({ store_id: r.store_id, store_name: r.store_name, order_amount: Number(r.order_amount || 0), order_count: Number(r.order_count || 0) })),
+    period: { from: fromISO, to: toISO },
+  });
+});
+
 module.exports = router;
 module.exports.syncStoreSales = syncStoreSales;

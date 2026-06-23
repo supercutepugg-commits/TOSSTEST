@@ -16,6 +16,7 @@ import Waste from './pages/Waste';
 import Risks from './pages/Risks';
 import Products from './pages/Products';
 import Analytics from './pages/Analytics';
+import StoreRankings from './pages/StoreRankings';
 import Login from './pages/Login';
 import StockAlert from './components/StockAlert';
 
@@ -63,6 +64,11 @@ const SIDE_MENU_MAP = {
   ] },
   '/analytics': { title: '매출분석', items: [
     { to: '/analytics', end: true, icon: '📊', label: '매출 분석' },
+    { to: '/rankings', end: true, icon: '🏆', label: '가맹점 순위' },
+  ] },
+  '/rankings': { title: '매출분석', items: [
+    { to: '/analytics', end: true, icon: '📊', label: '매출 분석' },
+    { to: '/rankings', end: true, icon: '🏆', label: '가맹점 순위' },
   ] },
   '/orders': { title: '주문관리', items: [
     { to: '/orders', end: true, icon: '✅', label: '주문 목록' },
@@ -126,6 +132,8 @@ function HQLayout() {
   const { currentStore } = useStore();
   const storeSelected = !!currentStore;
   const [collapsed, setCollapsed] = useState(false);
+  const location = useLocation();
+  const onStoreListPage = location.pathname === '/';
 
   return (
     <div className="kicc-layout">
@@ -136,15 +144,19 @@ function HQLayout() {
         <div className="topnav-brand">🧾 포스모스</div>
         <nav className="topnav-menu">
           <NavTab to="/" end icon="🏪" label="가맹점" />
-          <NavTab to="/dashboard" icon="🏠" label="대시보드" disabled={!storeSelected} />
-          <NavTab to="/analytics" icon="📊" label="매출분석" disabled={!storeSelected} />
-          <NavTab to="/orders" icon="✅" label="주문관리" disabled={!storeSelected} />
-          <NavTab to="/products" icon="📦" label="매입발주" disabled={!storeSelected} />
-          <NavTab to="/ingredients" icon="🥬" label="재고관리" disabled={!storeSelected} />
-          <NavTab to="/menus" icon="🍽" label="메뉴관리" disabled={!storeSelected} />
-          <NavTab to="/waste" icon="🗑" label="폐기관리" disabled={!storeSelected} />
-          <NavTab to="/risks" icon="⚠️" label="리스크" disabled={!storeSelected} />
-          <NavTab to="/users" icon="👤" label="사용자" disabled={!storeSelected} />
+          {!onStoreListPage && (
+            <>
+              <NavTab to="/dashboard" icon="🏠" label="대시보드" disabled={!storeSelected} />
+              <NavTab to="/analytics" icon="📊" label="매출분석" disabled={!storeSelected} />
+              <NavTab to="/orders" icon="✅" label="주문관리" disabled={!storeSelected} />
+              <NavTab to="/products" icon="📦" label="매입발주" disabled={!storeSelected} />
+              <NavTab to="/ingredients" icon="🥬" label="재고관리" disabled={!storeSelected} />
+              <NavTab to="/menus" icon="🍽" label="메뉴관리" disabled={!storeSelected} />
+              <NavTab to="/waste" icon="🗑" label="폐기관리" disabled={!storeSelected} />
+              <NavTab to="/risks" icon="⚠️" label="리스크" disabled={!storeSelected} />
+              <NavTab to="/users" icon="👤" label="사용자" disabled={!storeSelected} />
+            </>
+          )}
         </nav>
       </header>
       <TopBar name={user?.name} currentStore={currentStore} />
@@ -163,6 +175,7 @@ function HQLayout() {
                   <Route path="/menus" element={<Menus />} />
                   <Route path="/products" element={<Products />} />
                   <Route path="/analytics" element={<Analytics />} />
+                  <Route path="/rankings" element={<StoreRankings />} />
                   <Route path="/waste" element={<Waste />} />
                   <Route path="/users" element={<Users />} />
                 </>

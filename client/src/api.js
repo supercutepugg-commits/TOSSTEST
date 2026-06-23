@@ -105,6 +105,9 @@ export const api = {
   getAnalytics: (params) => a(`/analytics${qs(params)}`),
   syncStore: (id, data) => a(`/stores/${id}/sync`, { method: 'POST', body: JSON.stringify(data) }),
 
+  // 가맹점 순위
+  getStoreRankings: (params) => a(`/store-rankings${qs(params)}`),
+
   // 레시피 변경 이력
   getRecipeHistory: (menuId) => a(`/menus/${menuId}/recipe-history`),
 };
