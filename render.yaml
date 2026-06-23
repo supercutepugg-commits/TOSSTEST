@@ -20,6 +20,10 @@ services:
         sync: false
       - key: EMAIL_TO
         sync: false
+      - key: TOSS_WEBHOOK_SECRET
+        sync: false
+      - key: TOSS_SECRET_KEY
+        sync: false
 
   - type: web
     name: inventory-alert-client
@@ -37,6 +41,8 @@ services:
           name: inventory-alert-server
           type: web
           property: host
+      - key: VITE_TOSS_CLIENT_KEY
+        sync: false
 
 databases:
   - name: inventory-db

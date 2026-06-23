@@ -29,6 +29,7 @@ router.get('/stores', requireAuth, async (req, res) => {
 
 router.post('/stores', requireAuth, requireRole(...HQ_ROLES), async (req, res) => {
   const { name, webhook_secret, toss_store_id, order_deadline, delivery_days, business_number, owner_name, phone, open_date, franchise_type, is_open, address } = req.body;
+  if (!name || !name.trim()) return res.status(400).json({ error: '가맹점명을 입력해주세요' });
   const [{ id }] = await knex('stores').insert({
     brand_id: req.user.brand_id, name,
     webhook_secret: webhook_secret || '', toss_store_id: toss_store_id || '',
@@ -42,21 +43,26 @@ router.post('/stores', requireAuth, requireRole(...HQ_ROLES), async (req, res) =
 });
 
 router.put('/stores/:id', requireAuth, requireRole(...HQ_ROLES), async (req, res) => {
+  const existing = await knex('stores').where({ id: req.params.id, brand_id: req.user.brand_id }).first();
+  if (!existing) return res.status(404).json({ error: '없음' });
   const { name, webhook_secret, toss_store_id, order_deadline, delivery_days, toss_client_id, toss_client_secret, business_number, owner_name, phone, open_date, franchise_type, is_open, address } = req.body;
+  if (name !== undefined && !name.trim()) return res.status(400).json({ error: '가맹점명을 입력해주세요' });
   await knex('stores').where({ id: req.params.id, brand_id: req.user.brand_id })
     .update({
-      name, webhook_secret, toss_store_id,
-      order_deadline: order_deadline || null,
-      delivery_days: delivery_days || null,
-      toss_client_id: toss_client_id || null,
-      toss_client_secret: toss_client_secret || null,
-      business_number: business_number || null,
-      owner_name: owner_name || null,
-      phone: phone || null,
-      open_date: open_date || null,
-      franchise_type: franchise_type || null,
-      is_open: is_open ?? true,
-      address: address || null,
+      name: name ?? existing.name,
+      webhook_secret: webhook_secret ?? existing.webhook_secret,
+      toss_store_id: toss_store_id ?? existing.toss_store_id,
+      order_deadline: order_deadline ?? existing.order_deadline,
+      delivery_days: delivery_days ?? existing.delivery_days,
+      toss_client_id: toss_client_id ?? existing.toss_client_id,
+      toss_client_secret: toss_client_secret ?? existing.toss_client_secret,
+      business_number: business_number ?? existing.business_number,
+      owner_name: owner_name ?? existing.owner_name,
+      phone: phone ?? existing.phone,
+      open_date: open_date ?? existing.open_date,
+      franchise_type: franchise_type ?? existing.franchise_type,
+      is_open: is_open !== undefined ? is_open : existing.is_open,
+      address: address ?? existing.address,
     });
   res.json({ ok: true });
 });
@@ -86,6 +92,7 @@ router.get('/ingredients', requireAuth, async (req, res) => {
 
 router.post('/ingredients', requireAuth, async (req, res) => {
   const { name, unit, stock, threshold, store_id, order_unit, order_unit_conversion } = req.body;
+  if (!name || !name.trim()) return res.status(400).json({ error: '재료명을 입력해주세요' });
   const [{ id }] = await knex('ingredients').insert({
     brand_id: req.user.brand_id,
     store_id: store_id || req.user.store_id,
@@ -99,9 +106,20 @@ router.post('/ingredients', requireAuth, async (req, res) => {
 });
 
 router.put('/ingredients/:id', requireAuth, async (req, res) => {
+  const existing = await knex('ingredients').where({ id: req.params.id, brand_id: req.user.brand_id }).first();
+  if (!existing) return res.status(404).json({ error: '없음' });
   const { name, unit, stock, threshold, order_unit, order_unit_conversion, is_key } = req.body;
+  if (name !== undefined && !name.trim()) return res.status(400).json({ error: '재료명을 입력해주세요' });
   await knex('ingredients').where({ id: req.params.id, brand_id: req.user.brand_id })
-    .update({ name, unit, stock, threshold, order_unit, order_unit_conversion, is_key: is_key ? 1 : 0 });
+    .update({
+      name: name ?? existing.name,
+      unit: unit ?? existing.unit,
+      stock: stock ?? existing.stock,
+      threshold: threshold ?? existing.threshold,
+      order_unit: order_unit ?? existing.order_unit,
+      order_unit_conversion: order_unit_conversion ?? existing.order_unit_conversion,
+      is_key: is_key !== undefined ? (is_key ? 1 : 0) : existing.is_key,
+    });
   res.json({ ok: true });
 });
 
@@ -131,6 +149,7 @@ router.get('/menus', requireAuth, async (req, res) => {
 
 router.post('/menus', requireAuth, async (req, res) => {
   const { name, toss_menu_id, store_id } = req.body;
+  if (!name || !name.trim()) return res.status(400).json({ error: '메뉴명을 입력해주세요' });
   const [{ id }] = await knex('menus').insert({
     brand_id: req.user.brand_id,
     store_id: store_id || req.user.store_id,
@@ -140,8 +159,16 @@ router.post('/menus', requireAuth, async (req, res) => {
 });
 
 router.put('/menus/:id', requireAuth, async (req, res) => {
+  const existing = await knex('menus').where({ id: req.params.id, brand_id: req.user.brand_id }).first();
+  if (!existing) return res.status(404).json({ error: '없음' });
   const { name, toss_menu_id, is_active, is_key } = req.body;
-  await knex('menus').where({ id: req.params.id, brand_id: req.user.brand_id }).update({ name, toss_menu_id, is_active, is_key: is_key ? 1 : 0 });
+  if (name !== undefined && !name.trim()) return res.status(400).json({ error: '메뉴명을 입력해주세요' });
+  await knex('menus').where({ id: req.params.id, brand_id: req.user.brand_id }).update({
+    name: name ?? existing.name,
+    toss_menu_id: toss_menu_id ?? existing.toss_menu_id,
+    is_active: is_active !== undefined ? is_active : existing.is_active,
+    is_key: is_key !== undefined ? (is_key ? 1 : 0) : existing.is_key,
+  });
   res.json({ ok: true });
 });
 

@@ -187,39 +187,39 @@ router.post('/:id/status', requireAuth, async (req, res) => {
       const delta = qty * (product.unit_conversion || 1);
 
       if (product.ingredient_id) {
-        // 해당 가맹점에 ingredient 있는지 확인
-        let ing = await knex('ingredients')
-          .where({ id: product.ingredient_id, store_id: order.store_id }).first();
+        // 브랜드 공통(또는 다른 가맹점) ingredient 원본
+        const base = await knex('ingredients').where({ id: product.ingredient_id }).first();
+        if (base) {
+          const baseName = base.name || product.name;
+          if (!baseName) continue; // 이름을 알 수 없으면 빈 이름 재료를 만들지 않고 건너뜀
+          // 해당 가맹점에 같은 이름의 ingredient가 이미 있는지 확인 (id는 매번 새로 생성되므로 이름으로 매칭)
+          let ing = await knex('ingredients')
+            .where({ brand_id: base.brand_id, store_id: order.store_id, name: baseName }).first();
 
-        if (!ing) {
-          // 브랜드 공통 ingredient 복사해서 가맹점 전용으로 생성
-          const base = await knex('ingredients').where({ id: product.ingredient_id }).first();
-          if (base) {
+          if (!ing) {
             const [{ id: newId }] = await knex('ingredients').insert({
               brand_id: base.brand_id,
               store_id: order.store_id,
-              name: base.name,
+              name: baseName,
               unit: base.unit,
               stock: 0,
               threshold: base.threshold || 0,
             }).returning('id');
             ing = { id: newId };
-            // product도 이 가맹점 ingredient를 참조하도록 갱신
-            await knex('purchase_order_items').where({ id: item.id }).update({ product_id: item.product_id });
           }
-          if (ing) await knex('ingredients').where({ id: ing.id }).increment('stock', delta);
-        } else {
           await knex('ingredients').where({ id: ing.id }).increment('stock', delta);
         }
       } else {
         // ingredient 미연결 — 상품명으로 가맹점 재료 자동 생성
+        const ingName = item.product_name || product.name;
+        if (!ingName) continue; // 이름을 알 수 없으면 빈 이름 재료를 만들지 않고 건너뜀
         let ing = await knex('ingredients')
-          .where({ brand_id: order.brand_id, store_id: order.store_id, name: item.product_name }).first();
+          .where({ brand_id: order.brand_id, store_id: order.store_id, name: ingName }).first();
         if (!ing) {
           const [{ id: newId }] = await knex('ingredients').insert({
             brand_id: order.brand_id,
             store_id: order.store_id,
-            name: item.product_name,
+            name: ingName,
             unit: product.base_unit || product.unit || '개',
             stock: 0,
             threshold: 0,

@@ -78,11 +78,16 @@ export default function Ingredients() {
   useEffect(() => { load(); }, [currentStore?.id]);
 
   const handleSave = async (form) => {
+    if (!form.name?.trim()) return alert('재료명을 입력해주세요');
     const data = { ...form, stock: Number(form.stock), threshold: Number(form.threshold), store_id: currentStore.id };
-    if (modal?.edit) await api.updateIngredient(modal.edit.id, data);
-    else await api.createIngredient(data);
-    setModal(null);
-    load();
+    try {
+      if (modal?.edit) await api.updateIngredient(modal.edit.id, data);
+      else await api.createIngredient(data);
+      setModal(null);
+      load();
+    } catch (e) {
+      alert(e.message || '저장에 실패했습니다');
+    }
   };
 
   const handleRestock = async (amount) => {

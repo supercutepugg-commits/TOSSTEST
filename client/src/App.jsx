@@ -47,35 +47,36 @@ function NavTab({ to, end, icon, label }) {
   );
 }
 
-// 관리자 페이지 전체 메뉴 — 좌측 사이드바에 항상 모두 표시
+// 관리자 페이지 메뉴 — 가맹점 선택 없이도 쓸 수 있는 그룹과, 특정 가맹점을 선택해야 의미가 있는 그룹으로 구분
+// (storeRequired: true 항목은 가맹점 미선택 시에도 클릭은 가능하지만, 각 페이지가 "가맹점을 선택해주세요" 안내를 보여줌)
 const SIDE_MENU_GROUPS = [
-  { title: '가맹점', items: [
+  { title: '가맹점 (전체)', storeRequired: false, items: [
     { to: '/', end: true, icon: '🏪', label: '가맹점 목록' },
     { to: '/rankings', end: true, icon: '🏆', label: '가맹점 순위' },
     { to: '/purchase-anomalies', end: true, icon: '🔍', label: '사입 이상 모니터링' },
   ] },
-  { title: '대시보드 · 매출', items: [
+  { title: '대시보드 · 매출', storeRequired: true, items: [
     { to: '/dashboard', end: true, icon: '🏠', label: '대시보드 홈' },
     { to: '/analytics', end: true, icon: '📊', label: '매출 분석' },
   ] },
-  { title: '주문 · 발주', items: [
+  { title: '주문 · 발주', storeRequired: true, items: [
     { to: '/orders', end: true, icon: '✅', label: '주문 목록' },
     { to: '/products', end: true, icon: '📦', label: '발주 상품' },
   ] },
-  { title: '재고 · 메뉴', items: [
+  { title: '재고 · 메뉴', storeRequired: true, items: [
     { to: '/ingredients', end: true, icon: '🥬', label: '재료 목록' },
     { to: '/menus', end: true, icon: '🍽', label: '메뉴 & 레시피' },
     { to: '/waste', end: true, icon: '🗑', label: '폐기 입력' },
   ] },
-  { title: '리스크', items: [
+  { title: '리스크', storeRequired: true, items: [
     { to: '/risks', end: true, icon: '⚠️', label: '리스크 알림' },
   ] },
-  { title: '사용자', items: [
+  { title: '사용자', storeRequired: true, items: [
     { to: '/users', end: true, icon: '👤', label: '사용자 관리' },
   ] },
 ];
 
-function SideMenu({ collapsed, onToggle }) {
+function SideMenu({ collapsed, onToggle, storeSelected }) {
   return (
     <aside className={'side-menu' + (collapsed ? ' collapsed' : '')}>
       <button className="side-menu-collapse" onClick={onToggle} title={collapsed ? '펼치기' : '접기'}>
@@ -83,7 +84,14 @@ function SideMenu({ collapsed, onToggle }) {
       </button>
       {!collapsed && SIDE_MENU_GROUPS.map(group => (
         <div key={group.title} className="side-menu-group">
-          <div className="side-menu-group-title">{group.title}</div>
+          <div className="side-menu-group-title">
+            {group.title}
+            {group.storeRequired && !storeSelected && (
+              <span style={{ marginLeft: 6, fontSize: 10, color: '#f59e0b', fontWeight: 400 }} title="가맹점을 먼저 선택해주세요">
+                가맹점 선택 필요
+              </span>
+            )}
+          </div>
           {group.items.map(item => (
             <NavLink key={item.to} to={item.to} end={item.end}
               className={({ isActive }) => 'side-menu-item' + (isActive ? ' active' : '')}>
@@ -100,6 +108,7 @@ function SideMenu({ collapsed, onToggle }) {
 function HQLayout() {
   const { user } = useAuth();
   const { currentStore } = useStore();
+  const storeSelected = !!currentStore;
   const [collapsed, setCollapsed] = useState(false);
 
   return (
@@ -110,9 +119,12 @@ function HQLayout() {
       <header className="topnav">
         <div className="topnav-brand">🧾 포스모스</div>
         <nav className="topnav-menu">
+          {/* 가맹점 선택 없이도 쓸 수 있는 메뉴 */}
           <NavTab to="/" end icon="🏪" label="가맹점" />
           <NavTab to="/rankings" icon="🏆" label="가맹점순위" />
           <NavTab to="/purchase-anomalies" icon="🔍" label="사입이상모니터링" />
+          <span style={{ width: 1, alignSelf: 'stretch', margin: '0 8px', background: 'var(--border)' }} />
+          {/* 특정 가맹점을 선택해야 의미가 있는 메뉴 */}
           <NavTab to="/dashboard" icon="🏠" label="대시보드" />
           <NavTab to="/analytics" icon="📊" label="매출분석" />
           <NavTab to="/orders" icon="✅" label="주문관리" />
@@ -126,7 +138,7 @@ function HQLayout() {
       </header>
       <TopBar name={user?.name} currentStore={currentStore} />
       <div className="kicc-body">
-        <SideMenu collapsed={collapsed} onToggle={() => setCollapsed(c => !c)} />
+        <SideMenu collapsed={collapsed} onToggle={() => setCollapsed(c => !c)} storeSelected={storeSelected} />
         <main className="kicc-main">
           <div className="kicc-main-inner">
             <Routes>

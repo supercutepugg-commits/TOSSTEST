@@ -211,10 +211,15 @@ export default function Stores() {
   });
 
   const handleSave = async (form) => {
-    if (modal?.edit) await api.updateStore(modal.edit.id, form);
-    else await api.createStore(form);
-    setModal(null);
-    reloadStores();
+    if (!form.name?.trim()) return alert('가맹점명을 입력해주세요');
+    try {
+      if (modal?.edit) await api.updateStore(modal.edit.id, form);
+      else await api.createStore(form);
+      setModal(null);
+      reloadStores();
+    } catch (e) {
+      alert(e.message || '저장에 실패했습니다');
+    }
   };
 
   const handleDelete = async (store) => {

@@ -63,16 +63,21 @@ export default function Products() {
   }, []);
 
   const handleSave = async (form) => {
+    if (!form.name?.trim()) return alert('상품명을 입력해주세요');
     const data = {
       ...form,
       unit_conversion: Number(form.unit_conversion),
       price: Number(form.price),
       ingredient_id: form.ingredient_id ? Number(form.ingredient_id) : null,
     };
-    if (modal?.edit) await api.updateProduct(modal.edit.id, data);
-    else await api.createProduct(data);
-    setModal(null);
-    load();
+    try {
+      if (modal?.edit) await api.updateProduct(modal.edit.id, data);
+      else await api.createProduct(data);
+      setModal(null);
+      load();
+    } catch (e) {
+      alert(e.message || '저장에 실패했습니다');
+    }
   };
 
   const handleDelete = async (id) => {
