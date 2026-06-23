@@ -33,6 +33,15 @@ function SidebarFooter({ name }) {
   );
 }
 
+function NavTab({ to, end, icon, label }) {
+  return (
+    <NavLink to={to} end={end} className={({ isActive }) => 'nav-tab' + (isActive ? ' active' : '')}>
+      <span className="nav-tab-icon">{icon}</span>
+      <span className="nav-tab-label">{label}</span>
+    </NavLink>
+  );
+}
+
 function HQLayout() {
   const { user } = useAuth();
   const { stores, currentStore, selectStore } = useStore();
@@ -57,18 +66,24 @@ function HQLayout() {
 
         <nav style={{ marginTop: 4 }}>
           <div className="sidebar-section">운영</div>
-          <NavLink to="/" end className={({ isActive }) => isActive ? 'active' : ''}>🏪 가맹점 선택</NavLink>
-          <NavLink to="/dashboard" className={({ isActive }) => isActive ? 'active' : ''}>🏠 대시보드</NavLink>
-          <NavLink to="/orders" className={({ isActive }) => isActive ? 'active' : ''}>📋 주문 관리</NavLink>
-          <NavLink to="/risks" className={({ isActive }) => isActive ? 'active' : ''}>⚠️ 리스크 알림</NavLink>
+          <div className="nav-tab-grid">
+            <NavTab to="/" end icon="🏪" label="가맹점 선택" />
+            <NavTab to="/dashboard" icon="🏠" label="대시보드" />
+            <NavTab to="/orders" icon="📋" label="주문 관리" />
+            <NavTab to="/risks" icon="⚠️" label="리스크 알림" />
+          </div>
           <div className="sidebar-section">재고 · 메뉴</div>
-          <NavLink to="/ingredients" className={({ isActive }) => isActive ? 'active' : ''}>🥬 재료 관리</NavLink>
-          <NavLink to="/menus" className={({ isActive }) => isActive ? 'active' : ''}>🍽 메뉴 & 레시피</NavLink>
-          <NavLink to="/products" className={({ isActive }) => isActive ? 'active' : ''}>📦 발주 상품</NavLink>
-          <NavLink to="/waste" className={({ isActive }) => isActive ? 'active' : ''}>🗑 폐기 관리</NavLink>
+          <div className="nav-tab-grid">
+            <NavTab to="/ingredients" icon="🥬" label="재료 관리" />
+            <NavTab to="/menus" icon="🍽" label="메뉴 & 레시피" />
+            <NavTab to="/products" icon="📦" label="발주 상품" />
+            <NavTab to="/waste" icon="🗑" label="폐기 관리" />
+          </div>
           <div className="sidebar-section">분석 · 설정</div>
-          <NavLink to="/analytics" className={({ isActive }) => isActive ? 'active' : ''}>📊 판매 분석</NavLink>
-          <NavLink to="/users" className={({ isActive }) => isActive ? 'active' : ''}>👤 사용자 관리</NavLink>
+          <div className="nav-tab-grid">
+            <NavTab to="/analytics" icon="📊" label="판매 분석" />
+            <NavTab to="/users" icon="👤" label="사용자 관리" />
+          </div>
         </nav>
 
         <SidebarFooter name={user?.name} />
