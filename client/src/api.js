@@ -30,7 +30,11 @@ async function req(base, path, options = {}) {
 
 const a = (path, opts) => req(BASE_API, path, opts);
 const auth = (path, opts) => req(BASE_AUTH, path, opts);
-const qs = (params) => { const s = new URLSearchParams(params); return s.toString() ? '?' + s : ''; };
+const qs = (params) => {
+  const filtered = Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && v !== null));
+  const s = new URLSearchParams(filtered);
+  return s.toString() ? '?' + s : '';
+};
 
 export const api = {
   // 인증
