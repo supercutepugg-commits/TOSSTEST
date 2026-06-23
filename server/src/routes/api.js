@@ -344,9 +344,7 @@ router.post('/stores/:id/sync', requireAuth, async (req, res) => {
   const { from, to } = req.body;
   const fromDate = from || new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0];
   const toDate = to || new Date().toISOString().split('T')[0];
-  const TOSS_BASE = process.env.TOSS_PLACE_API_URL || 'https://openapi.tossplace.com';
-  // Access Key:Secret Key를 Base64로 인코딩 (Basic 인증)
-  const authHeader = `Basic ${Buffer.from(`${accessKey}:${secretKey}`).toString('base64')}`;
+  const TOSS_BASE = process.env.TOSS_PLACE_API_URL || 'https://open-api.tossplace.com';
 
   try {
     // from/to를 timestamp(ms)로 변환
@@ -362,7 +360,7 @@ router.post('/stores/:id/sync', requireAuth, async (req, res) => {
         + `?from=${fromTs}&to=${toTs}&page=${page}&size=100&orderStates=COMPLETED`;
 
       console.log(`[동기화] ${url}`);
-      const resp = await fetch(url, { headers: { 'Authorization': authHeader } });
+      const resp = await fetch(url, { headers: { 'x-access-key': accessKey, 'x-secret-key': secretKey } });
 
       if (!resp.ok) {
         const txt = await resp.text();
@@ -386,11 +384,10 @@ router.post('/stores/:id/sync', requireAuth, async (req, res) => {
         }).onConflict('toss_order_id').ignore();
 
         for (const item of lineItems) {
-          // 웹훅 포맷(item.item.title)과 REST API 포맷(item.name) 모두 처리
           const menuName  = (item.item?.title) || item.name || item.menuName || '';
           const menuId    = (item.item?.id)    || item.menuId || null;
           const qty       = item.quantity || 1;
-          const unitPrice = (item.item?.price) || item.unitPrice || item.price || 0;
+          const unitPrice = (item.itemPrice?.priceValue) || (item.item?.price) || item.unitPrice || item.price || 0;
           if (!menuName) continue;
 
           await knex('sales_items').insert({
