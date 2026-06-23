@@ -59,7 +59,7 @@ function SyncModal({ store, onClose }) {
 const DAY_LABELS = ['일', '월', '화', '수', '목', '금', '토'];
 
 function StoreModal({ item, onClose, onSave }) {
-  const [form, setForm] = useState(item || { name: '', webhook_secret: '', toss_store_id: '', order_deadline: '', delivery_days: '', toss_client_id: '', toss_client_secret: '' });
+  const [form, setForm] = useState(item || { name: '', webhook_secret: '', toss_store_id: '', order_deadline: '', delivery_days: '' });
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
   const toggleDay = (d) => {
@@ -89,19 +89,6 @@ function StoreModal({ item, onClose, onSave }) {
         <div className="form-group" style={{ marginBottom: 12 }}>
           <label>발주 마감 시간 (예: 18:00)</label>
           <input value={form.order_deadline} onChange={e => set('order_deadline', e.target.value)} placeholder="18:00" />
-        </div>
-        <div style={{ background: 'var(--bg-elevated)', borderRadius: 10, padding: '12px 14px', marginBottom: 12 }}>
-          <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 10, color: 'var(--text)' }}>
-            📊 Toss Place Open API (매출 동기화용)
-          </div>
-          <div className="form-group" style={{ marginBottom: 8 }}>
-            <label>Access Key</label>
-            <input value={form.toss_client_id || ''} onChange={e => set('toss_client_id', e.target.value)} placeholder="AK5e..." />
-          </div>
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label>Secret Key</label>
-            <input type="password" value={form.toss_client_secret || ''} onChange={e => set('toss_client_secret', e.target.value)} placeholder="개발자센터 인증 정보 → 생성" />
-          </div>
         </div>
         <div className="form-group" style={{ marginBottom: 12 }}>
           <label>납품 가능 요일</label>

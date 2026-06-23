@@ -330,11 +330,11 @@ router.post('/stores/:id/sync', requireAuth, async (req, res) => {
   const store = await knex('stores').where({ id: req.params.id, brand_id: req.user.brand_id }).first();
   if (!store) return res.status(404).json({ error: '가맹점 없음' });
 
-  // Access Key 방식 (인증 정보 섹션의 Access Key + Secret Key)
-  const accessKey = store.toss_client_id;
-  const secretKey = store.toss_client_secret;
+  // Access Key 방식: 가맹점별 값 대신 환경변수(TOSS_ACCESS_KEY / TOSS_SECRET_KEY) 하나로 고정
+  const accessKey = process.env.TOSS_ACCESS_KEY;
+  const secretKey = process.env.TOSS_SECRET_KEY;
   if (!accessKey || !secretKey) {
-    return res.status(400).json({ error: 'Toss Place Access Key / Secret Key가 설정되지 않았습니다' });
+    return res.status(400).json({ error: 'TOSS_ACCESS_KEY / TOSS_SECRET_KEY 환경변수가 설정되지 않았습니다' });
   }
   if (!store.toss_store_id) {
     return res.status(400).json({ error: '토스플레이스 매장 ID(toss_store_id)가 설정되지 않았습니다' });

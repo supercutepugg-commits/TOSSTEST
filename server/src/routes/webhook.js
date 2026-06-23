@@ -46,9 +46,9 @@ async function handleWebhook(req, res, store) {
     const rawBody = Buffer.isBuffer(req.body) ? req.body.toString() : JSON.stringify(req.body);
     const payload = Buffer.isBuffer(req.body) ? JSON.parse(rawBody) : req.body;
 
-    // 시크릿키 검증 (시크릿이 설정된 가맹점은 서명 헤더가 반드시 있어야 하고 일치해야 함)
+    // 시크릿키 검증: 가맹점별 값 대신 환경변수 TOSS_WEBHOOK_SECRET 하나로 고정해서 모든 가맹점에 동일하게 적용
     // 토스플레이스 웹훅 서명 규칙: HMAC-SHA256("<x-toss-timestamp>.<rawBody>") → hex → "v1=" 접두사
-    const secret = store.webhook_secret;
+    const secret = process.env.TOSS_WEBHOOK_SECRET;
     if (secret) {
       const signature = req.headers['x-toss-signature'] || '';
       const timestamp = req.headers['x-toss-timestamp'] || '';
