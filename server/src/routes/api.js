@@ -16,7 +16,7 @@ router.post('/brands', requireAuth, requireRole('SUPER_ADMIN'), async (req, res)
 });
 
 // ─── 가맹점 ───────────────────────────────────────────
-router.get('/stores', requireAuth, async (req, res) => {
+router.get('/stores', requireAuth, requireRole(...HQ_ROLES), async (req, res) => {
   const stores = await knex('stores').where({ brand_id: req.user.brand_id }).orderBy('created_at');
   // 인증정보 평문은 SUPER_ADMIN/HQ_ADMIN에게만 노출, 나머지는 설정 여부만 전달
   const canSeeSecrets = ['SUPER_ADMIN', 'HQ_ADMIN'].includes(req.user.role);
@@ -75,7 +75,8 @@ router.delete('/stores/:id', requireAuth, requireRole(...HQ_ROLES), async (req, 
 // ─── 재료 ───────────────────────────────────────────
 router.get('/ingredients', requireAuth, async (req, res) => {
   const { store_id } = req.query;
-  const sid = store_id || req.user.store_id;
+  // 가맹점 역할은 쿼리파라미터로 다른 가맹점을 조회할 수 없도록 강제
+  const sid = ['STORE_OWNER', 'STORE_STAFF'].includes(req.user.role) ? req.user.store_id : (store_id || req.user.store_id);
   const q = knex('ingredients').where({ brand_id: req.user.brand_id }).orderBy('name');
   if (sid) {
     // 가맹점 전용 재료 + 같은 이름의 가맹점 전용이 없는 브랜드 공통 재료만 반환 (중복 제거)
@@ -90,7 +91,7 @@ router.get('/ingredients', requireAuth, async (req, res) => {
   res.json(await q);
 });
 
-router.post('/ingredients', requireAuth, async (req, res) => {
+router.post('/ingredients', requireAuth, requireRole(...HQ_ROLES), async (req, res) => {
   const { name, unit, stock, threshold, store_id, order_unit, order_unit_conversion } = req.body;
   if (!name || !name.trim()) return res.status(400).json({ error: '재료명을 입력해주세요' });
   const [{ id }] = await knex('ingredients').insert({
@@ -105,7 +106,7 @@ router.post('/ingredients', requireAuth, async (req, res) => {
   res.json({ id });
 });
 
-router.put('/ingredients/:id', requireAuth, async (req, res) => {
+router.put('/ingredients/:id', requireAuth, requireRole(...HQ_ROLES), async (req, res) => {
   const existing = await knex('ingredients').where({ id: req.params.id, brand_id: req.user.brand_id }).first();
   if (!existing) return res.status(404).json({ error: '없음' });
   const { name, unit, stock, threshold, order_unit, order_unit_conversion, is_key } = req.body;
@@ -123,12 +124,12 @@ router.put('/ingredients/:id', requireAuth, async (req, res) => {
   res.json({ ok: true });
 });
 
-router.delete('/ingredients/:id', requireAuth, async (req, res) => {
+router.delete('/ingredients/:id', requireAuth, requireRole(...HQ_ROLES), async (req, res) => {
   await knex('ingredients').where({ id: req.params.id, brand_id: req.user.brand_id }).delete();
   res.json({ ok: true });
 });
 
-router.post('/ingredients/:id/restock', requireAuth, async (req, res) => {
+router.post('/ingredients/:id/restock', requireAuth, requireRole(...HQ_ROLES), async (req, res) => {
   const { amount } = req.body;
   await knex('ingredients').where({ id: req.params.id, brand_id: req.user.brand_id }).increment('stock', amount);
   res.json({ ok: true });
@@ -137,7 +138,7 @@ router.post('/ingredients/:id/restock', requireAuth, async (req, res) => {
 // ─── 메뉴 ───────────────────────────────────────────
 router.get('/menus', requireAuth, async (req, res) => {
   const { store_id } = req.query;
-  const sid = store_id || req.user.store_id;
+  const sid = ['STORE_OWNER', 'STORE_STAFF'].includes(req.user.role) ? req.user.store_id : (store_id || req.user.store_id);
   const q = knex('menus').where({ brand_id: req.user.brand_id }).orderBy('name');
   if (sid) q.where({ store_id: sid });
   const menus = await q;
@@ -147,7 +148,7 @@ router.get('/menus', requireAuth, async (req, res) => {
   res.json(menus.map(m => ({ ...m, recipes: recipes.filter(r => r.menu_id === m.id) })));
 });
 
-router.post('/menus', requireAuth, async (req, res) => {
+router.post('/menus', requireAuth, requireRole(...HQ_ROLES), async (req, res) => {
   const { name, toss_menu_id, store_id } = req.body;
   if (!name || !name.trim()) return res.status(400).json({ error: '메뉴명을 입력해주세요' });
   const [{ id }] = await knex('menus').insert({
@@ -158,7 +159,7 @@ router.post('/menus', requireAuth, async (req, res) => {
   res.json({ id });
 });
 
-router.put('/menus/:id', requireAuth, async (req, res) => {
+router.put('/menus/:id', requireAuth, requireRole(...HQ_ROLES), async (req, res) => {
   const existing = await knex('menus').where({ id: req.params.id, brand_id: req.user.brand_id }).first();
   if (!existing) return res.status(404).json({ error: '없음' });
   const { name, toss_menu_id, is_active, is_key } = req.body;
@@ -172,16 +173,19 @@ router.put('/menus/:id', requireAuth, async (req, res) => {
   res.json({ ok: true });
 });
 
-router.delete('/menus/:id', requireAuth, async (req, res) => {
+router.delete('/menus/:id', requireAuth, requireRole(...HQ_ROLES), async (req, res) => {
   await knex('menus').where({ id: req.params.id, brand_id: req.user.brand_id }).delete();
   res.json({ ok: true });
 });
 
 // ─── 레시피 ──────────────────────────────────────────
-router.post('/menus/:menuId/recipes', requireAuth, async (req, res) => {
+router.post('/menus/:menuId/recipes', requireAuth, requireRole(...HQ_ROLES), async (req, res) => {
+  const menu = await knex('menus').where({ id: req.params.menuId, brand_id: req.user.brand_id }).first();
+  if (!menu) return res.status(404).json({ error: '없음' });
   const { ingredient_id, amount } = req.body;
   const existing = await knex('recipes').where({ menu_id: req.params.menuId, ingredient_id }).first();
-  const ing = await knex('ingredients').where({ id: ingredient_id }).first();
+  const ing = await knex('ingredients').where({ id: ingredient_id, brand_id: req.user.brand_id }).first();
+  if (!ing) return res.status(400).json({ error: '재료를 찾을 수 없습니다' });
   if (existing) {
     await knex('recipe_history').insert({ menu_id: req.params.menuId, ingredient_id, ingredient_name: ing?.name, old_amount: existing.amount, new_amount: amount, action: 'UPDATED', changed_by: req.user.id });
   } else {
@@ -191,7 +195,9 @@ router.post('/menus/:menuId/recipes', requireAuth, async (req, res) => {
   res.json({ ok: true });
 });
 
-router.delete('/menus/:menuId/recipes/:ingredientId', requireAuth, async (req, res) => {
+router.delete('/menus/:menuId/recipes/:ingredientId', requireAuth, requireRole(...HQ_ROLES), async (req, res) => {
+  const menu = await knex('menus').where({ id: req.params.menuId, brand_id: req.user.brand_id }).first();
+  if (!menu) return res.status(404).json({ error: '없음' });
   const existing = await knex('recipes').where({ menu_id: req.params.menuId, ingredient_id: req.params.ingredientId }).first();
   const ing = await knex('ingredients').where({ id: req.params.ingredientId }).first();
   if (existing) {
@@ -214,7 +220,7 @@ router.get('/menus/:menuId/recipe-history', requireAuth, async (req, res) => {
 // ─── 대시보드 ─────────────────────────────────────────
 router.get('/dashboard', requireAuth, async (req, res) => {
   const { store_id } = req.query;
-  const sid = store_id || req.user.store_id;
+  const sid = ['STORE_OWNER', 'STORE_STAFF'].includes(req.user.role) ? req.user.store_id : (store_id || req.user.store_id);
   const brand_id = req.user.brand_id;
 
   const ingQ = knex('ingredients').where({ brand_id }).whereRaw('stock <= threshold').orderByRaw('stock - threshold');
@@ -292,7 +298,7 @@ router.get('/dashboard', requireAuth, async (req, res) => {
 // ─── 판매 분석 ────────────────────────────────────────
 router.get('/analytics', requireAuth, async (req, res) => {
   const { store_id, from, to } = req.query;
-  const sid = store_id ? Number(store_id) : req.user.store_id;
+  const sid = ['STORE_OWNER', 'STORE_STAFF'].includes(req.user.role) ? req.user.store_id : (store_id ? Number(store_id) : req.user.store_id);
   const brand_id = req.user.brand_id;
 
   const toDate = to ? new Date(to) : new Date();

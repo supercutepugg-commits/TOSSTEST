@@ -1,7 +1,7 @@
 const createAsyncRouter = require('../middleware/asyncRouter');
 const router = createAsyncRouter();
 const { knex } = require('../db/schema');
-const { requireAuth } = require('../middleware/auth');
+const { requireAuth, requireRole, HQ_ROLES } = require('../middleware/auth');
 
 router.get('/', requireAuth, async (req, res) => {
   const products = await knex('products')
@@ -10,7 +10,7 @@ router.get('/', requireAuth, async (req, res) => {
   res.json(products);
 });
 
-router.post('/', requireAuth, async (req, res) => {
+router.post('/', requireAuth, requireRole(...HQ_ROLES), async (req, res) => {
   const { name, unit, unit_conversion, base_unit, price, ingredient_id } = req.body;
   if (!name || !name.trim()) return res.status(400).json({ error: '상품명을 입력해주세요' });
   const [{ id }] = await knex('products').insert({
@@ -22,7 +22,7 @@ router.post('/', requireAuth, async (req, res) => {
   res.json({ id });
 });
 
-router.put('/:id', requireAuth, async (req, res) => {
+router.put('/:id', requireAuth, requireRole(...HQ_ROLES), async (req, res) => {
   const existing = await knex('products').where({ id: req.params.id, brand_id: req.user.brand_id }).first();
   if (!existing) return res.status(404).json({ error: '없음' });
   const { name, unit, unit_conversion, base_unit, price, ingredient_id, is_active } = req.body;
@@ -40,7 +40,7 @@ router.put('/:id', requireAuth, async (req, res) => {
   res.json({ ok: true });
 });
 
-router.delete('/:id', requireAuth, async (req, res) => {
+router.delete('/:id', requireAuth, requireRole(...HQ_ROLES), async (req, res) => {
   await knex('products').where({ id: req.params.id, brand_id: req.user.brand_id })
     .update({ is_active: false });
   res.json({ ok: true });

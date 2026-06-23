@@ -1,7 +1,11 @@
 const createAsyncRouter = require('../middleware/asyncRouter');
 const router = createAsyncRouter();
 const { knex } = require('../db/schema');
-const { requireAuth } = require('../middleware/auth');
+const { requireAuth, requireRole, HQ_ROLES } = require('../middleware/auth');
+
+function isStoreRole(role) {
+  return ['STORE_OWNER', 'STORE_STAFF'].includes(role);
+}
 const { createRisk, getRiskSettings } = require('./risks');
 const crypto = require('crypto');
 
@@ -79,6 +83,9 @@ router.get('/:id', requireAuth, async (req, res) => {
     .where('po.brand_id', req.user.brand_id)
     .first();
   if (!order) return res.status(404).json({ error: '발주서 없음' });
+  if (isStoreRole(req.user.role) && order.store_id !== req.user.store_id) {
+    return res.status(403).json({ error: '권한 없음' });
+  }
 
   const items = await knex('purchase_order_items').where({ order_id: order.id });
   const history = await knex('order_history as h')
@@ -131,8 +138,11 @@ router.post('/', requireAuth, async (req, res) => {
 
 // ── 발주서 수정 (임시저장 상태에서만) ─────────────────
 router.put('/:id', requireAuth, async (req, res) => {
-  const order = await knex('purchase_orders').where({ id: req.params.id }).first();
+  const order = await knex('purchase_orders').where({ id: req.params.id, brand_id: req.user.brand_id }).first();
   if (!order) return res.status(404).json({ error: '없음' });
+  if (isStoreRole(req.user.role) && order.store_id !== req.user.store_id) {
+    return res.status(403).json({ error: '권한 없음' });
+  }
   if (!['DRAFT', 'REVISION_REQUESTED'].includes(order.status)) {
     return res.status(400).json({ error: '수정 불가 상태' });
   }
@@ -162,7 +172,7 @@ router.put('/:id', requireAuth, async (req, res) => {
 });
 
 // ── 상태 변경 (본사용) ────────────────────────────────
-router.post('/:id/status', requireAuth, async (req, res) => {
+router.post('/:id/status', requireAuth, requireRole(...HQ_ROLES), async (req, res) => {
   const { status, reason } = req.body;
   const order = await knex('purchase_orders').where({ id: req.params.id, brand_id: req.user.brand_id }).first();
   if (!order) return res.status(404).json({ error: '없음' });
@@ -234,7 +244,9 @@ router.post('/:id/status', requireAuth, async (req, res) => {
 });
 
 // ── 본사 수량 수정 / 품절 / 대체상품 ─────────────────
-router.put('/:id/items/:itemId', requireAuth, async (req, res) => {
+router.put('/:id/items/:itemId', requireAuth, requireRole(...HQ_ROLES), async (req, res) => {
+  const order = await knex('purchase_orders').where({ id: req.params.id, brand_id: req.user.brand_id }).first();
+  if (!order) return res.status(404).json({ error: '없음' });
   const { confirmed_quantity, status, reason, substitute_note } = req.body;
   const item = await knex('purchase_order_items').where({ id: req.params.itemId, order_id: req.params.id }).first();
   if (!item) return res.status(404).json({ error: '없음' });
@@ -289,6 +301,9 @@ router.post('/:id/payment/confirm', requireAuth, async (req, res) => {
   const { paymentKey, orderId, amount } = req.body;
   const order = await knex('purchase_orders').where({ id: req.params.id, brand_id: req.user.brand_id }).first();
   if (!order) return res.status(404).json({ error: '없음' });
+  if (isStoreRole(req.user.role) && order.store_id !== req.user.store_id) {
+    return res.status(403).json({ error: '권한 없음' });
+  }
   if (order.toss_order_code !== orderId) return res.status(400).json({ error: '주문 정보 불일치' });
 
   const expectedAmount = Math.round(order.confirmed_amount ?? order.total_amount);
@@ -318,6 +333,9 @@ router.post('/:id/payment/confirm', requireAuth, async (req, res) => {
 router.delete('/:id', requireAuth, async (req, res) => {
   const order = await knex('purchase_orders').where({ id: req.params.id, brand_id: req.user.brand_id }).first();
   if (!order) return res.status(404).json({ error: '없음' });
+  if (isStoreRole(req.user.role) && order.store_id !== req.user.store_id) {
+    return res.status(403).json({ error: '권한 없음' });
+  }
   if (['PAID', 'SHIPPED', 'DELIVERED', 'CLOSED'].includes(order.status)) {
     return res.status(400).json({ error: '취소 불가 상태' });
   }

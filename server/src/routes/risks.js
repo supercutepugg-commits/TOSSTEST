@@ -1,7 +1,7 @@
 const createAsyncRouter = require('../middleware/asyncRouter');
 const router = createAsyncRouter();
 const { knex } = require('../db/schema');
-const { requireAuth } = require('../middleware/auth');
+const { requireAuth, requireRole, HQ_ROLES } = require('../middleware/auth');
 
 // 본사에서 설정 가능한 리스크 감지 기준값 (가맹점/브랜드별 1세트)
 const DEFAULT_RISK_SETTINGS = {
@@ -37,7 +37,7 @@ router.put('/settings', requireAuth, async (req, res) => {
   res.json(next);
 });
 
-router.get('/', requireAuth, async (req, res) => {
+router.get('/', requireAuth, requireRole(...HQ_ROLES), async (req, res) => {
   const { status, severity, store_id } = req.query;
   const q = knex('risk_alerts as r')
     .leftJoin('stores as s', 'r.store_id', 's.id')
@@ -50,7 +50,7 @@ router.get('/', requireAuth, async (req, res) => {
   res.json(await q);
 });
 
-router.post('/:id/status', requireAuth, async (req, res) => {
+router.post('/:id/status', requireAuth, requireRole(...HQ_ROLES), async (req, res) => {
   const { status, memo } = req.body;
   await knex('risk_alerts').where({ id: req.params.id, brand_id: req.user.brand_id }).update({
     status, memo,
