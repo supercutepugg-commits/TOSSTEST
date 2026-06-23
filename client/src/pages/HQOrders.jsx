@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api';
+import { useAuth } from '../AuthContext';
+
+const LOGISTICS_ROLES = ['SUPER_ADMIN', 'HQ_ADMIN', 'HQ_LOGISTICS'];
 
 const STATUS_LABEL = {
   DRAFT: '임시저장', ORDERED: '발주완료', REVIEWING: '검토중',
@@ -58,6 +61,8 @@ function StatusBadge({ status }) {
 }
 
 export default function HQOrders() {
+  const { user } = useAuth();
+  const canEdit = LOGISTICS_ROLES.includes(user?.role);
   const [orders, setOrders] = useState([]);
   const [selected, setSelected] = useState(null);
   const [detail, setDetail] = useState(null);
@@ -102,7 +107,7 @@ export default function HQOrders() {
             ? <div className="empty">{tab === 'active' ? '처리할 주문 없음' : '완료된 주문 없음'}</div>
             : <table>
               <thead>
-                <tr><th>가맹점</th><th>발주일</th><th>상태</th><th>금액</th>{tab === 'active' && <th>상태 변경</th>}</tr>
+                <tr><th>가맹점</th><th>발주일</th><th>상태</th><th>금액</th>{tab === 'active' && canEdit && <th>상태 변경</th>}</tr>
               </thead>
               <tbody>
                 {visibleOrders.map(o => (
@@ -112,7 +117,7 @@ export default function HQOrders() {
                     <td className="text-sub" style={{ fontSize: 13 }}>{new Date(o.created_at).toLocaleDateString('ko-KR')}</td>
                     <td><StatusBadge status={o.status} /></td>
                     <td>{(o.confirmed_amount ?? o.total_amount).toLocaleString()}원</td>
-                    {tab === 'active' && (
+                    {tab === 'active' && canEdit && (
                       <td onClick={e => e.stopPropagation()}>
                         <select
                           value={o.status}
@@ -155,7 +160,7 @@ export default function HQOrders() {
             <thead><tr><th>상품</th><th>단위</th><th>발주량</th><th>확정량</th><th>상태</th><th>대체/메모</th><th>금액</th></tr></thead>
             <tbody>
               {detail.items?.map(item => {
-                const editable = ['REVIEWING', 'CONFIRMED'].includes(detail.status);
+                const editable = canEdit && ['REVIEWING', 'CONFIRMED'].includes(detail.status);
                 const isOOS = item.status === 'OUT_OF_STOCK';
                 return (
                   <tr key={item.id} style={{ opacity: isOOS ? 0.5 : 1 }}>

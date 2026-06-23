@@ -39,5 +39,9 @@ function requireRole(...roles) {
 // HQ roles
 const HQ_ROLES = ['SUPER_ADMIN', 'HQ_ADMIN', 'HQ_LOGISTICS', 'HQ_ACCOUNTING'];
 const STORE_ROLES = ['STORE_OWNER', 'STORE_STAFF'];
+// 물류 처리(발주 상태변경, 상품/재료/메뉴 관리) — 회계 역할은 조회만 가능하고 변경은 불가
+const LOGISTICS_ROLES = ['SUPER_ADMIN', 'HQ_ADMIN', 'HQ_LOGISTICS'];
+// 가맹점 정보·사용자 관리 — 최고/일반 관리자만 (물류·회계 역할은 조회만)
+const ADMIN_ROLES = ['SUPER_ADMIN', 'HQ_ADMIN'];
 
-module.exports = { signToken, requireAuth, requireRole, HQ_ROLES, STORE_ROLES, SECRET };
+module.exports = { signToken, requireAuth, requireRole, HQ_ROLES, STORE_ROLES, LOGISTICS_ROLES, ADMIN_ROLES, SECRET };

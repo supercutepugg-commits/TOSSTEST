@@ -222,6 +222,19 @@ async function initDb() {
     t.datetime('created_at').defaultTo(knex.fn.now());
   });
 
+  // ── 감사 로그 (가격/재료/사용자 등 민감 변경 기록) ──────
+  await createIfMissing('audit_log', t => {
+    t.increments('id');
+    t.integer('brand_id').references('brands.id').onDelete('CASCADE');
+    t.integer('user_id').references('users.id').onDelete('SET NULL').nullable();
+    t.string('entity_type').notNullable(); // PRODUCT, INGREDIENT, MENU, STORE, USER
+    t.integer('entity_id').nullable();
+    t.string('action').notNullable(); // CREATE, UPDATE, DELETE
+    t.text('before_value').nullable();
+    t.text('after_value').nullable();
+    t.datetime('created_at').defaultTo(knex.fn.now());
+  });
+
   // ── 결제 ─────────────────────────────────────────────
   await createIfMissing('payments', t => {
     t.increments('id');

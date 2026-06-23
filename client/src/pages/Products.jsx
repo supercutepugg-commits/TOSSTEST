@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api';
+import { useAuth } from '../AuthContext';
+
+const LOGISTICS_ROLES = ['SUPER_ADMIN', 'HQ_ADMIN', 'HQ_LOGISTICS'];
 
 function ProductModal({ item, ingredients, onClose, onSave }) {
   const [form, setForm] = useState(item || { name: '', unit: '박스', base_unit: 'g', unit_conversion: 1, price: 0, ingredient_id: '' });
@@ -52,6 +55,8 @@ function ProductModal({ item, ingredients, onClose, onSave }) {
 }
 
 export default function Products() {
+  const { user } = useAuth();
+  const canEdit = LOGISTICS_ROLES.includes(user?.role);
   const [products, setProducts] = useState([]);
   const [ingredients, setIngredients] = useState([]);
   const [modal, setModal] = useState(null);
@@ -90,7 +95,7 @@ export default function Products() {
     <div>
       <div className="top-bar">
         <h2>발주 상품 관리</h2>
-        <button className="primary" onClick={() => setModal('add')}>+ 상품 추가</button>
+        {canEdit && <button className="primary" onClick={() => setModal('add')}>+ 상품 추가</button>}
       </div>
 
       <div className="card">
@@ -105,7 +110,7 @@ export default function Products() {
                 <th>단위 환산</th>
                 <th>단가</th>
                 <th>연결 식자재</th>
-                <th>관리</th>
+                {canEdit && <th>관리</th>}
               </tr>
             </thead>
             <tbody>
@@ -120,10 +125,12 @@ export default function Products() {
                   <td style={{ fontSize: 13, color: '#94a3b8' }}>
                     {ingredients.find(i => i.id === p.ingredient_id)?.name || '-'}
                   </td>
-                  <td style={{ display: 'flex', gap: 6 }}>
-                    <button className="secondary small" onClick={() => setModal({ edit: p })}>수정</button>
-                    <button className="danger small" onClick={() => handleDelete(p.id)}>삭제</button>
-                  </td>
+                  {canEdit && (
+                    <td style={{ display: 'flex', gap: 6 }}>
+                      <button className="secondary small" onClick={() => setModal({ edit: p })}>수정</button>
+                      <button className="danger small" onClick={() => handleDelete(p.id)}>삭제</button>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>

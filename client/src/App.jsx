@@ -18,6 +18,7 @@ import Products from './pages/Products';
 import Analytics from './pages/Analytics';
 import StoreRankings from './pages/StoreRankings';
 import PurchaseAnomalies from './pages/PurchaseAnomalies';
+import AuditLog from './pages/AuditLog';
 import Login from './pages/Login';
 import StockAlert from './components/StockAlert';
 
@@ -73,15 +74,19 @@ const SIDE_MENU_GROUPS = [
   { title: '사용자', storeRequired: true, items: [
     { to: '/users', end: true, label: '사용자 관리' },
   ] },
+  { title: '감사', storeRequired: false, hqAdminOnly: true, items: [
+    { to: '/audit-log', end: true, label: '변경 이력' },
+  ] },
 ];
 
-function SideMenu({ collapsed, onToggle, storeSelected }) {
+function SideMenu({ collapsed, onToggle, storeSelected, isHqAdmin }) {
+  const visibleGroups = SIDE_MENU_GROUPS.filter(g => !g.hqAdminOnly || isHqAdmin);
   return (
     <aside className={'side-menu' + (collapsed ? ' collapsed' : '')}>
       <button className="side-menu-collapse" onClick={onToggle} title={collapsed ? '펼치기' : '접기'}>
         {collapsed ? '»' : '«'}
       </button>
-      {!collapsed && SIDE_MENU_GROUPS.map(group => (
+      {!collapsed && visibleGroups.map(group => (
         <div key={group.title} className="side-menu-group">
           <div className="side-menu-group-title">
             {group.title}
@@ -107,6 +112,7 @@ function HQLayout() {
   const { user } = useAuth();
   const { currentStore } = useStore();
   const storeSelected = !!currentStore;
+  const isHqAdmin = ['SUPER_ADMIN', 'HQ_ADMIN'].includes(user?.role);
   const [collapsed, setCollapsed] = useState(false);
 
   return (
@@ -132,11 +138,12 @@ function HQLayout() {
           <NavTab to="/waste" label="폐기 내역" />
           <NavTab to="/risks" label="리스크" />
           <NavTab to="/users" label="사용자" />
+          {isHqAdmin && <NavTab to="/audit-log" label="변경 이력" />}
         </nav>
       </header>
       <TopBar name={user?.name} currentStore={currentStore} />
       <div className="kicc-body">
-        <SideMenu collapsed={collapsed} onToggle={() => setCollapsed(c => !c)} storeSelected={storeSelected} />
+        <SideMenu collapsed={collapsed} onToggle={() => setCollapsed(c => !c)} storeSelected={storeSelected} isHqAdmin={isHqAdmin} />
         <main className="kicc-main">
           <div className="kicc-main-inner">
             <Routes>
@@ -152,6 +159,7 @@ function HQLayout() {
               <Route path="/analytics" element={<Analytics />} />
               <Route path="/waste" element={<Waste />} />
               <Route path="/users" element={<Users />} />
+              {isHqAdmin && <Route path="/audit-log" element={<AuditLog />} />}
               <Route path="*" element={<Navigate to="/" />} />
             </Routes>
           </div>

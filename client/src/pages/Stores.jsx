@@ -2,6 +2,9 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import { useStore } from '../StoreContext';
+import { useAuth } from '../AuthContext';
+
+const ADMIN_ROLES = ['SUPER_ADMIN', 'HQ_ADMIN'];
 
 function BulkSyncModal({ stores, onClose }) {
   const [from, setFrom] = useState(() => new Date(Date.now() - 5 * 365 * 86400000).toISOString().split('T')[0]);
@@ -182,6 +185,8 @@ function StoreModal({ item, onClose, onSave }) {
 }
 
 export default function Stores() {
+  const { user } = useAuth();
+  const canEdit = ADMIN_ROLES.includes(user?.role);
   const { stores, currentStore, selectStore, reloadStores } = useStore();
   const navigate = useNavigate();
   const [modal, setModal] = useState(null);
@@ -236,7 +241,7 @@ export default function Stores() {
         <h2>가맹점조회</h2>
         <div style={{ display: 'flex', gap: 8 }}>
           <button className="secondary" onClick={() => setBulkSyncOpen(true)}>매출 동기화</button>
-          <button className="primary" onClick={() => setModal('add')}>+ 가맹점 추가</button>
+          {canEdit && <button className="primary" onClick={() => setModal('add')}>+ 가맹점 추가</button>}
         </div>
       </div>
 
@@ -318,8 +323,12 @@ export default function Stores() {
                   <td className="text-sub" style={{ fontSize: 13 }}>{days}</td>
                   <td style={{ display: 'flex', gap: 6 }}>
                     <button className="secondary small" onClick={() => handleSelect(s)}>선택</button>
-                    <button className="secondary small" onClick={() => setModal({ edit: s })}>수정</button>
-                    <button className="danger small" onClick={() => handleDelete(s)}>삭제</button>
+                    {canEdit && (
+                      <>
+                        <button className="secondary small" onClick={() => setModal({ edit: s })}>수정</button>
+                        <button className="danger small" onClick={() => handleDelete(s)}>삭제</button>
+                      </>
+                    )}
                   </td>
                 </tr>
               );})}

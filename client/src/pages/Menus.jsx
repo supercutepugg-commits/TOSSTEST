@@ -1,6 +1,9 @@
 import { useEffect, useState, useCallback } from 'react';
 import { api } from '../api';
 import { useStore } from '../StoreContext';
+import { useAuth } from '../AuthContext';
+
+const LOGISTICS_ROLES = ['SUPER_ADMIN', 'HQ_ADMIN', 'HQ_LOGISTICS'];
 
 function MenuModal({ item, onClose, onSave }) {
   const [form, setForm] = useState(item ? { name: item.name, toss_menu_id: item.toss_menu_id || '' } : { name: '', toss_menu_id: '' });
@@ -132,6 +135,8 @@ function RecipeHistoryModal({ menu, onClose }) {
 }
 
 export default function Menus() {
+  const { user } = useAuth();
+  const canEdit = LOGISTICS_ROLES.includes(user?.role);
   const { currentStore } = useStore();
   const [menus, setMenus] = useState([]);
   const [ingredients, setIngredients] = useState([]);
@@ -173,7 +178,7 @@ export default function Menus() {
     <div>
       <div className="top-bar">
         <h2>메뉴 & 레시피 관리 — {currentStore.name}</h2>
-        <button className="primary" onClick={() => setModal('add')}>+ 메뉴 추가</button>
+        {canEdit && <button className="primary" onClick={() => setModal('add')}>+ 메뉴 추가</button>}
       </div>
 
       <div className="card">
@@ -196,15 +201,17 @@ export default function Menus() {
                   <td><b>{m.name}</b></td>
                   <td className="text-sub" style={{ fontSize: 13 }}>{m.toss_menu_id || '-'}</td>
                   <td>
-                    <button
-                      className={m.is_key ? 'primary small' : 'secondary small'}
-                      onClick={async () => {
-                        await api.updateMenu(m.id, { ...m, is_key: !m.is_key });
-                        loadMenus();
-                      }}
-                    >
-                      {m.is_key ? '핵심' : '일반'}
-                    </button>
+                    {canEdit ? (
+                      <button
+                        className={m.is_key ? 'primary small' : 'secondary small'}
+                        onClick={async () => {
+                          await api.updateMenu(m.id, { ...m, is_key: !m.is_key });
+                          loadMenus();
+                        }}
+                      >
+                        {m.is_key ? '핵심' : '일반'}
+                      </button>
+                    ) : (m.is_key ? '핵심' : '일반')}
                   </td>
                   <td>
                     {m.recipes.length === 0
@@ -212,10 +219,14 @@ export default function Menus() {
                       : <span className="badge green">{m.recipes.length}가지</span>}
                   </td>
                   <td style={{ display: 'flex', gap: 6 }}>
-                    <button className="secondary small" onClick={() => setModal({ recipe: m })}>레시피</button>
                     <button className="secondary small" onClick={() => setModal({ history: m })}>이력</button>
-                    <button className="secondary small" onClick={() => setModal({ edit: m })}>수정</button>
-                    <button className="danger small" onClick={() => handleDelete(m.id)}>삭제</button>
+                    {canEdit && (
+                      <>
+                        <button className="secondary small" onClick={() => setModal({ recipe: m })}>레시피</button>
+                        <button className="secondary small" onClick={() => setModal({ edit: m })}>수정</button>
+                        <button className="danger small" onClick={() => handleDelete(m.id)}>삭제</button>
+                      </>
+                    )}
                   </td>
                 </tr>
               ))}

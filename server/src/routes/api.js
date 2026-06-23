@@ -1,7 +1,8 @@
 const createAsyncRouter = require('../middleware/asyncRouter');
 const router = createAsyncRouter();
 const { knex, isProduction } = require('../db/schema');
-const { requireAuth, requireRole, HQ_ROLES } = require('../middleware/auth');
+const { requireAuth, requireRole, HQ_ROLES, LOGISTICS_ROLES, ADMIN_ROLES } = require('../middleware/auth');
+const { logAudit } = require('../auditLog');
 
 // ─── 브랜드 ───────────────────────────────────────────
 router.get('/brands', requireAuth, async (req, res) => {
@@ -27,7 +28,7 @@ router.get('/stores', requireAuth, requireRole(...HQ_ROLES), async (req, res) =>
   }));
 });
 
-router.post('/stores', requireAuth, requireRole(...HQ_ROLES), async (req, res) => {
+router.post('/stores', requireAuth, requireRole(...ADMIN_ROLES), async (req, res) => {
   const { name, webhook_secret, toss_store_id, order_deadline, delivery_days, business_number, owner_name, phone, open_date, franchise_type, is_open, address } = req.body;
   if (!name || !name.trim()) return res.status(400).json({ error: '가맹점명을 입력해주세요' });
   const [{ id }] = await knex('stores').insert({
@@ -42,32 +43,35 @@ router.post('/stores', requireAuth, requireRole(...HQ_ROLES), async (req, res) =
   res.json({ id });
 });
 
-router.put('/stores/:id', requireAuth, requireRole(...HQ_ROLES), async (req, res) => {
+router.put('/stores/:id', requireAuth, requireRole(...ADMIN_ROLES), async (req, res) => {
   const existing = await knex('stores').where({ id: req.params.id, brand_id: req.user.brand_id }).first();
   if (!existing) return res.status(404).json({ error: '없음' });
   const { name, webhook_secret, toss_store_id, order_deadline, delivery_days, toss_client_id, toss_client_secret, business_number, owner_name, phone, open_date, franchise_type, is_open, address } = req.body;
   if (name !== undefined && !name.trim()) return res.status(400).json({ error: '가맹점명을 입력해주세요' });
-  await knex('stores').where({ id: req.params.id, brand_id: req.user.brand_id })
-    .update({
-      name: name ?? existing.name,
-      webhook_secret: webhook_secret ?? existing.webhook_secret,
-      toss_store_id: toss_store_id ?? existing.toss_store_id,
-      order_deadline: order_deadline ?? existing.order_deadline,
-      delivery_days: delivery_days ?? existing.delivery_days,
-      toss_client_id: toss_client_id ?? existing.toss_client_id,
-      toss_client_secret: toss_client_secret ?? existing.toss_client_secret,
-      business_number: business_number ?? existing.business_number,
-      owner_name: owner_name ?? existing.owner_name,
-      phone: phone ?? existing.phone,
-      open_date: open_date ?? existing.open_date,
-      franchise_type: franchise_type ?? existing.franchise_type,
-      is_open: is_open !== undefined ? is_open : existing.is_open,
-      address: address ?? existing.address,
-    });
+  const next = {
+    name: name ?? existing.name,
+    webhook_secret: webhook_secret ?? existing.webhook_secret,
+    toss_store_id: toss_store_id ?? existing.toss_store_id,
+    order_deadline: order_deadline ?? existing.order_deadline,
+    delivery_days: delivery_days ?? existing.delivery_days,
+    toss_client_id: toss_client_id ?? existing.toss_client_id,
+    toss_client_secret: toss_client_secret ?? existing.toss_client_secret,
+    business_number: business_number ?? existing.business_number,
+    owner_name: owner_name ?? existing.owner_name,
+    phone: phone ?? existing.phone,
+    open_date: open_date ?? existing.open_date,
+    franchise_type: franchise_type ?? existing.franchise_type,
+    is_open: is_open !== undefined ? is_open : existing.is_open,
+    address: address ?? existing.address,
+  };
+  await knex('stores').where({ id: req.params.id, brand_id: req.user.brand_id }).update(next);
+  await logAudit(req.user.brand_id, req.user.id, 'STORE', existing.id, 'UPDATE',
+    { name: existing.name, is_open: existing.is_open, business_number: existing.business_number },
+    { name: next.name, is_open: next.is_open, business_number: next.business_number });
   res.json({ ok: true });
 });
 
-router.delete('/stores/:id', requireAuth, requireRole(...HQ_ROLES), async (req, res) => {
+router.delete('/stores/:id', requireAuth, requireRole(...ADMIN_ROLES), async (req, res) => {
   await knex('stores').where({ id: req.params.id, brand_id: req.user.brand_id }).delete();
   res.json({ ok: true });
 });
@@ -91,7 +95,7 @@ router.get('/ingredients', requireAuth, async (req, res) => {
   res.json(await q);
 });
 
-router.post('/ingredients', requireAuth, requireRole(...HQ_ROLES), async (req, res) => {
+router.post('/ingredients', requireAuth, requireRole(...LOGISTICS_ROLES), async (req, res) => {
   const { name, unit, stock, threshold, store_id, order_unit, order_unit_conversion } = req.body;
   if (!name || !name.trim()) return res.status(400).json({ error: '재료명을 입력해주세요' });
   const [{ id }] = await knex('ingredients').insert({
@@ -106,7 +110,7 @@ router.post('/ingredients', requireAuth, requireRole(...HQ_ROLES), async (req, r
   res.json({ id });
 });
 
-router.put('/ingredients/:id', requireAuth, requireRole(...HQ_ROLES), async (req, res) => {
+router.put('/ingredients/:id', requireAuth, requireRole(...LOGISTICS_ROLES), async (req, res) => {
   const existing = await knex('ingredients').where({ id: req.params.id, brand_id: req.user.brand_id }).first();
   if (!existing) return res.status(404).json({ error: '없음' });
   const { name, unit, stock, threshold, order_unit, order_unit_conversion, is_key } = req.body;
@@ -124,12 +128,12 @@ router.put('/ingredients/:id', requireAuth, requireRole(...HQ_ROLES), async (req
   res.json({ ok: true });
 });
 
-router.delete('/ingredients/:id', requireAuth, requireRole(...HQ_ROLES), async (req, res) => {
+router.delete('/ingredients/:id', requireAuth, requireRole(...LOGISTICS_ROLES), async (req, res) => {
   await knex('ingredients').where({ id: req.params.id, brand_id: req.user.brand_id }).delete();
   res.json({ ok: true });
 });
 
-router.post('/ingredients/:id/restock', requireAuth, requireRole(...HQ_ROLES), async (req, res) => {
+router.post('/ingredients/:id/restock', requireAuth, requireRole(...LOGISTICS_ROLES), async (req, res) => {
   const { amount } = req.body;
   await knex('ingredients').where({ id: req.params.id, brand_id: req.user.brand_id }).increment('stock', amount);
   res.json({ ok: true });
@@ -148,7 +152,7 @@ router.get('/menus', requireAuth, async (req, res) => {
   res.json(menus.map(m => ({ ...m, recipes: recipes.filter(r => r.menu_id === m.id) })));
 });
 
-router.post('/menus', requireAuth, requireRole(...HQ_ROLES), async (req, res) => {
+router.post('/menus', requireAuth, requireRole(...LOGISTICS_ROLES), async (req, res) => {
   const { name, toss_menu_id, store_id } = req.body;
   if (!name || !name.trim()) return res.status(400).json({ error: '메뉴명을 입력해주세요' });
   const [{ id }] = await knex('menus').insert({
@@ -159,7 +163,7 @@ router.post('/menus', requireAuth, requireRole(...HQ_ROLES), async (req, res) =>
   res.json({ id });
 });
 
-router.put('/menus/:id', requireAuth, requireRole(...HQ_ROLES), async (req, res) => {
+router.put('/menus/:id', requireAuth, requireRole(...LOGISTICS_ROLES), async (req, res) => {
   const existing = await knex('menus').where({ id: req.params.id, brand_id: req.user.brand_id }).first();
   if (!existing) return res.status(404).json({ error: '없음' });
   const { name, toss_menu_id, is_active, is_key } = req.body;
@@ -173,13 +177,13 @@ router.put('/menus/:id', requireAuth, requireRole(...HQ_ROLES), async (req, res)
   res.json({ ok: true });
 });
 
-router.delete('/menus/:id', requireAuth, requireRole(...HQ_ROLES), async (req, res) => {
+router.delete('/menus/:id', requireAuth, requireRole(...LOGISTICS_ROLES), async (req, res) => {
   await knex('menus').where({ id: req.params.id, brand_id: req.user.brand_id }).delete();
   res.json({ ok: true });
 });
 
 // ─── 레시피 ──────────────────────────────────────────
-router.post('/menus/:menuId/recipes', requireAuth, requireRole(...HQ_ROLES), async (req, res) => {
+router.post('/menus/:menuId/recipes', requireAuth, requireRole(...LOGISTICS_ROLES), async (req, res) => {
   const menu = await knex('menus').where({ id: req.params.menuId, brand_id: req.user.brand_id }).first();
   if (!menu) return res.status(404).json({ error: '없음' });
   const { ingredient_id, amount } = req.body;
@@ -195,7 +199,7 @@ router.post('/menus/:menuId/recipes', requireAuth, requireRole(...HQ_ROLES), asy
   res.json({ ok: true });
 });
 
-router.delete('/menus/:menuId/recipes/:ingredientId', requireAuth, requireRole(...HQ_ROLES), async (req, res) => {
+router.delete('/menus/:menuId/recipes/:ingredientId', requireAuth, requireRole(...LOGISTICS_ROLES), async (req, res) => {
   const menu = await knex('menus').where({ id: req.params.menuId, brand_id: req.user.brand_id }).first();
   if (!menu) return res.status(404).json({ error: '없음' });
   const existing = await knex('recipes').where({ menu_id: req.params.menuId, ingredient_id: req.params.ingredientId }).first();
@@ -621,6 +625,19 @@ router.get('/store-rankings', requireAuth, async (req, res) => {
     efficiencyRanking,
     period: { from: fromISO, to: toISO },
   });
+});
+
+// ─── 감사 로그 ────────────────────────────────────────
+router.get('/audit-log', requireAuth, requireRole('SUPER_ADMIN', 'HQ_ADMIN'), async (req, res) => {
+  const { entity_type, limit } = req.query;
+  const q = knex('audit_log as a')
+    .leftJoin('users as u', 'a.user_id', 'u.id')
+    .select('a.*', 'u.name as user_name')
+    .where('a.brand_id', req.user.brand_id)
+    .orderBy('a.created_at', 'desc')
+    .limit(Math.min(Number(limit) || 200, 1000));
+  if (entity_type) q.where('a.entity_type', entity_type);
+  res.json(await q);
 });
 
 module.exports = router;

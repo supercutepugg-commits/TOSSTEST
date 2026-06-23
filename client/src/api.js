@@ -115,4 +115,7 @@ export const api = {
 
   // 레시피 변경 이력
   getRecipeHistory: (menuId) => a(`/menus/${menuId}/recipe-history`),
+
+  // 감사 로그
+  getAuditLog: (params) => a(`/audit-log${qs(params)}`),
 };

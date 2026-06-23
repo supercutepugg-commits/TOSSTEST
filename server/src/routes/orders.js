@@ -1,7 +1,7 @@
 const createAsyncRouter = require('../middleware/asyncRouter');
 const router = createAsyncRouter();
 const { knex } = require('../db/schema');
-const { requireAuth, requireRole, HQ_ROLES } = require('../middleware/auth');
+const { requireAuth, requireRole, HQ_ROLES, LOGISTICS_ROLES, ADMIN_ROLES } = require('../middleware/auth');
 
 function isStoreRole(role) {
   return ['STORE_OWNER', 'STORE_STAFF'].includes(role);
@@ -172,7 +172,7 @@ router.put('/:id', requireAuth, async (req, res) => {
 });
 
 // ── 상태 변경 (본사용) ────────────────────────────────
-router.post('/:id/status', requireAuth, requireRole(...HQ_ROLES), async (req, res) => {
+router.post('/:id/status', requireAuth, requireRole(...LOGISTICS_ROLES), async (req, res) => {
   const { status, reason } = req.body;
   const order = await knex('purchase_orders').where({ id: req.params.id, brand_id: req.user.brand_id }).first();
   if (!order) return res.status(404).json({ error: '없음' });
@@ -244,7 +244,7 @@ router.post('/:id/status', requireAuth, requireRole(...HQ_ROLES), async (req, re
 });
 
 // ── 본사 수량 수정 / 품절 / 대체상품 ─────────────────
-router.put('/:id/items/:itemId', requireAuth, requireRole(...HQ_ROLES), async (req, res) => {
+router.put('/:id/items/:itemId', requireAuth, requireRole(...LOGISTICS_ROLES), async (req, res) => {
   const order = await knex('purchase_orders').where({ id: req.params.id, brand_id: req.user.brand_id }).first();
   if (!order) return res.status(404).json({ error: '없음' });
   const { confirmed_quantity, status, reason, substitute_note } = req.body;

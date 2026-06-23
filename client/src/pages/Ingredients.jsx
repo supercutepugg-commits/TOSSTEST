@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api';
 import { useStore } from '../StoreContext';
+import { useAuth } from '../AuthContext';
+
+const LOGISTICS_ROLES = ['SUPER_ADMIN', 'HQ_ADMIN', 'HQ_LOGISTICS'];
 
 function IngredientModal({ item, onClose, onSave }) {
   const [form, setForm] = useState(item || { name: '', unit: 'g', stock: '', threshold: '' });
@@ -67,6 +70,8 @@ function RestockModal({ item, onClose, onSave }) {
 }
 
 export default function Ingredients() {
+  const { user } = useAuth();
+  const canEdit = LOGISTICS_ROLES.includes(user?.role);
   const { currentStore } = useStore();
   const [list, setList] = useState([]);
   const [modal, setModal] = useState(null);
@@ -108,7 +113,7 @@ export default function Ingredients() {
     <div>
       <div className="top-bar">
         <h2>재료 관리 — {currentStore.name}</h2>
-        <button className="primary" onClick={() => setModal('add')}>+ 재료 추가</button>
+        {canEdit && <button className="primary" onClick={() => setModal('add')}>+ 재료 추가</button>}
       </div>
 
       <div className="card">
@@ -124,7 +129,7 @@ export default function Ingredients() {
                 <th>알림 기준</th>
                 <th>핵심재료</th>
                 <th>상태</th>
-                <th>관리</th>
+                {canEdit && <th>관리</th>}
               </tr>
             </thead>
             <tbody>
@@ -143,22 +148,26 @@ export default function Ingredients() {
                     </td>
                     <td>{i.threshold} {i.unit}</td>
                     <td>
-                      <button
-                        className={i.is_key ? 'primary small' : 'secondary small'}
-                        onClick={async () => {
-                          await api.updateIngredient(i.id, { ...i, is_key: !i.is_key });
-                          load();
-                        }}
-                      >
-                        {i.is_key ? '핵심' : '일반'}
-                      </button>
+                      {canEdit ? (
+                        <button
+                          className={i.is_key ? 'primary small' : 'secondary small'}
+                          onClick={async () => {
+                            await api.updateIngredient(i.id, { ...i, is_key: !i.is_key });
+                            load();
+                          }}
+                        >
+                          {i.is_key ? '핵심' : '일반'}
+                        </button>
+                      ) : (i.is_key ? '핵심' : '일반')}
                     </td>
                     <td><span className={`badge ${low ? 'red' : 'green'}`}>{low ? '부족' : '정상'}</span></td>
-                    <td style={{ display: 'flex', gap: 6 }}>
-                      <button className="secondary small" onClick={() => setModal({ restock: i })}>입고</button>
-                      <button className="secondary small" onClick={() => setModal({ edit: i })}>수정</button>
-                      <button className="danger small" onClick={() => handleDelete(i.id)}>삭제</button>
-                    </td>
+                    {canEdit && (
+                      <td style={{ display: 'flex', gap: 6 }}>
+                        <button className="secondary small" onClick={() => setModal({ restock: i })}>입고</button>
+                        <button className="secondary small" onClick={() => setModal({ edit: i })}>수정</button>
+                        <button className="danger small" onClick={() => handleDelete(i.id)}>삭제</button>
+                      </td>
+                    )}
                   </tr>
                 );
               })}
