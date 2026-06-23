@@ -37,7 +37,7 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Segoe UI', 'Malgun Gothic', 'Pretendard', sans-serif;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Segoe UI', 'Malgun Gothic', sans-serif;
   font-size: 14px;
   line-height: 1.5;
   background: var(--bg);
@@ -224,7 +224,7 @@ body {
 .theme-toggle:hover { background: #3d3d6e; opacity: 1; }
 
 /* ── 타이포 ─────────────────────────────────────────── */
-h2 { font-size: 20px; font-weight: 700; margin-bottom: 0; color: var(--text); }
+h2 { font-size: 20px; font-weight: 700; letter-spacing: -0.3px; margin-bottom: 0; color: var(--text); }
 .top-bar h2 { margin-bottom: 0; }
 
 /* ── 스크롤바 ────────────────────────────────────────── */
