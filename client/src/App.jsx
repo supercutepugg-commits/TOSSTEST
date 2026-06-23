@@ -17,17 +17,26 @@ import Analytics from './pages/Analytics';
 import Login from './pages/Login';
 import StockAlert from './components/StockAlert';
 
-function SidebarFooter({ name }) {
+function TopBar({ name, stores, currentStore, selectStore }) {
   const { logout } = useAuth();
   const { theme, toggle } = useTheme();
   return (
-    <div className="sidebar-footer">
-      <div className="sidebar-user">{name}</div>
-      <div className="sidebar-actions">
-        <button className="secondary small" onClick={logout}>로그아웃</button>
-        <button className="theme-toggle" onClick={toggle} title="테마 전환">
-          {theme === 'light' ? '🌙' : '☀️'}
-        </button>
+    <div className="topbar-info">
+      <div className="topbar-info-left">
+        {stores && stores.length > 0 && (
+          <select
+            className="topbar-store-select"
+            value={currentStore?.id || ''}
+            onChange={e => { const s = stores.find(x => x.id === Number(e.target.value)); if (s) selectStore(s); }}
+          >
+            {stores.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+        )}
+      </div>
+      <div className="topbar-info-right">
+        <span className="topbar-user">{name} 님</span>
+        <button className="topbar-link" onClick={toggle}>{theme === 'light' ? '🌙' : '☀️'}</button>
+        <button className="topbar-link" onClick={logout}>로그아웃</button>
       </div>
     </div>
   );
@@ -35,9 +44,9 @@ function SidebarFooter({ name }) {
 
 function NavTab({ to, end, icon, label }) {
   return (
-    <NavLink to={to} end={end} className={({ isActive }) => 'nav-tab' + (isActive ? ' active' : '')}>
-      <span className="nav-tab-icon">{icon}</span>
-      <span className="nav-tab-label">{label}</span>
+    <NavLink to={to} end={end} className={({ isActive }) => 'topnav-tab' + (isActive ? ' active' : '')}>
+      <span className="topnav-tab-icon">{icon}</span>
+      <span className="topnav-tab-label">{label}</span>
     </NavLink>
   );
 }
@@ -47,48 +56,24 @@ function HQLayout() {
   const { stores, currentStore, selectStore } = useStore();
 
   return (
-    <div className="layout">
-      <aside className="sidebar">
-        <h1>🧾 포스모스</h1>
-
-        {stores.length > 0 && (
-          <div style={{ padding: '12px 20px 4px' }}>
-            <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 6, fontWeight: 600, letterSpacing: 1 }}>가맹점</div>
-            <select
-              value={currentStore?.id || ''}
-              onChange={e => { const s = stores.find(x => x.id === Number(e.target.value)); if (s) selectStore(s); }}
-              style={{ width: '100%', padding: '7px 10px', borderRadius: 8, border: '1px solid #2d2d4e', background: '#2d2d4e', color: '#fff', fontSize: 13, cursor: 'pointer' }}
-            >
-              {stores.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
-          </div>
-        )}
-
-        <nav style={{ marginTop: 4 }}>
-          <div className="sidebar-section">운영</div>
-          <div className="nav-tab-grid">
-            <NavTab to="/" end icon="🏪" label="가맹점 선택" />
-            <NavTab to="/dashboard" icon="🏠" label="대시보드" />
-            <NavTab to="/orders" icon="📋" label="주문 관리" />
-            <NavTab to="/risks" icon="⚠️" label="리스크 알림" />
-          </div>
-          <div className="sidebar-section">재고 · 메뉴</div>
-          <div className="nav-tab-grid">
-            <NavTab to="/ingredients" icon="🥬" label="재료 관리" />
-            <NavTab to="/menus" icon="🍽" label="메뉴 & 레시피" />
-            <NavTab to="/products" icon="📦" label="발주 상품" />
-            <NavTab to="/waste" icon="🗑" label="폐기 관리" />
-          </div>
-          <div className="sidebar-section">분석 · 설정</div>
-          <div className="nav-tab-grid">
-            <NavTab to="/analytics" icon="📊" label="판매 분석" />
-            <NavTab to="/users" icon="👤" label="사용자 관리" />
-          </div>
+    <div className="kicc-layout">
+      <header className="topnav">
+        <div className="topnav-brand">🧾 포스모스</div>
+        <nav className="topnav-menu">
+          <NavTab to="/" end icon="🏪" label="가맹점" />
+          <NavTab to="/dashboard" icon="🏠" label="대시보드" />
+          <NavTab to="/analytics" icon="📊" label="매출분석" />
+          <NavTab to="/orders" icon="✅" label="주문관리" />
+          <NavTab to="/products" icon="📦" label="매입발주" />
+          <NavTab to="/ingredients" icon="🥬" label="재고관리" />
+          <NavTab to="/menus" icon="🍽" label="메뉴관리" />
+          <NavTab to="/waste" icon="🗑" label="폐기관리" />
+          <NavTab to="/risks" icon="⚠️" label="리스크" />
+          <NavTab to="/users" icon="👤" label="사용자" />
         </nav>
-
-        <SidebarFooter name={user?.name} />
-      </aside>
-      <main className="main">
+      </header>
+      <TopBar name={user?.name} stores={stores} currentStore={currentStore} selectStore={selectStore} />
+      <main className="kicc-main">
         <Routes>
           <Route path="/" element={<Stores />} />
           <Route path="/dashboard" element={<Dashboard />} />
@@ -111,17 +96,17 @@ function HQLayout() {
 function StoreLayout() {
   const { user } = useAuth();
   return (
-    <div className="layout">
-      <aside className="sidebar">
-        <h1>🧾 포스모스</h1>
-        <nav style={{ marginTop: 8 }}>
-          <NavLink to="/store" end className={({ isActive }) => isActive ? 'active' : ''}>발주하기</NavLink>
-          <NavLink to="/store/stock" className={({ isActive }) => isActive ? 'active' : ''}>재고 확인</NavLink>
-          <NavLink to="/store/waste" className={({ isActive }) => isActive ? 'active' : ''}>폐기 입력</NavLink>
+    <div className="kicc-layout">
+      <header className="topnav">
+        <div className="topnav-brand">🧾 포스모스</div>
+        <nav className="topnav-menu">
+          <NavTab to="/store" end icon="📋" label="발주하기" />
+          <NavTab to="/store/stock" icon="🥬" label="재고 확인" />
+          <NavTab to="/store/waste" icon="🗑" label="폐기 입력" />
         </nav>
-        <SidebarFooter name={user?.name} />
-      </aside>
-      <main className="main">
+      </header>
+      <TopBar name={user?.name} />
+      <main className="kicc-main">
         <Routes>
           <Route path="/store" element={<StoreOrder />} />
           <Route path="/store/stock" element={<StoreStock />} />
