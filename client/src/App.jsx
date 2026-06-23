@@ -154,6 +154,7 @@ function HQLayout() {
             <>
               <NavTab to="/dashboard" icon="🏠" label="대시보드" disabled={!storeSelected} />
               <NavTab to="/analytics" icon="📊" label="매출분석" disabled={!storeSelected} />
+              <NavTab to="/rankings" icon="🏆" label="가맹점순위" disabled={!storeSelected} />
               <NavTab to="/orders" icon="✅" label="주문관리" disabled={!storeSelected} />
               <NavTab to="/products" icon="📦" label="매입발주" disabled={!storeSelected} />
               <NavTab to="/ingredients" icon="🥬" label="재고관리" disabled={!storeSelected} />

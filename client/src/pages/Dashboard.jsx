@@ -13,11 +13,13 @@ const TYPE_LABEL = {
 
 const QUICK_LINKS = [
   { to: '/analytics', icon: '📊', label: '판매 분석' },
+  { to: '/rankings', icon: '🏆', label: '가맹점 순위' },
   { to: '/orders', icon: '📋', label: '주문 관리' },
   { to: '/products', icon: '📦', label: '발주 상품' },
   { to: '/ingredients', icon: '🥬', label: '재료 관리' },
   { to: '/menus', icon: '🍽', label: '메뉴관리' },
   { to: '/waste', icon: '🗑', label: '폐기관리' },
+  { to: '/purchase-anomalies', icon: '🔍', label: '사입 이상 모니터링' },
 ];
 
 const won = (v) => `${Math.round(v || 0).toLocaleString()}원`;
