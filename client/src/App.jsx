@@ -59,6 +59,8 @@ function NavTab({ to, end, icon, label, disabled }) {
 const SIDE_MENU_MAP = {
   '/': { title: '가맹점', items: [
     { to: '/', end: true, icon: '🏪', label: '가맹점 목록' },
+    { to: '/rankings', end: true, icon: '🏆', label: '가맹점 순위' },
+    { to: '/purchase-anomalies', end: true, icon: '🔍', label: '사입 이상 모니터링' },
   ] },
   '/dashboard': { title: '대시보드', items: [
     { to: '/dashboard', end: true, icon: '🏠', label: '대시보드 홈' },
@@ -99,6 +101,8 @@ const SIDE_MENU_MAP = {
   ] },
 };
 
+const FREE_ROUTES = new Set(['/', '/rankings', '/purchase-anomalies']);
+
 function SideMenu({ collapsed, onToggle, storeSelected }) {
   const location = useLocation();
   const topKey = '/' + (location.pathname.split('/')[1] || '');
@@ -114,7 +118,7 @@ function SideMenu({ collapsed, onToggle, storeSelected }) {
         <div className="side-menu-group">
           <div className="side-menu-group-title">{group.title}</div>
           {group.items.map(item => (
-            storeSelected || item.to === '/' ? (
+            storeSelected || FREE_ROUTES.has(item.to) ? (
               <NavLink key={item.to} to={item.to} end={item.end}
                 className={({ isActive }) => 'side-menu-item' + (isActive ? ' active' : '')}>
                 <span className="side-menu-item-icon">{item.icon}</span>
@@ -150,11 +154,12 @@ function HQLayout() {
         <div className="topnav-brand">🧾 포스모스</div>
         <nav className="topnav-menu">
           <NavTab to="/" end icon="🏪" label="가맹점" />
+          <NavTab to="/rankings" icon="🏆" label="가맹점순위" />
+          <NavTab to="/purchase-anomalies" icon="🔍" label="사입이상모니터링" />
           {!onStoreListPage && (
             <>
               <NavTab to="/dashboard" icon="🏠" label="대시보드" disabled={!storeSelected} />
               <NavTab to="/analytics" icon="📊" label="매출분석" disabled={!storeSelected} />
-              <NavTab to="/rankings" icon="🏆" label="가맹점순위" disabled={!storeSelected} />
               <NavTab to="/orders" icon="✅" label="주문관리" disabled={!storeSelected} />
               <NavTab to="/products" icon="📦" label="매입발주" disabled={!storeSelected} />
               <NavTab to="/ingredients" icon="🥬" label="재고관리" disabled={!storeSelected} />
@@ -173,17 +178,17 @@ function HQLayout() {
           <div className="kicc-main-inner">
             <Routes>
               <Route path="/" element={<Stores />} />
+              <Route path="/rankings" element={<StoreRankings />} />
+              <Route path="/purchase-anomalies" element={<PurchaseAnomalies />} />
               {storeSelected ? (
                 <>
                   <Route path="/dashboard" element={<Dashboard />} />
                   <Route path="/orders" element={<HQOrders />} />
                   <Route path="/risks" element={<Risks />} />
-                  <Route path="/purchase-anomalies" element={<PurchaseAnomalies />} />
                   <Route path="/ingredients" element={<Ingredients />} />
                   <Route path="/menus" element={<Menus />} />
                   <Route path="/products" element={<Products />} />
                   <Route path="/analytics" element={<Analytics />} />
-                  <Route path="/rankings" element={<StoreRankings />} />
                   <Route path="/waste" element={<Waste />} />
                   <Route path="/users" element={<Users />} />
                 </>
