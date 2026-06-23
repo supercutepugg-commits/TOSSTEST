@@ -116,6 +116,13 @@ function DailyChart({ dailyRevenue, stores }) {
   );
 }
 
+const QUICK_RANGES = [
+  { label: '당일', days: 0 },
+  { label: '전일', days: 1, offset: 1 },
+  { label: '1주일', days: 7 },
+  { label: '1개월', days: 30 },
+];
+
 export default function Analytics() {
   const { currentStore, stores } = useStore();
   const [data, setData] = useState(null);
@@ -123,6 +130,13 @@ export default function Analytics() {
   const [selectedStore, setSelectedStore] = useState('');
   const [fromDate, setFromDate] = useState(() => new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0]);
   const [toDate, setToDate] = useState(() => new Date().toISOString().split('T')[0]);
+
+  const applyQuickRange = (r) => {
+    const end = new Date(Date.now() - (r.offset || 0) * 86400000);
+    const start = new Date(end.getTime() - r.days * 86400000);
+    setFromDate(start.toISOString().split('T')[0]);
+    setToDate(end.toISOString().split('T')[0]);
+  };
 
   const load = async () => {
     setLoading(true);
@@ -157,24 +171,36 @@ export default function Analytics() {
 
   return (
     <div>
+      <h2 style={{ marginBottom: 16 }}>판매 분석</h2>
+
       {/* 필터 바 */}
-      <div className="top-bar" style={{ flexWrap: 'wrap', gap: 12 }}>
-        <h2>판매 분석</h2>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-          <select value={selectedStore} onChange={e => setSelectedStore(e.target.value)}
-            style={{ padding: '7px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-input)', color: 'var(--text)', fontSize: 13 }}>
+      <div className="card analytics-filter-bar">
+        <div className="filter-field">
+          <label>매장</label>
+          <select value={selectedStore} onChange={e => setSelectedStore(e.target.value)}>
             <option value="">전체 매장</option>
             {stores.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
-          <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)}
-            style={{ padding: '7px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-input)', color: 'var(--text)', fontSize: 13 }} />
-          <span className="text-sub">~</span>
-          <input type="date" value={toDate} onChange={e => setToDate(e.target.value)}
-            style={{ padding: '7px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-input)', color: 'var(--text)', fontSize: 13 }} />
-          <button className="primary" onClick={load} disabled={loading}>
-            {loading ? '조회 중...' : '조회'}
-          </button>
         </div>
+        <div className="filter-field">
+          <label>조회 기간</label>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} />
+            <span className="text-sub">~</span>
+            <input type="date" value={toDate} onChange={e => setToDate(e.target.value)} />
+          </div>
+        </div>
+        <div className="filter-field">
+          <label>&nbsp;</label>
+          <div style={{ display: 'flex', gap: 6 }}>
+            {QUICK_RANGES.map(r => (
+              <button key={r.label} type="button" className="secondary small" onClick={() => applyQuickRange(r)}>{r.label}</button>
+            ))}
+          </div>
+        </div>
+        <button className="primary analytics-search-btn" onClick={load} disabled={loading}>
+          {loading ? '조회 중...' : '🔍 조회'}
+        </button>
       </div>
 
       {/* 요약 카드 */}
