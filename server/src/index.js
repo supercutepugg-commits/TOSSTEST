@@ -82,7 +82,7 @@ initDb().then(async () => {
   runOverdueCheck();
   setInterval(runOverdueCheck, 60 * 60 * 1000);
 
-  // Toss Place 과거/누락 매출 자동 동기화: 토스플레이스 매장 ID가 등록된 가맹점만 1시간마다 재동기화
+  // Toss Place 과거/누락 매출 자동 동기화: 토스플레이스 매장 ID가 등록된 가맹점만 3분마다 재동기화
   // 한 번도 동기화 안 한 가맹점은 최근 90일치를, 이후엔 최근 2일치만 다시 가져옴
   const runAutoSync = async () => {
     try {
@@ -101,7 +101,7 @@ initDb().then(async () => {
     } catch (e) { console.error('[자동 동기화] 오류:', e.message); }
   };
   runAutoSync();
-  setInterval(runAutoSync, 60 * 60 * 1000);
+  setInterval(runAutoSync, 3 * 60 * 1000);
 }).catch(err => {
   console.error('DB init failed:', err);
   process.exit(1);
