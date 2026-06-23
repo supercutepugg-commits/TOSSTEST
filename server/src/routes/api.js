@@ -225,7 +225,39 @@ router.get('/dashboard', requireAuth, async (req, res) => {
   const todayRow = await todayQ.sum('amount as total').first();
   const todayRevenue = Number(todayRow?.total || 0);
 
-  res.json({ lowStock, recentAlerts, recentOrders, risks, pendingOrders: pendingOrders.cnt, paymentPending: paymentPending.cnt, todayRevenue });
+  // 일자별 매출/주문건수 집계 헬퍼 (특정 하루치)
+  const dayStats = async (date) => {
+    const start = new Date(date); start.setHours(0, 0, 0, 0);
+    const end = new Date(date); end.setHours(23, 59, 59, 999);
+    const q = knex('sales_items').where({ brand_id })
+      .where('sold_at', '>=', start.toISOString()).where('sold_at', '<=', end.toISOString());
+    if (sid) q.where({ store_id: sid });
+    const row = await q.clone().sum('amount as revenue').first();
+    const cnt = await q.clone().countDistinct('toss_order_id as cnt').first();
+    return { revenue: Number(row?.revenue || 0), orderCount: Number(cnt?.cnt || 0) };
+  };
+
+  const yesterday = new Date(Date.now() - 86400000);
+  const sameWeekdayLastWeek = new Date(Date.now() - 7 * 86400000);
+  const [todayStats, yesterdayStats, lastWeekStats] = await Promise.all([
+    dayStats(new Date()), dayStats(yesterday), dayStats(sameWeekdayLastWeek),
+  ]);
+
+  // 최근 7일 일별 매출 통계
+  const WEEKDAY_LABEL = ['일', '월', '화', '수', '목', '금', '토'];
+  const weeklyStats = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(Date.now() - i * 86400000);
+    const stats = await dayStats(d);
+    weeklyStats.push({ date: d.toISOString().split('T')[0], weekday: WEEKDAY_LABEL[d.getDay()], ...stats });
+  }
+
+  res.json({
+    lowStock, recentAlerts, recentOrders, risks,
+    pendingOrders: pendingOrders.cnt, paymentPending: paymentPending.cnt, todayRevenue,
+    salesComparison: { today: todayStats, yesterday: yesterdayStats, lastWeekSameDay: lastWeekStats },
+    weeklyStats,
+  });
 });
 
 // ─── 판매 분석 ────────────────────────────────────────
