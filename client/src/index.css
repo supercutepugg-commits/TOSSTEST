@@ -79,6 +79,7 @@ body {
 .topnav-menu {
   flex: 1;
   display: flex;
+  justify-content: center;
   overflow-x: auto;
 }
 
