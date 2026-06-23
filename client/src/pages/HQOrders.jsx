@@ -1,0 +1,241 @@
+import { useEffect, useState } from 'react';
+import { api } from '../api';
+
+const STATUS_LABEL = {
+  DRAFT: '임시저장', ORDERED: '발주완료', REVIEWING: '검토중',
+  REVISION_REQUESTED: '수정요청', CONFIRMED: '주문확정',
+  PAYMENT_PENDING: '결제대기', PAID: '결제완료',
+  PREPARING_SHIPMENT: '출고준비', SHIPPED: '출고완료',
+  DELIVERED: '납품완료', CLOSED: '주문종료', CANCELED: '주문취소',
+};
+const STATUS_COLOR = {
+  ORDERED: '#6366f1', REVIEWING: '#f59e0b', REVISION_REQUESTED: '#ef4444',
+  CONFIRMED: '#06b6d4', PAYMENT_PENDING: '#f97316', PAID: '#22c55e',
+  PREPARING_SHIPMENT: '#8b5cf6', SHIPPED: '#3b82f6', DELIVERED: '#16a34a',
+  CLOSED: '#64748b', CANCELED: '#ef4444', DRAFT: '#94a3b8',
+};
+const NEXT_STATUS = {
+  ORDERED: 'REVIEWING', REVIEWING: 'CONFIRMED',
+  CONFIRMED: 'PAYMENT_PENDING', PAYMENT_PENDING: 'PAID',
+  PAID: 'PREPARING_SHIPMENT', PREPARING_SHIPMENT: 'SHIPPED', SHIPPED: 'DELIVERED',
+};
+const NEXT_LABEL = {
+  ORDERED: '검토 시작', REVIEWING: '주문 확정',
+  CONFIRMED: '결제 요청', PAYMENT_PENDING: '결제 확인',
+  PAID: '출고 준비', PREPARING_SHIPMENT: '출고 완료', SHIPPED: '납품 완료',
+};
+const ACTIVE = ['ORDERED', 'REVIEWING', 'REVISION_REQUESTED', 'CONFIRMED', 'PAYMENT_PENDING', 'PAID', 'PREPARING_SHIPMENT', 'SHIPPED'];
+const DONE = ['DELIVERED', 'CLOSED', 'CANCELED'];
+
+function exportExcel(detail) {
+  const rows = [
+    ['발주서 #' + detail.id, detail.store_name, STATUS_LABEL[detail.status], new Date(detail.created_at).toLocaleDateString('ko-KR')],
+    [],
+    ['상품명', '단위', '발주량', '확정량', '단가', '금액', '상태', '대체메모'],
+    ...(detail.items || []).map(i => [
+      i.product_name, i.unit, i.quantity, i.confirmed_quantity ?? i.quantity,
+      i.unit_price, i.amount, i.status === 'OUT_OF_STOCK' ? '품절' : '정상', i.substitute_note || '',
+    ]),
+    [],
+    ['', '', '', '', '', '확정금액', detail.confirmed_amount ?? detail.total_amount],
+  ];
+  const csv = rows.map(r => r.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
+  const bom = '﻿';
+  const blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `발주서_${detail.id}_${detail.store_name}.csv`;
+  a.click(); URL.revokeObjectURL(url);
+}
+
+function StatusBadge({ status }) {
+  const c = STATUS_COLOR[status] || '#64748b';
+  return (
+    <span style={{ fontSize: 12, fontWeight: 600, padding: '3px 9px', borderRadius: 6, background: c + '22', color: c }}>
+      {STATUS_LABEL[status]}
+    </span>
+  );
+}
+
+export default function HQOrders() {
+  const [orders, setOrders] = useState([]);
+  const [selected, setSelected] = useState(null);
+  const [detail, setDetail] = useState(null);
+  const [tab, setTab] = useState('active');
+
+  const load = () => api.getOrders().then(setOrders).catch(() => {});
+  useEffect(() => { load(); }, []);
+
+  const loadDetail = async (id) => {
+    const d = await api.getOrder(id);
+    setDetail(d);
+    setSelected(id);
+  };
+
+  const reject = async (order) => {
+    const reason = prompt('수정 요청 사유를 입력하세요');
+    if (!reason) return;
+    await api.changeOrderStatus(order.id, 'REVISION_REQUESTED', reason);
+    load();
+  };
+
+  const visibleOrders = orders.filter(o =>
+    tab === 'active' ? ACTIVE.includes(o.status) : DONE.includes(o.status)
+  );
+
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: detail ? '1fr 480px' : '1fr', gap: 20 }}>
+      <div>
+        <div className="top-bar">
+          <h2>주문 관리</h2>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button className={tab === 'active' ? 'primary' : 'secondary'} onClick={() => { setTab('active'); setDetail(null); setSelected(null); }}>
+              처리중 {orders.filter(o => ACTIVE.includes(o.status)).length > 0 && `(${orders.filter(o => ACTIVE.includes(o.status)).length})`}
+            </button>
+            <button className={tab === 'done' ? 'primary' : 'secondary'} onClick={() => { setTab('done'); setDetail(null); setSelected(null); }}>
+              완료/취소
+            </button>
+          </div>
+        </div>
+        <div className="card">
+          {visibleOrders.length === 0
+            ? <div className="empty">{tab === 'active' ? '처리할 주문 없음' : '완료된 주문 없음'}</div>
+            : <table>
+              <thead>
+                <tr><th>가맹점</th><th>발주일</th><th>상태</th><th>금액</th>{tab === 'active' && <th>상태 변경</th>}</tr>
+              </thead>
+              <tbody>
+                {visibleOrders.map(o => (
+                  <tr key={o.id} style={{ cursor: 'pointer', background: selected === o.id ? 'var(--bg-elevated)' : '' }}
+                    onClick={() => loadDetail(o.id)}>
+                    <td><b>{o.store_name}</b></td>
+                    <td className="text-sub" style={{ fontSize: 13 }}>{new Date(o.created_at).toLocaleDateString('ko-KR')}</td>
+                    <td><StatusBadge status={o.status} /></td>
+                    <td>{(o.confirmed_amount ?? o.total_amount).toLocaleString()}원</td>
+                    {tab === 'active' && (
+                      <td onClick={e => e.stopPropagation()}>
+                        <select
+                          value={o.status}
+                          onChange={async e => {
+                            const next = e.target.value;
+                            if (next === o.status) return;
+                            if (next === 'REVISION_REQUESTED') { reject(o); return; }
+                            await api.changeOrderStatus(o.id, next);
+                            load();
+                            if (selected === o.id) loadDetail(o.id);
+                          }}
+                          style={{ width: 'auto', fontSize: 12, padding: '5px 8px' }}
+                        >
+                          <option value={o.status}>{STATUS_LABEL[o.status]}</option>
+                          {NEXT_STATUS[o.status] && <option value={NEXT_STATUS[o.status]}>{NEXT_LABEL[o.status]}</option>}
+                          {o.status === 'REVIEWING' && <option value="REVISION_REQUESTED">수정요청</option>}
+                        </select>
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          }
+        </div>
+      </div>
+
+      {detail && (
+        <div className="card" style={{ position: 'sticky', top: 0, maxHeight: '90vh', overflowY: 'auto' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
+            <div style={{ fontWeight: 700, fontSize: 16 }}>발주서 #{detail.id} — {detail.store_name}</div>
+            <button className="secondary small" onClick={() => { setDetail(null); setSelected(null); }}>닫기</button>
+          </div>
+
+          <div style={{ marginBottom: 16 }}>
+            <StatusBadge status={detail.status} />
+          </div>
+
+          <table style={{ marginBottom: 16 }}>
+            <thead><tr><th>상품</th><th>단위</th><th>발주량</th><th>확정량</th><th>상태</th><th>대체/메모</th><th>금액</th></tr></thead>
+            <tbody>
+              {detail.items?.map(item => {
+                const editable = ['REVIEWING', 'CONFIRMED'].includes(detail.status);
+                const isOOS = item.status === 'OUT_OF_STOCK';
+                return (
+                  <tr key={item.id} style={{ opacity: isOOS ? 0.5 : 1 }}>
+                    <td>{item.product_name}</td>
+                    <td>{item.unit}</td>
+                    <td>{item.quantity}</td>
+                    <td>
+                      {editable
+                        ? <input type="number" defaultValue={item.confirmed_quantity ?? item.quantity}
+                            style={{ width: 70 }}
+                            onBlur={async e => {
+                              await api.updateOrderItem(detail.id, item.id, { confirmed_quantity: Number(e.target.value) });
+                              loadDetail(detail.id);
+                            }} />
+                        : (item.confirmed_quantity ?? item.quantity)
+                      }
+                    </td>
+                    <td>
+                      {editable ? (
+                        <button
+                          className={isOOS ? 'primary small' : 'secondary small'}
+                          style={isOOS ? { background: '#dc2626', border: 'none' } : {}}
+                          onClick={async () => {
+                            await api.updateOrderItem(detail.id, item.id, { status: isOOS ? 'NORMAL' : 'OUT_OF_STOCK' });
+                            loadDetail(detail.id);
+                          }}
+                        >
+                          {isOOS ? '품절' : '정상'}
+                        </button>
+                      ) : (
+                        <span className={`badge ${isOOS ? 'red' : 'green'}`}>{isOOS ? '품절' : '정상'}</span>
+                      )}
+                    </td>
+                    <td>
+                      {editable ? (
+                        <input
+                          defaultValue={item.substitute_note || ''}
+                          placeholder="대체 메모"
+                          style={{ width: 120, fontSize: 12 }}
+                          onBlur={async e => {
+                            await api.updateOrderItem(detail.id, item.id, { substitute_note: e.target.value });
+                          }}
+                        />
+                      ) : (
+                        <span className="text-sub" style={{ fontSize: 12 }}>{item.substitute_note || '-'}</span>
+                      )}
+                    </td>
+                    <td>{item.amount.toLocaleString()}원</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <button className="secondary small" onClick={() => exportExcel(detail)}>📥 엑셀 다운로드</button>
+            <div style={{ fontWeight: 700 }}>
+              확정금액: {(detail.confirmed_amount ?? detail.total_amount).toLocaleString()}원
+            </div>
+          </div>
+
+          {detail.memo && (
+            <div className="elevated-card" style={{ padding: 12, fontSize: 13, marginBottom: 16 }}>
+              메모: {detail.memo}
+            </div>
+          )}
+
+          {detail.history?.length > 0 && (
+            <>
+              <div style={{ fontWeight: 600, marginBottom: 8 }}>처리 이력</div>
+              {detail.history.map(h => (
+                <div key={h.id} className="text-muted" style={{ fontSize: 12, marginBottom: 4 }}>
+                  {new Date(h.created_at).toLocaleString('ko-KR')} — {h.changed_by_name || '시스템'}: {h.action}
+                  {h.reason && ` (${h.reason})`}
+                </div>
+              ))}
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}

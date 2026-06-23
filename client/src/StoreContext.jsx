@@ -1,0 +1,36 @@
+import { createContext, useContext, useState, useEffect } from 'react';
+import { api } from './api';
+
+const StoreContext = createContext(null);
+
+export function StoreProvider({ children }) {
+  const [stores, setStores] = useState([]);
+  const [currentStore, setCurrentStore] = useState(null);
+
+  const loadStores = async () => {
+    try {
+      const list = await api.getStores();
+      setStores(list);
+      if (!currentStore && list.length > 0) {
+        const saved = localStorage.getItem('currentStoreId');
+        const found = list.find(s => s.id === Number(saved)) || list[0];
+        setCurrentStore(found);
+      }
+    } catch {}
+  };
+
+  useEffect(() => { loadStores(); }, []);
+
+  const selectStore = (store) => {
+    setCurrentStore(store);
+    localStorage.setItem('currentStoreId', store.id);
+  };
+
+  return (
+    <StoreContext.Provider value={{ stores, currentStore, selectStore, reloadStores: loadStores }}>
+      {children}
+    </StoreContext.Provider>
+  );
+}
+
+export const useStore = () => useContext(StoreContext);
