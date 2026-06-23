@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { BrowserRouter, Routes, Route, NavLink, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './AuthContext';
 import { StoreProvider, useStore } from './StoreContext';
@@ -59,10 +60,61 @@ function NavTab({ to, end, icon, label, disabled }) {
   );
 }
 
+const SIDE_GROUPS = [
+  { title: '운영', items: [
+    { to: '/', end: true, icon: '🏪', label: '가맹점 선택' },
+    { to: '/dashboard', icon: '🏠', label: '대시보드' },
+  ] },
+  { title: '발주 · 주문', items: [
+    { to: '/orders', icon: '✅', label: '주문 관리' },
+    { to: '/products', icon: '📦', label: '매입 발주' },
+  ] },
+  { title: '재고 · 메뉴', items: [
+    { to: '/ingredients', icon: '🥬', label: '재고 관리' },
+    { to: '/menus', icon: '🍽', label: '메뉴 관리' },
+    { to: '/waste', icon: '🗑', label: '폐기 관리' },
+  ] },
+  { title: '분석 · 관리', items: [
+    { to: '/analytics', icon: '📊', label: '매출 분석' },
+    { to: '/risks', icon: '⚠️', label: '리스크 알림' },
+    { to: '/users', icon: '👤', label: '사용자 관리' },
+  ] },
+];
+
+function SideMenu({ collapsed, onToggle, storeSelected }) {
+  return (
+    <aside className={'side-menu' + (collapsed ? ' collapsed' : '')}>
+      <button className="side-menu-collapse" onClick={onToggle} title={collapsed ? '펼치기' : '접기'}>
+        {collapsed ? '»' : '«'}
+      </button>
+      {!collapsed && SIDE_GROUPS.map(g => (
+        <div key={g.title} className="side-menu-group">
+          <div className="side-menu-group-title">{g.title}</div>
+          {g.items.map(item => (
+            storeSelected || item.to === '/' ? (
+              <NavLink key={item.to} to={item.to} end={item.end}
+                className={({ isActive }) => 'side-menu-item' + (isActive ? ' active' : '')}>
+                <span className="side-menu-item-icon">{item.icon}</span>
+                {item.label}
+              </NavLink>
+            ) : (
+              <span key={item.to} className="side-menu-item disabled" title="가맹점을 먼저 선택해주세요">
+                <span className="side-menu-item-icon">{item.icon}</span>
+                {item.label}
+              </span>
+            )
+          ))}
+        </div>
+      ))}
+    </aside>
+  );
+}
+
 function HQLayout() {
   const { user } = useAuth();
   const { stores, currentStore, selectStore } = useStore();
   const storeSelected = !!currentStore;
+  const [collapsed, setCollapsed] = useState(false);
 
   return (
     <div className="kicc-layout">
@@ -82,27 +134,30 @@ function HQLayout() {
         </nav>
       </header>
       <TopBar name={user?.name} stores={stores} currentStore={currentStore} selectStore={selectStore} />
-      <main className="kicc-main">
-        <div className="kicc-main-inner">
-          <Routes>
-            <Route path="/" element={<Stores />} />
-            {storeSelected ? (
-              <>
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/orders" element={<HQOrders />} />
-                <Route path="/risks" element={<Risks />} />
-                <Route path="/ingredients" element={<Ingredients />} />
-                <Route path="/menus" element={<Menus />} />
-                <Route path="/products" element={<Products />} />
-                <Route path="/analytics" element={<Analytics />} />
-                <Route path="/waste" element={<Waste />} />
-                <Route path="/users" element={<Users />} />
-              </>
-            ) : null}
-            <Route path="*" element={<Navigate to="/" />} />
-          </Routes>
-        </div>
-      </main>
+      <div className="kicc-body">
+        <SideMenu collapsed={collapsed} onToggle={() => setCollapsed(c => !c)} storeSelected={storeSelected} />
+        <main className="kicc-main">
+          <div className="kicc-main-inner">
+            <Routes>
+              <Route path="/" element={<Stores />} />
+              {storeSelected ? (
+                <>
+                  <Route path="/dashboard" element={<Dashboard />} />
+                  <Route path="/orders" element={<HQOrders />} />
+                  <Route path="/risks" element={<Risks />} />
+                  <Route path="/ingredients" element={<Ingredients />} />
+                  <Route path="/menus" element={<Menus />} />
+                  <Route path="/products" element={<Products />} />
+                  <Route path="/analytics" element={<Analytics />} />
+                  <Route path="/waste" element={<Waste />} />
+                  <Route path="/users" element={<Users />} />
+                </>
+              ) : null}
+              <Route path="*" element={<Navigate to="/" />} />
+            </Routes>
+          </div>
+        </main>
+      </div>
       <StockAlert />
     </div>
   );
