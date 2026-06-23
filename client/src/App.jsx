@@ -42,7 +42,15 @@ function TopBar({ name, stores, currentStore, selectStore }) {
   );
 }
 
-function NavTab({ to, end, icon, label }) {
+function NavTab({ to, end, icon, label, disabled }) {
+  if (disabled) {
+    return (
+      <span className="topnav-tab disabled" title="가맹점을 먼저 선택해주세요">
+        <span className="topnav-tab-icon">{icon}</span>
+        <span className="topnav-tab-label">{label}</span>
+      </span>
+    );
+  }
   return (
     <NavLink to={to} end={end} className={({ isActive }) => 'topnav-tab' + (isActive ? ' active' : '')}>
       <span className="topnav-tab-icon">{icon}</span>
@@ -54,6 +62,7 @@ function NavTab({ to, end, icon, label }) {
 function HQLayout() {
   const { user } = useAuth();
   const { stores, currentStore, selectStore } = useStore();
+  const storeSelected = !!currentStore;
 
   return (
     <div className="kicc-layout">
@@ -61,15 +70,15 @@ function HQLayout() {
         <div className="topnav-brand">🧾 포스모스</div>
         <nav className="topnav-menu">
           <NavTab to="/" end icon="🏪" label="가맹점" />
-          <NavTab to="/dashboard" icon="🏠" label="대시보드" />
-          <NavTab to="/analytics" icon="📊" label="매출분석" />
-          <NavTab to="/orders" icon="✅" label="주문관리" />
-          <NavTab to="/products" icon="📦" label="매입발주" />
-          <NavTab to="/ingredients" icon="🥬" label="재고관리" />
-          <NavTab to="/menus" icon="🍽" label="메뉴관리" />
-          <NavTab to="/waste" icon="🗑" label="폐기관리" />
-          <NavTab to="/risks" icon="⚠️" label="리스크" />
-          <NavTab to="/users" icon="👤" label="사용자" />
+          <NavTab to="/dashboard" icon="🏠" label="대시보드" disabled={!storeSelected} />
+          <NavTab to="/analytics" icon="📊" label="매출분석" disabled={!storeSelected} />
+          <NavTab to="/orders" icon="✅" label="주문관리" disabled={!storeSelected} />
+          <NavTab to="/products" icon="📦" label="매입발주" disabled={!storeSelected} />
+          <NavTab to="/ingredients" icon="🥬" label="재고관리" disabled={!storeSelected} />
+          <NavTab to="/menus" icon="🍽" label="메뉴관리" disabled={!storeSelected} />
+          <NavTab to="/waste" icon="🗑" label="폐기관리" disabled={!storeSelected} />
+          <NavTab to="/risks" icon="⚠️" label="리스크" disabled={!storeSelected} />
+          <NavTab to="/users" icon="👤" label="사용자" disabled={!storeSelected} />
         </nav>
       </header>
       <TopBar name={user?.name} stores={stores} currentStore={currentStore} selectStore={selectStore} />
@@ -77,15 +86,19 @@ function HQLayout() {
         <div className="kicc-main-inner">
           <Routes>
             <Route path="/" element={<Stores />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/orders" element={<HQOrders />} />
-            <Route path="/risks" element={<Risks />} />
-            <Route path="/ingredients" element={<Ingredients />} />
-            <Route path="/menus" element={<Menus />} />
-            <Route path="/products" element={<Products />} />
-            <Route path="/analytics" element={<Analytics />} />
-            <Route path="/waste" element={<Waste />} />
-            <Route path="/users" element={<Users />} />
+            {storeSelected ? (
+              <>
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/orders" element={<HQOrders />} />
+                <Route path="/risks" element={<Risks />} />
+                <Route path="/ingredients" element={<Ingredients />} />
+                <Route path="/menus" element={<Menus />} />
+                <Route path="/products" element={<Products />} />
+                <Route path="/analytics" element={<Analytics />} />
+                <Route path="/waste" element={<Waste />} />
+                <Route path="/users" element={<Users />} />
+              </>
+            ) : null}
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>
         </div>

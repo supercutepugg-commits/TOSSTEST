@@ -85,6 +85,8 @@ export const api = {
   changeOrderStatus: (id, status, reason) => a(`/orders/${id}/status`, { method: 'POST', body: JSON.stringify({ status, reason }) }),
   updateOrderItem: (orderId, itemId, data) => a(`/orders/${orderId}/items/${itemId}`, { method: 'PUT', body: JSON.stringify(data) }),
   cancelOrder: (id) => a(`/orders/${id}`, { method: 'DELETE' }),
+  preparePayment: (id) => a(`/orders/${id}/payment/prepare`, { method: 'POST' }),
+  confirmPayment: (id, data) => a(`/orders/${id}/payment/confirm`, { method: 'POST', body: JSON.stringify(data) }),
 
   // 폐기
   getWaste: (params) => a(`/waste${qs(params)}`),

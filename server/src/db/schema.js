@@ -173,6 +173,9 @@ async function initDb() {
     t.datetime('delivered_at').nullable();
     t.datetime('created_at').defaultTo(knex.fn.now());
   });
+  await addColumnIfMissing('purchase_orders', 'toss_order_code', t => t.string('toss_order_code').nullable());
+  await addColumnIfMissing('purchase_orders', 'toss_payment_key', t => t.string('toss_payment_key').nullable());
+  await addColumnIfMissing('purchase_orders', 'paid_at', t => t.datetime('paid_at').nullable());
 
   // ── 발주 상품 목록 ────────────────────────────────────
   await createIfMissing('purchase_order_items', t => {

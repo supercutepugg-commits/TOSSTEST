@@ -3,6 +3,10 @@ const router = createAsyncRouter();
 const { knex } = require('../db/schema');
 const { requireAuth } = require('../middleware/auth');
 const { createRisk } = require('./risks');
+const crypto = require('crypto');
+
+const TOSS_SECRET_KEY = process.env.TOSS_SECRET_KEY || '';
+const TOSS_API_BASE = 'https://api.tosspayments.com/v1/payments';
 
 async function checkSalesDownOrderUp(brand_id, store_id) {
   const fourteenAgo = new Date(Date.now() - 14 * 86400000).toISOString();
@@ -250,6 +254,65 @@ router.put('/:id/items/:itemId', requireAuth, async (req, res) => {
   await knex('purchase_orders').where({ id: req.params.id }).update({ confirmed_amount: total });
 
   res.json({ ok: true });
+});
+
+// ── 결제 준비 (대금 결제용 주문 코드 발급) ─────────────
+router.post('/:id/payment/prepare', requireAuth, async (req, res) => {
+  const order = await knex('purchase_orders as po')
+    .join('stores as s', 'po.store_id', 's.id')
+    .select('po.*', 's.name as store_name')
+    .where('po.id', req.params.id)
+    .where('po.brand_id', req.user.brand_id)
+    .first();
+  if (!order) return res.status(404).json({ error: '없음' });
+  if (['STORE_OWNER', 'STORE_STAFF'].includes(req.user.role) && order.store_id !== req.user.store_id) {
+    return res.status(403).json({ error: '권한 없음' });
+  }
+  if (!['CONFIRMED', 'PAYMENT_PENDING'].includes(order.status)) {
+    return res.status(400).json({ error: '결제 가능 상태가 아닙니다' });
+  }
+
+  const amount = Math.round(order.confirmed_amount ?? order.total_amount);
+  const orderCode = order.toss_order_code || `po-${order.id}-${crypto.randomBytes(6).toString('hex')}`;
+
+  await knex('purchase_orders').where({ id: order.id }).update({ toss_order_code: orderCode, status: 'PAYMENT_PENDING' });
+  await logHistory(order.id, 'STATUS_CHANGE', { status: order.status }, { status: 'PAYMENT_PENDING' }, '결제 시작', req.user.id);
+
+  res.json({
+    orderId: orderCode,
+    amount,
+    orderName: `발주서 #${order.id} (${order.store_name})`,
+  });
+});
+
+// ── 결제 승인 (Toss 결제창에서 successUrl로 돌아온 뒤 호출) ─────────────
+router.post('/:id/payment/confirm', requireAuth, async (req, res) => {
+  const { paymentKey, orderId, amount } = req.body;
+  const order = await knex('purchase_orders').where({ id: req.params.id, brand_id: req.user.brand_id }).first();
+  if (!order) return res.status(404).json({ error: '없음' });
+  if (order.toss_order_code !== orderId) return res.status(400).json({ error: '주문 정보 불일치' });
+
+  const expectedAmount = Math.round(order.confirmed_amount ?? order.total_amount);
+  if (Math.round(amount) !== expectedAmount) return res.status(400).json({ error: '결제 금액 불일치' });
+  if (!TOSS_SECRET_KEY) return res.status(500).json({ error: '결제 설정 오류 (TOSS_SECRET_KEY 미설정)' });
+
+  const authHeader = 'Basic ' + Buffer.from(`${TOSS_SECRET_KEY}:`).toString('base64');
+  const tossRes = await fetch(`${TOSS_API_BASE}/confirm`, {
+    method: 'POST',
+    headers: { Authorization: authHeader, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ paymentKey, orderId, amount }),
+  });
+  const result = await tossRes.json();
+  if (!tossRes.ok) {
+    return res.status(tossRes.status).json({ error: result.message || '결제 승인 실패', code: result.code });
+  }
+
+  await knex('purchase_orders').where({ id: order.id }).update({
+    status: 'PAID', toss_payment_key: paymentKey, paid_at: new Date().toISOString(),
+  });
+  await logHistory(order.id, 'STATUS_CHANGE', { status: order.status }, { status: 'PAID' }, '결제 완료', req.user.id);
+
+  res.json({ ok: true, order: result });
 });
 
 // ── 발주서 취소 ───────────────────────────────────────
