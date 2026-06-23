@@ -30,7 +30,7 @@ async function req(base, path, options = {}) {
 
 const a = (path, opts) => req(BASE_API, path, opts);
 const auth = (path, opts) => req(BASE_AUTH, path, opts);
-const qs = (params) => {
+const qs = (params = {}) => {
   const filtered = Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && v !== null));
   const s = new URLSearchParams(filtered);
   return s.toString() ? '?' + s : '';

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BrowserRouter, Routes, Route, NavLink, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, NavLink, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './AuthContext';
 import { StoreProvider, useStore } from './StoreContext';
 import { ThemeProvider, useTheme } from './ThemeContext';
@@ -38,15 +38,7 @@ function TopBar({ name, currentStore }) {
   );
 }
 
-function NavTab({ to, end, icon, label, disabled }) {
-  if (disabled) {
-    return (
-      <span className="topnav-tab disabled" title="가맹점을 먼저 선택해주세요">
-        <span className="topnav-tab-icon">{icon}</span>
-        <span className="topnav-tab-label">{label}</span>
-      </span>
-    );
-  }
+function NavTab({ to, end, icon, label }) {
   return (
     <NavLink to={to} end={end} className={({ isActive }) => 'topnav-tab' + (isActive ? ' active' : '')}>
       <span className="topnav-tab-icon">{icon}</span>
@@ -55,84 +47,52 @@ function NavTab({ to, end, icon, label, disabled }) {
   );
 }
 
-// 상단 탭 하나당 좌측 사이드바에 보일 세부 그룹. 키는 경로의 첫 segment ('/' 포함)
-const SIDE_MENU_MAP = {
-  '/': { title: '가맹점', items: [
+// 관리자 페이지 전체 메뉴 — 좌측 사이드바에 항상 모두 표시
+const SIDE_MENU_GROUPS = [
+  { title: '가맹점', items: [
     { to: '/', end: true, icon: '🏪', label: '가맹점 목록' },
     { to: '/rankings', end: true, icon: '🏆', label: '가맹점 순위' },
     { to: '/purchase-anomalies', end: true, icon: '🔍', label: '사입 이상 모니터링' },
   ] },
-  '/dashboard': { title: '대시보드', items: [
+  { title: '대시보드 · 매출', items: [
     { to: '/dashboard', end: true, icon: '🏠', label: '대시보드 홈' },
-  ] },
-  '/analytics': { title: '매출분석', items: [
     { to: '/analytics', end: true, icon: '📊', label: '매출 분석' },
-    { to: '/rankings', end: true, icon: '🏆', label: '가맹점 순위' },
   ] },
-  '/rankings': { title: '매출분석', items: [
-    { to: '/analytics', end: true, icon: '📊', label: '매출 분석' },
-    { to: '/rankings', end: true, icon: '🏆', label: '가맹점 순위' },
-  ] },
-  '/orders': { title: '주문관리', items: [
+  { title: '주문 · 발주', items: [
     { to: '/orders', end: true, icon: '✅', label: '주문 목록' },
-  ] },
-  '/products': { title: '매입발주', items: [
     { to: '/products', end: true, icon: '📦', label: '발주 상품' },
   ] },
-  '/ingredients': { title: '재고관리', items: [
+  { title: '재고 · 메뉴', items: [
     { to: '/ingredients', end: true, icon: '🥬', label: '재료 목록' },
-  ] },
-  '/menus': { title: '메뉴관리', items: [
     { to: '/menus', end: true, icon: '🍽', label: '메뉴 & 레시피' },
-  ] },
-  '/waste': { title: '폐기관리', items: [
     { to: '/waste', end: true, icon: '🗑', label: '폐기 입력' },
   ] },
-  '/risks': { title: '리스크', items: [
+  { title: '리스크', items: [
     { to: '/risks', end: true, icon: '⚠️', label: '리스크 알림' },
-    { to: '/purchase-anomalies', end: true, icon: '🔍', label: '사입 이상 모니터링' },
   ] },
-  '/purchase-anomalies': { title: '리스크', items: [
-    { to: '/risks', end: true, icon: '⚠️', label: '리스크 알림' },
-    { to: '/purchase-anomalies', end: true, icon: '🔍', label: '사입 이상 모니터링' },
-  ] },
-  '/users': { title: '사용자', items: [
+  { title: '사용자', items: [
     { to: '/users', end: true, icon: '👤', label: '사용자 관리' },
   ] },
-};
+];
 
-const FREE_ROUTES = new Set(['/', '/rankings', '/purchase-anomalies']);
-
-function SideMenu({ collapsed, onToggle, storeSelected }) {
-  const location = useLocation();
-  const topKey = '/' + (location.pathname.split('/')[1] || '');
-  const group = SIDE_MENU_MAP[topKey];
-  if (!group) return null;
-
+function SideMenu({ collapsed, onToggle }) {
   return (
     <aside className={'side-menu' + (collapsed ? ' collapsed' : '')}>
       <button className="side-menu-collapse" onClick={onToggle} title={collapsed ? '펼치기' : '접기'}>
         {collapsed ? '»' : '«'}
       </button>
-      {!collapsed && (
-        <div className="side-menu-group">
+      {!collapsed && SIDE_MENU_GROUPS.map(group => (
+        <div key={group.title} className="side-menu-group">
           <div className="side-menu-group-title">{group.title}</div>
           {group.items.map(item => (
-            storeSelected || FREE_ROUTES.has(item.to) ? (
-              <NavLink key={item.to} to={item.to} end={item.end}
-                className={({ isActive }) => 'side-menu-item' + (isActive ? ' active' : '')}>
-                <span className="side-menu-item-icon">{item.icon}</span>
-                {item.label}
-              </NavLink>
-            ) : (
-              <span key={item.to} className="side-menu-item disabled" title="가맹점을 먼저 선택해주세요">
-                <span className="side-menu-item-icon">{item.icon}</span>
-                {item.label}
-              </span>
-            )
+            <NavLink key={item.to} to={item.to} end={item.end}
+              className={({ isActive }) => 'side-menu-item' + (isActive ? ' active' : '')}>
+              <span className="side-menu-item-icon">{item.icon}</span>
+              {item.label}
+            </NavLink>
           ))}
         </div>
-      )}
+      ))}
     </aside>
   );
 }
@@ -140,10 +100,7 @@ function SideMenu({ collapsed, onToggle, storeSelected }) {
 function HQLayout() {
   const { user } = useAuth();
   const { currentStore } = useStore();
-  const storeSelected = !!currentStore;
   const [collapsed, setCollapsed] = useState(false);
-  const location = useLocation();
-  const onStoreListPage = location.pathname === '/';
 
   return (
     <div className="kicc-layout">
@@ -156,43 +113,35 @@ function HQLayout() {
           <NavTab to="/" end icon="🏪" label="가맹점" />
           <NavTab to="/rankings" icon="🏆" label="가맹점순위" />
           <NavTab to="/purchase-anomalies" icon="🔍" label="사입이상모니터링" />
-          {!onStoreListPage && (
-            <>
-              <NavTab to="/dashboard" icon="🏠" label="대시보드" disabled={!storeSelected} />
-              <NavTab to="/analytics" icon="📊" label="매출분석" disabled={!storeSelected} />
-              <NavTab to="/orders" icon="✅" label="주문관리" disabled={!storeSelected} />
-              <NavTab to="/products" icon="📦" label="매입발주" disabled={!storeSelected} />
-              <NavTab to="/ingredients" icon="🥬" label="재고관리" disabled={!storeSelected} />
-              <NavTab to="/menus" icon="🍽" label="메뉴관리" disabled={!storeSelected} />
-              <NavTab to="/waste" icon="🗑" label="폐기관리" disabled={!storeSelected} />
-              <NavTab to="/risks" icon="⚠️" label="리스크" disabled={!storeSelected} />
-              <NavTab to="/users" icon="👤" label="사용자" disabled={!storeSelected} />
-            </>
-          )}
+          <NavTab to="/dashboard" icon="🏠" label="대시보드" />
+          <NavTab to="/analytics" icon="📊" label="매출분석" />
+          <NavTab to="/orders" icon="✅" label="주문관리" />
+          <NavTab to="/products" icon="📦" label="매입발주" />
+          <NavTab to="/ingredients" icon="🥬" label="재고관리" />
+          <NavTab to="/menus" icon="🍽" label="메뉴관리" />
+          <NavTab to="/waste" icon="🗑" label="폐기관리" />
+          <NavTab to="/risks" icon="⚠️" label="리스크" />
+          <NavTab to="/users" icon="👤" label="사용자" />
         </nav>
       </header>
       <TopBar name={user?.name} currentStore={currentStore} />
       <div className="kicc-body">
-        <SideMenu collapsed={collapsed} onToggle={() => setCollapsed(c => !c)} storeSelected={storeSelected} />
+        <SideMenu collapsed={collapsed} onToggle={() => setCollapsed(c => !c)} />
         <main className="kicc-main">
           <div className="kicc-main-inner">
             <Routes>
               <Route path="/" element={<Stores />} />
               <Route path="/rankings" element={<StoreRankings />} />
               <Route path="/purchase-anomalies" element={<PurchaseAnomalies />} />
-              {storeSelected ? (
-                <>
-                  <Route path="/dashboard" element={<Dashboard />} />
-                  <Route path="/orders" element={<HQOrders />} />
-                  <Route path="/risks" element={<Risks />} />
-                  <Route path="/ingredients" element={<Ingredients />} />
-                  <Route path="/menus" element={<Menus />} />
-                  <Route path="/products" element={<Products />} />
-                  <Route path="/analytics" element={<Analytics />} />
-                  <Route path="/waste" element={<Waste />} />
-                  <Route path="/users" element={<Users />} />
-                </>
-              ) : null}
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/orders" element={<HQOrders />} />
+              <Route path="/risks" element={<Risks />} />
+              <Route path="/ingredients" element={<Ingredients />} />
+              <Route path="/menus" element={<Menus />} />
+              <Route path="/products" element={<Products />} />
+              <Route path="/analytics" element={<Analytics />} />
+              <Route path="/waste" element={<Waste />} />
+              <Route path="/users" element={<Users />} />
               <Route path="*" element={<Navigate to="/" />} />
             </Routes>
           </div>
