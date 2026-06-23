@@ -28,7 +28,7 @@ router.get('/stores', requireAuth, async (req, res) => {
 });
 
 router.post('/stores', requireAuth, requireRole(...HQ_ROLES), async (req, res) => {
-  const { name, webhook_secret, toss_store_id, order_deadline, delivery_days, business_number, owner_name, phone, open_date, franchise_type, is_open } = req.body;
+  const { name, webhook_secret, toss_store_id, order_deadline, delivery_days, business_number, owner_name, phone, open_date, franchise_type, is_open, address } = req.body;
   const [{ id }] = await knex('stores').insert({
     brand_id: req.user.brand_id, name,
     webhook_secret: webhook_secret || '', toss_store_id: toss_store_id || '',
@@ -36,12 +36,13 @@ router.post('/stores', requireAuth, requireRole(...HQ_ROLES), async (req, res) =
     business_number: business_number || null, owner_name: owner_name || null,
     phone: phone || null, open_date: open_date || null,
     franchise_type: franchise_type || null, is_open: is_open ?? true,
+    address: address || null,
   }).returning('id');
   res.json({ id });
 });
 
 router.put('/stores/:id', requireAuth, requireRole(...HQ_ROLES), async (req, res) => {
-  const { name, webhook_secret, toss_store_id, order_deadline, delivery_days, toss_client_id, toss_client_secret, business_number, owner_name, phone, open_date, franchise_type, is_open } = req.body;
+  const { name, webhook_secret, toss_store_id, order_deadline, delivery_days, toss_client_id, toss_client_secret, business_number, owner_name, phone, open_date, franchise_type, is_open, address } = req.body;
   await knex('stores').where({ id: req.params.id, brand_id: req.user.brand_id })
     .update({
       name, webhook_secret, toss_store_id,
@@ -55,6 +56,7 @@ router.put('/stores/:id', requireAuth, requireRole(...HQ_ROLES), async (req, res
       open_date: open_date || null,
       franchise_type: franchise_type || null,
       is_open: is_open ?? true,
+      address: address || null,
     });
   res.json({ ok: true });
 });

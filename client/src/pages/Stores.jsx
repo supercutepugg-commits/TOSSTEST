@@ -64,7 +64,7 @@ const FRANCHISE_TYPES = ['가맹점', '직영점'];
 function StoreModal({ item, onClose, onSave }) {
   const [form, setForm] = useState(item || {
     name: '', webhook_secret: '', toss_store_id: '', order_deadline: '', delivery_days: '',
-    business_number: '', owner_name: '', phone: '', open_date: '', franchise_type: '', is_open: true,
+    business_number: '', owner_name: '', phone: '', open_date: '', franchise_type: '', is_open: true, address: '',
   });
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
@@ -121,6 +121,10 @@ function StoreModal({ item, onClose, onSave }) {
           </div>
         </div>
         <div className="form-group" style={{ marginBottom: 12 }}>
+          <label>주소</label>
+          <input value={form.address || ''} onChange={e => set('address', e.target.value)} placeholder="예: 서울 강남구 ..." />
+        </div>
+        <div className="form-group" style={{ marginBottom: 12 }}>
           <label>웹훅 시크릿 키 (토스플레이스 발급)</label>
           <input value={form.webhook_secret} onChange={e => set('webhook_secret', e.target.value)} placeholder="시크릿 키 입력" />
         </div>
@@ -166,17 +170,28 @@ export default function Stores() {
   const navigate = useNavigate();
   const [modal, setModal] = useState(null);
   const [syncTarget, setSyncTarget] = useState(null);
-  const [search, setSearch] = useState('');
+
+  const [nameQuery, setNameQuery] = useState('');
+  const [bizQuery, setBizQuery] = useState('');
+  const [franchiseType, setFranchiseType] = useState('');
+  const [openStatus, setOpenStatus] = useState('');
+  const [filters, setFilters] = useState(null); // 조회 버튼 눌렀을 때 적용되는 값
 
   const handleSelect = (store) => {
     selectStore(store);
     navigate('/dashboard');
   };
 
+  const runSearch = () => setFilters({ nameQuery, bizQuery, franchiseType, openStatus });
+
   const filteredStores = stores.filter(s => {
-    if (!search.trim()) return true;
-    const q = search.trim().toLowerCase();
-    return [s.name, s.owner_name, s.business_number, s.phone].some(v => v && String(v).toLowerCase().includes(q));
+    if (!filters) return true;
+    if (filters.nameQuery && !String(s.name || '').toLowerCase().includes(filters.nameQuery.toLowerCase())) return false;
+    if (filters.bizQuery && !String(s.business_number || '').includes(filters.bizQuery)) return false;
+    if (filters.franchiseType && s.franchise_type !== filters.franchiseType) return false;
+    if (filters.openStatus === 'open' && s.is_open === false) return false;
+    if (filters.openStatus === 'closed' && s.is_open !== false) return false;
+    return true;
   });
 
   const handleSave = async (form) => {
@@ -194,18 +209,41 @@ export default function Stores() {
 
   return (
     <div>
+      <div className="breadcrumb">기초정보 &gt; 가맹점관리 &gt; <b>가맹점조회</b></div>
+
       <div className="top-bar">
-        <h2>가맹점 관리</h2>
+        <h2>가맹점조회</h2>
         <button className="primary" onClick={() => setModal('add')}>+ 가맹점 추가</button>
       </div>
 
-      <div className="card" style={{ marginBottom: 12, padding: 12 }}>
-        <input
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          placeholder="가맹점명 / 대표자명 / 사업자번호 / 전화번호 검색"
-          style={{ width: '100%' }}
-        />
+      {/* 검색 필터 패널 */}
+      <div className="card kicc-search-panel">
+        <div className="kicc-search-row">
+          <div className="filter-field">
+            <label>매장명</label>
+            <input value={nameQuery} onChange={e => setNameQuery(e.target.value)} placeholder="가맹점명" />
+          </div>
+          <div className="filter-field">
+            <label>사업자번호</label>
+            <input value={bizQuery} onChange={e => setBizQuery(e.target.value)} placeholder="123-45-67890" />
+          </div>
+          <div className="filter-field">
+            <label>가맹형태</label>
+            <select value={franchiseType} onChange={e => setFranchiseType(e.target.value)}>
+              <option value="">전체</option>
+              {FRANCHISE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </div>
+          <div className="filter-field">
+            <label>오픈여부</label>
+            <select value={openStatus} onChange={e => setOpenStatus(e.target.value)}>
+              <option value="">전체</option>
+              <option value="open">오픈</option>
+              <option value="closed">폐점</option>
+            </select>
+          </div>
+          <button className="primary kicc-search-btn" onClick={runSearch}>🔍 조회</button>
+        </div>
       </div>
 
       <div className="card">
@@ -218,13 +256,14 @@ export default function Stores() {
             <thead>
               <tr>
                 <th>NO</th>
-                <th>가맹점명</th>
+                <th>매장</th>
                 <th>대표자명</th>
                 <th>전화번호</th>
                 <th>사업자번호</th>
                 <th>가맹형태</th>
                 <th>오픈여부</th>
                 <th>개점일</th>
+                <th>주소</th>
                 <th>웹훅 URL</th>
                 <th>발주마감</th>
                 <th>납품요일</th>
@@ -235,7 +274,7 @@ export default function Stores() {
               {filteredStores.map((s, i) => {
                 const days = s.delivery_days ? s.delivery_days.split(',').filter(Boolean).map(d => DAY_LABELS[Number(d)]).join(' ') : '-';
                 return (
-                <tr key={s.id} style={{ background: s.id === currentStore?.id ? 'rgba(99,102,241,0.08)' : '' }}>
+                <tr key={s.id} style={{ background: s.id === currentStore?.id ? 'rgba(0,100,255,0.06)' : '' }}>
                   <td className="text-sub" style={{ fontSize: 13 }}>{i + 1}</td>
                   <td>
                     <b>{s.name}</b>
@@ -249,6 +288,7 @@ export default function Stores() {
                     <span className={`badge ${s.is_open === false ? 'red' : 'green'}`}>{s.is_open === false ? '폐점' : '오픈'}</span>
                   </td>
                   <td className="text-sub" style={{ fontSize: 13 }}>{s.open_date || '-'}</td>
+                  <td className="text-sub" style={{ fontSize: 13 }}>{s.address || '-'}</td>
                   <td className="text-sub" style={{ fontSize: 12 }}>/webhook/{s.id}</td>
                   <td className="text-sub" style={{ fontSize: 13 }}>{s.order_deadline || '-'}</td>
                   <td className="text-sub" style={{ fontSize: 13 }}>{days}</td>
