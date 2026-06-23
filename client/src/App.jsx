@@ -74,19 +74,21 @@ function HQLayout() {
       </header>
       <TopBar name={user?.name} stores={stores} currentStore={currentStore} selectStore={selectStore} />
       <main className="kicc-main">
-        <Routes>
-          <Route path="/" element={<Stores />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/orders" element={<HQOrders />} />
-          <Route path="/risks" element={<Risks />} />
-          <Route path="/ingredients" element={<Ingredients />} />
-          <Route path="/menus" element={<Menus />} />
-          <Route path="/products" element={<Products />} />
-          <Route path="/analytics" element={<Analytics />} />
-          <Route path="/waste" element={<Waste />} />
-          <Route path="/users" element={<Users />} />
-          <Route path="*" element={<Navigate to="/" />} />
-        </Routes>
+        <div className="kicc-main-inner">
+          <Routes>
+            <Route path="/" element={<Stores />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/orders" element={<HQOrders />} />
+            <Route path="/risks" element={<Risks />} />
+            <Route path="/ingredients" element={<Ingredients />} />
+            <Route path="/menus" element={<Menus />} />
+            <Route path="/products" element={<Products />} />
+            <Route path="/analytics" element={<Analytics />} />
+            <Route path="/waste" element={<Waste />} />
+            <Route path="/users" element={<Users />} />
+            <Route path="*" element={<Navigate to="/" />} />
+          </Routes>
+        </div>
       </main>
       <StockAlert />
     </div>
@@ -107,12 +109,14 @@ function StoreLayout() {
       </header>
       <TopBar name={user?.name} />
       <main className="kicc-main">
-        <Routes>
-          <Route path="/store" element={<StoreOrder />} />
-          <Route path="/store/stock" element={<StoreStock />} />
-          <Route path="/store/waste" element={<Waste />} />
-          <Route path="*" element={<Navigate to="/store" />} />
-        </Routes>
+        <div className="kicc-main-inner">
+          <Routes>
+            <Route path="/store" element={<StoreOrder />} />
+            <Route path="/store/stock" element={<StoreStock />} />
+            <Route path="/store/waste" element={<Waste />} />
+            <Route path="*" element={<Navigate to="/store" />} />
+          </Routes>
+        </div>
       </main>
     </div>
   );
