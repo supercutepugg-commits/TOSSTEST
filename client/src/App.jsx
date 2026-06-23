@@ -19,21 +19,13 @@ import Analytics from './pages/Analytics';
 import Login from './pages/Login';
 import StockAlert from './components/StockAlert';
 
-function TopBar({ name, stores, currentStore, selectStore }) {
+function TopBar({ name, currentStore }) {
   const { logout } = useAuth();
   const { theme, toggle } = useTheme();
   return (
     <div className="topbar-info">
       <div className="topbar-info-left">
-        {stores && stores.length > 0 && (
-          <select
-            className="topbar-store-select"
-            value={currentStore?.id || ''}
-            onChange={e => { const s = stores.find(x => x.id === Number(e.target.value)); if (s) selectStore(s); }}
-          >
-            {stores.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-          </select>
-        )}
+        {currentStore && <span className="topbar-current-store">🏪 {currentStore.name}</span>}
       </div>
       <div className="topbar-info-right">
         <span className="topbar-user">{name} 님</span>
@@ -131,7 +123,7 @@ function SideMenu({ collapsed, onToggle, storeSelected }) {
 
 function HQLayout() {
   const { user } = useAuth();
-  const { stores, currentStore, selectStore } = useStore();
+  const { currentStore } = useStore();
   const storeSelected = !!currentStore;
   const [collapsed, setCollapsed] = useState(false);
 
@@ -155,7 +147,7 @@ function HQLayout() {
           <NavTab to="/users" icon="👤" label="사용자" disabled={!storeSelected} />
         </nav>
       </header>
-      <TopBar name={user?.name} stores={stores} currentStore={currentStore} selectStore={selectStore} />
+      <TopBar name={user?.name} currentStore={currentStore} />
       <div className="kicc-body">
         <SideMenu collapsed={collapsed} onToggle={() => setCollapsed(c => !c)} storeSelected={storeSelected} />
         <main className="kicc-main">

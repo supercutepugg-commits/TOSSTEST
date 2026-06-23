@@ -134,16 +134,7 @@ body {
   flex-shrink: 0;
 }
 .topbar-info-left { display: flex; align-items: center; gap: 8px; }
-.topbar-store-select {
-  padding: 6px 10px;
-  border-radius: 8px;
-  border: 1px solid var(--border-input);
-  background: var(--bg-input);
-  color: var(--text);
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-}
+.topbar-current-store { font-size: 13px; font-weight: 700; color: var(--text); }
 .topbar-info-right { display: flex; align-items: center; gap: 10px; }
 .topbar-user { font-size: 13px; color: var(--text-2); }
 .topbar-link {
