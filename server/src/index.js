@@ -17,6 +17,8 @@ const corsOriginCheck = (origin, callback) => {
   callback(allowed ? null : new Error('CORS blocked'), allowed);
 };
 app.use(cors({ origin: corsOriginCheck }));
+// 토스 결제 웹훅은 서명 검증을 위해 raw body가 필요해서 express.json()보다 먼저 등록
+app.use('/api/orders/toss-webhook', express.raw({ type: 'application/json' }));
 app.use(express.json());
 
 const apiRoutes = require('./routes/api');

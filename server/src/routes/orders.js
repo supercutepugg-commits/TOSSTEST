@@ -414,7 +414,26 @@ router.delete('/:id', requireAuth, async (req, res) => {
 // 웹훅 payload는 신뢰하지 않고 paymentKey로 토스 서버에 직접 조회해 받은 값만 반영한다.
 router.post('/toss-webhook', async (req, res) => {
   try {
-    const paymentKey = req.body?.data?.paymentKey || req.body?.paymentKey;
+    const rawBody = Buffer.isBuffer(req.body) ? req.body.toString() : JSON.stringify(req.body);
+
+    // 서명 검증 (토스플레이스 웹훅과 동일한 방식: HMAC-SHA256("<timestamp>.<rawBody>") → hex → "v1=" 접두사)
+    const secret = process.env.TOSS_PAYMENT_WEBHOOK_SECRET;
+    if (secret) {
+      const signature = req.headers['x-toss-signature'] || '';
+      const timestamp = req.headers['x-toss-timestamp'] || '';
+      if (!signature || !timestamp) return res.sendStatus(401);
+      const tsNum = Number(timestamp);
+      const tsMs = tsNum < 10_000_000_000 ? tsNum * 1000 : tsNum;
+      if (!Number.isFinite(tsMs) || Math.abs(Date.now() - tsMs) > 5 * 60 * 1000) return res.sendStatus(401);
+      const hmac = crypto.createHmac('sha256', secret).update(`${timestamp}.${rawBody}`).digest('hex');
+      const expected = `v1=${hmac}`;
+      const sigBuf = Buffer.from(signature);
+      const expectedBuf = Buffer.from(expected);
+      if (sigBuf.length !== expectedBuf.length || !crypto.timingSafeEqual(sigBuf, expectedBuf)) return res.sendStatus(401);
+    }
+
+    const payload = JSON.parse(rawBody);
+    const paymentKey = payload?.data?.paymentKey || payload?.paymentKey;
     if (!paymentKey || !TOSS_SECRET_KEY) return res.sendStatus(200);
 
     const order = await knex('purchase_orders').where({ toss_payment_key: paymentKey }).first();
