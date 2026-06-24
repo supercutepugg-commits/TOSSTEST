@@ -213,8 +213,9 @@ export default function Stores() {
   const inspectSampleOrder = async (store) => {
     try {
       const result = await api.getSampleOrder(store.id);
+      console.log(`[원본 데이터 확인] ${store.name} — 전체 ${result.total ?? '?'}건, 상태별:`, result.stateCounts);
       if (result.error) { toast(result.error, 'error'); return; }
-      console.log(`[원본 데이터 확인] ${store.name} — 가장 최근 주문 (${result.processed_at})`);
+      console.log(`가장 최근 결제완료 주문 (${result.processed_at})`);
       console.log(JSON.stringify(result.raw, null, 2));
       toast('콘솔(F12)에서 데이터 구조를 확인해주세요', 'info');
     } catch (e) {
