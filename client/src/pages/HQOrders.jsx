@@ -176,7 +176,7 @@ export default function HQOrders() {
 
           <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10 }}>
             <StatusBadge status={detail.status} />
-            {canEdit && detail.status === 'PAID' && (
+            {canEdit && ['PAID', 'PREPARING_SHIPMENT', 'SHIPPED', 'DELIVERED'].includes(detail.status) && (
               <button className="secondary small" onClick={() => refund(detail)}>환불</button>
             )}
           </div>

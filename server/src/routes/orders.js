@@ -186,62 +186,71 @@ router.post('/:id/status', requireAuth, requireRole(...LOGISTICS_ROLES), async (
   await logHistory(order.id, 'STATUS_CHANGE', { status: order.status }, { status }, reason, req.user.id);
 
   // 납품 완료 시 linked ingredient 재고 반영 (없으면 자동 생성)
-  if (status === 'DELIVERED') {
-    const items = await knex('purchase_order_items').where({ order_id: order.id });
-    for (const item of items) {
-      if (!item.product_id) continue;
-      const product = await knex('products').where({ id: item.product_id }).first();
-      if (!product) continue;
-      const qty = item.confirmed_quantity ?? item.quantity;
-      const delta = qty * (product.unit_conversion || 1);
-
-      if (product.ingredient_id) {
-        // 브랜드 공통(또는 다른 가맹점) ingredient 원본
-        const base = await knex('ingredients').where({ id: product.ingredient_id }).first();
-        if (base) {
-          const baseName = base.name || product.name;
-          if (!baseName) continue; // 이름을 알 수 없으면 빈 이름 재료를 만들지 않고 건너뜀
-          // 해당 가맹점에 같은 이름의 ingredient가 이미 있는지 확인 (id는 매번 새로 생성되므로 이름으로 매칭)
-          let ing = await knex('ingredients')
-            .where({ brand_id: base.brand_id, store_id: order.store_id, name: baseName }).first();
-
-          if (!ing) {
-            const [{ id: newId }] = await knex('ingredients').insert({
-              brand_id: base.brand_id,
-              store_id: order.store_id,
-              name: baseName,
-              unit: base.unit,
-              stock: 0,
-              threshold: base.threshold || 0,
-            }).returning('id');
-            ing = { id: newId };
-          }
-          await knex('ingredients').where({ id: ing.id }).increment('stock', delta);
-        }
-      } else {
-        // ingredient 미연결 — 상품명으로 가맹점 재료 자동 생성
-        const ingName = item.product_name || product.name;
-        if (!ingName) continue; // 이름을 알 수 없으면 빈 이름 재료를 만들지 않고 건너뜀
-        let ing = await knex('ingredients')
-          .where({ brand_id: order.brand_id, store_id: order.store_id, name: ingName }).first();
-        if (!ing) {
-          const [{ id: newId }] = await knex('ingredients').insert({
-            brand_id: order.brand_id,
-            store_id: order.store_id,
-            name: ingName,
-            unit: product.base_unit || product.unit || '개',
-            stock: 0,
-            threshold: 0,
-          }).returning('id');
-          ing = { id: newId };
-        }
-        await knex('ingredients').where({ id: ing.id }).increment('stock', delta);
-      }
-    }
-  }
+  if (status === 'DELIVERED') await applyDeliveryStock(order, 1);
 
   res.json({ ok: true });
 });
+
+// sign: 1 = 납품 완료(입고), -1 = 환불로 인한 입고 취소
+async function applyDeliveryStock(order, sign) {
+  const items = await knex('purchase_order_items').where({ order_id: order.id });
+  for (const item of items) {
+    if (!item.product_id) continue;
+    const product = await knex('products').where({ id: item.product_id }).first();
+    if (!product) continue;
+    const qty = item.confirmed_quantity ?? item.quantity;
+    const delta = sign * qty * (product.unit_conversion || 1);
+
+    if (product.ingredient_id) {
+      // 브랜드 공통(또는 다른 가맹점) ingredient 원본
+      const base = await knex('ingredients').where({ id: product.ingredient_id }).first();
+      if (base) {
+        const baseName = base.name || product.name;
+        if (!baseName) continue; // 이름을 알 수 없으면 빈 이름 재료를 만들지 않고 건너뜀
+        // 해당 가맹점에 같은 이름의 ingredient가 이미 있는지 확인 (id는 매번 새로 생성되므로 이름으로 매칭)
+        let ing = await knex('ingredients')
+          .where({ brand_id: base.brand_id, store_id: order.store_id, name: baseName }).first();
+
+        if (!ing) {
+          if (sign < 0) continue; // 환불 시 재료가 없으면 만들지 않음
+          const [{ id: newId }] = await knex('ingredients').insert({
+            brand_id: base.brand_id,
+            store_id: order.store_id,
+            name: baseName,
+            unit: base.unit,
+            stock: 0,
+            threshold: base.threshold || 0,
+          }).returning('id');
+          ing = { id: newId };
+        }
+        const next = sign < 0 ? Math.max(0, (ing.stock || 0) + delta) : null;
+        if (sign < 0) await knex('ingredients').where({ id: ing.id }).update({ stock: next });
+        else await knex('ingredients').where({ id: ing.id }).increment('stock', delta);
+      }
+    } else {
+      // ingredient 미연결 — 상품명으로 가맹점 재료 자동 생성
+      const ingName = item.product_name || product.name;
+      if (!ingName) continue; // 이름을 알 수 없으면 빈 이름 재료를 만들지 않고 건너뜀
+      let ing = await knex('ingredients')
+        .where({ brand_id: order.brand_id, store_id: order.store_id, name: ingName }).first();
+      if (!ing) {
+        if (sign < 0) continue;
+        const [{ id: newId }] = await knex('ingredients').insert({
+          brand_id: order.brand_id,
+          store_id: order.store_id,
+          name: ingName,
+          unit: product.base_unit || product.unit || '개',
+          stock: 0,
+          threshold: 0,
+        }).returning('id');
+        ing = { id: newId };
+      }
+      const next = sign < 0 ? Math.max(0, (ing.stock || 0) + delta) : null;
+      if (sign < 0) await knex('ingredients').where({ id: ing.id }).update({ stock: next });
+      else await knex('ingredients').where({ id: ing.id }).increment('stock', delta);
+    }
+  }
+}
 
 // ── 본사 수량 수정 / 품절 / 대체상품 ─────────────────
 router.put('/:id/items/:itemId', requireAuth, requireRole(...LOGISTICS_ROLES), async (req, res) => {
@@ -333,7 +342,9 @@ router.post('/:id/payment/confirm', requireAuth, async (req, res) => {
 router.post('/:id/refund', requireAuth, requireRole(...LOGISTICS_ROLES), async (req, res) => {
   const order = await knex('purchase_orders').where({ id: req.params.id, brand_id: req.user.brand_id }).first();
   if (!order) return res.status(404).json({ error: '없음' });
-  if (order.status !== 'PAID') return res.status(400).json({ error: '결제 완료 상태에서만 환불할 수 있습니다' });
+  if (!['PAID', 'PREPARING_SHIPMENT', 'SHIPPED', 'DELIVERED'].includes(order.status)) {
+    return res.status(400).json({ error: '결제 완료 이후 상태에서만 환불할 수 있습니다' });
+  }
   if (!order.toss_payment_key) return res.status(400).json({ error: '결제 정보가 없습니다' });
   if (!TOSS_SECRET_KEY) return res.status(500).json({ error: '결제 설정 오류 (TOSS_SECRET_KEY 미설정)' });
 
@@ -350,6 +361,8 @@ router.post('/:id/refund', requireAuth, requireRole(...LOGISTICS_ROLES), async (
   if (!tossRes.ok) {
     return res.status(tossRes.status).json({ error: result.message || '환불 처리 실패', code: result.code });
   }
+
+  if (order.status === 'DELIVERED') await applyDeliveryStock(order, -1);
 
   await knex('purchase_orders').where({ id: order.id }).update({ status: 'CANCELED' });
   await logHistory(order.id, 'STATUS_CHANGE', { status: order.status }, { status: 'CANCELED' }, `환불: ${reason}`, req.user.id);
