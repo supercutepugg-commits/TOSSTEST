@@ -434,20 +434,23 @@ router.post('/toss-webhook', async (req, res) => {
 
     const payload = JSON.parse(rawBody);
     const paymentKey = payload?.data?.paymentKey || payload?.paymentKey;
-    if (!paymentKey || !TOSS_SECRET_KEY) return res.sendStatus(200);
+    console.log('[토스 웹훅] 수신:', payload?.eventType, paymentKey);
+    if (!paymentKey || !TOSS_SECRET_KEY) { console.log('[토스 웹훅] paymentKey 또는 TOSS_SECRET_KEY 없음'); return res.sendStatus(200); }
 
     const order = await knex('purchase_orders').where({ toss_payment_key: paymentKey }).first();
-    if (!order) return res.sendStatus(200);
+    if (!order) { console.log('[토스 웹훅] 일치하는 주문 없음:', paymentKey); return res.sendStatus(200); }
 
     const authHeader = 'Basic ' + Buffer.from(`${TOSS_SECRET_KEY}:`).toString('base64');
     const tossRes = await fetch(`${TOSS_API_BASE}/${paymentKey}`, { headers: { Authorization: authHeader } });
-    if (!tossRes.ok) return res.sendStatus(200);
+    if (!tossRes.ok) { console.log('[토스 웹훅] 토스 재조회 실패:', tossRes.status, await tossRes.text()); return res.sendStatus(200); }
     const payment = await tossRes.json();
+    console.log('[토스 웹훅] 토스 재조회 결과:', payment.status, payment.totalAmount, payment.balanceAmount);
 
     const refundedAmount = Math.round((payment.totalAmount || 0) - (payment.balanceAmount ?? payment.totalAmount));
-    if (refundedAmount === Math.round(order.refunded_amount || 0)) return res.sendStatus(200); // 변경 없음
+    if (refundedAmount === Math.round(order.refunded_amount || 0)) { console.log('[토스 웹훅] 변경 없음, order_id:', order.id); return res.sendStatus(200); }
 
     const isFull = (payment.balanceAmount ?? 0) <= 0 || payment.status === 'CANCELED';
+    console.log('[토스 웹훅] 동기화 진행: order_id', order.id, 'refundedAmount', refundedAmount, 'isFull', isFull);
     if (isFull && order.status === 'DELIVERED' && !order.stock_reversed) {
       await applyDeliveryStock(order, -1);
     }
@@ -462,6 +465,7 @@ router.post('/toss-webhook', async (req, res) => {
       '토스 대시보드에서 직접 취소 (웹훅 동기화)', null);
     await logAudit(order.brand_id, null, 'PAYMENT', order.id, 'REFUND_SYNC',
       { refunded_amount: order.refunded_amount || 0 }, { refunded_amount: refundedAmount });
+    console.log('[토스 웹훅] 동기화 완료: order_id', order.id);
 
     res.sendStatus(200);
   } catch (err) {
