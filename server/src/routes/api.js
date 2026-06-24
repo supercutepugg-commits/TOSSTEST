@@ -489,9 +489,9 @@ router.get('/purchase-anomalies', requireAuth, requireRole(...HQ_ROLES), async (
 
 // ─── Toss Place 과거 데이터 동기화 ────────────────────
 async function syncStoreSales(store, fromDate, toDate) {
-  const accessKey = process.env.TOSS_ACCESS_KEY;
-  const secretKey = process.env.TOSS_SECRET_KEY;
-  if (!accessKey || !secretKey) throw new Error('TOSS_ACCESS_KEY / TOSS_SECRET_KEY 환경변수가 설정되지 않았습니다');
+  const accessKey = process.env.TOSS_PLACE_ACCESS_KEY;
+  const secretKey = process.env.TOSS_PLACE_SECRET_KEY;
+  if (!accessKey || !secretKey) throw new Error('TOSS_PLACE_ACCESS_KEY / TOSS_PLACE_SECRET_KEY 환경변수가 설정되지 않았습니다');
   if (!store.toss_store_id) throw new Error('토스플레이스 매장 ID(toss_store_id)가 설정되지 않았습니다');
 
   const TOSS_BASE = process.env.TOSS_PLACE_API_URL || 'https://open-api.tossplace.com';

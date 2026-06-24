@@ -18,6 +18,10 @@ services:
         sync: false
       - key: TOSS_SECRET_KEY
         sync: false
+      - key: TOSS_PLACE_ACCESS_KEY
+        sync: false
+      - key: TOSS_PLACE_SECRET_KEY
+        sync: false
 
   - type: web
     name: inventory-alert-client
