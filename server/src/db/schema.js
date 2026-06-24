@@ -180,6 +180,8 @@ async function initDb() {
   await addColumnIfMissing('purchase_orders', 'paid_at', t => t.datetime('paid_at').nullable());
   await addColumnIfMissing('purchase_orders', 'refunded_amount', t => t.float('refunded_amount').defaultTo(0));
   await addColumnIfMissing('purchase_orders', 'stock_reversed', t => t.boolean('stock_reversed').defaultTo(false));
+  await addColumnIfMissing('purchase_orders', 'updated_at', t => t.datetime('updated_at').nullable());
+  await addColumnIfMissing('purchase_orders', 'stock_applied', t => t.boolean('stock_applied').defaultTo(false));
 
   // ── 발주 상품 목록 ────────────────────────────────────
   await createIfMissing('purchase_order_items', t => {

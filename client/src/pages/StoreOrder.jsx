@@ -34,6 +34,7 @@ export default function StoreOrder() {
   const [orders, setOrders] = useState([]);
   const [memo, setMemo] = useState('');
   const [editingOrderId, setEditingOrderId] = useState(null);
+  const [editingOrderUpdatedAt, setEditingOrderUpdatedAt] = useState(null);
   const [detailOrder, setDetailOrder] = useState(null);
 
   const loadOrders = () => api.getOrders().then(setOrders).catch(() => {});
@@ -69,10 +70,11 @@ export default function StoreOrder() {
     setCart(newCart);
     setMemo(detail.memo || '');
     setEditingOrderId(order.id);
+    setEditingOrderUpdatedAt(detail.updated_at || null);
     setTab('new');
   };
 
-  const resetCart = () => { setCart([]); setMemo(''); setEditingOrderId(null); };
+  const resetCart = () => { setCart([]); setMemo(''); setEditingOrderId(null); setEditingOrderUpdatedAt(null); };
 
   const submitOrder = async (draft) => {
     if (cart.length === 0) { toast('상품을 선택해주세요', 'error'); return; }
@@ -82,13 +84,18 @@ export default function StoreOrder() {
         product_id: i.product.id, product_name: i.product.name,
         unit: i.product.unit, unit_price: i.product.price, quantity: i.quantity,
       })),
+      updated_at: editingOrderUpdatedAt,
     };
-    if (editingOrderId) await api.updateOrder(editingOrderId, payload);
-    else await api.createOrder(payload);
-    toast(draft ? '임시저장 완료' : '발주 완료', 'success');
-    resetCart();
-    loadOrders();
-    if (!draft) setTab('history');
+    try {
+      if (editingOrderId) await api.updateOrder(editingOrderId, payload);
+      else await api.createOrder(payload);
+      toast(draft ? '임시저장 완료' : '발주 완료', 'success');
+      resetCart();
+      loadOrders();
+      if (!draft) setTab('history');
+    } catch (e) {
+      toast(e.message || '저장에 실패했습니다. 새로고침 후 다시 시도해주세요', 'error');
+    }
   };
 
   const pendingOrders = orders.filter(o => ['DRAFT', 'REVISION_REQUESTED'].includes(o.status));

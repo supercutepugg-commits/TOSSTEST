@@ -20,6 +20,11 @@ async function requireAuth(req, res, next) {
   if (!token) return res.status(401).json({ error: '로그인이 필요합니다' });
   try {
     const decoded = jwt.verify(token, SECRET);
+    // 토큰만으로는 계정 비활성화 여부를 알 수 없으므로 매 요청마다 최신 활성 상태를 확인
+    const user = await knex('users').where({ id: decoded.id }).select('is_active').first();
+    if (!user || !user.is_active) {
+      return res.status(401).json({ error: '계정이 비활성화되었습니다' });
+    }
     req.user = decoded;
     next();
   } catch {

@@ -28,23 +28,34 @@ router.post('/', requireAuth, async (req, res) => {
   const store_id = req.user.store_id;
   if (!store_id) return res.status(400).json({ error: '가맹점 정보 없음' });
 
+  const qty = Number(quantity);
+  if (!Number.isFinite(qty) || qty <= 0) {
+    return res.status(400).json({ error: '폐기 수량은 0보다 큰 값이어야 합니다' });
+  }
+
   let ingredient = null;
   if (ingredient_id) {
     ingredient = await knex('ingredients').where({ id: ingredient_id, brand_id: req.user.brand_id, store_id }).first();
     if (!ingredient) return res.status(400).json({ error: '해당 가맹점의 재료가 아닙니다' });
+    if (qty > ingredient.stock) {
+      return res.status(400).json({ error: `현재 재고(${ingredient.stock}${ingredient.unit})보다 많은 양을 폐기할 수 없습니다` });
+    }
   }
 
-  const [{ id }] = await knex('waste_logs').insert({
-    brand_id: req.user.brand_id,
-    store_id, ingredient_id: ingredient_id || null,
-    ingredient_name, quantity, unit, reason, memo,
-    waste_date, created_by: req.user.id,
-  }).returning('id');
+  const id = await knex.transaction(async (trx) => {
+    const [{ id: insertedId }] = await trx('waste_logs').insert({
+      brand_id: req.user.brand_id,
+      store_id, ingredient_id: ingredient_id || null,
+      ingredient_name, quantity: qty, unit, reason, memo,
+      waste_date, created_by: req.user.id,
+    }).returning('id');
 
-  // 재고 차감
-  if (ingredient) {
-    await knex('ingredients').where({ id: ingredient.id }).decrement('stock', Number(quantity));
-  }
+    // 재고 차감
+    if (ingredient) {
+      await trx('ingredients').where({ id: ingredient.id }).decrement('stock', qty);
+    }
+    return insertedId;
+  });
 
   // 폐기 과다 리스크 체크 (비동기 - 응답 블록 안함)
   checkHighWaste(req.user.brand_id, store_id).catch(() => {});
@@ -58,7 +69,13 @@ router.delete('/:id', requireAuth, async (req, res) => {
   if (isStoreRole(req.user.role) && log.store_id !== req.user.store_id) {
     return res.status(403).json({ error: '권한 없음' });
   }
-  await knex('waste_logs').where({ id: log.id }).delete();
+  await knex.transaction(async (trx) => {
+    await trx('waste_logs').where({ id: log.id }).delete();
+    // 폐기 기록 취소 시 차감했던 재고를 복원
+    if (log.ingredient_id) {
+      await trx('ingredients').where({ id: log.ingredient_id }).increment('stock', log.quantity);
+    }
+  });
   res.json({ ok: true });
 });
 

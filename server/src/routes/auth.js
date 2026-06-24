@@ -5,15 +5,39 @@ const { knex } = require('../db/schema');
 const { signToken, requireAuth, requireRole, HQ_ROLES } = require('../middleware/auth');
 const { logAudit } = require('../auditLog');
 
+// 로그인 무차별 대입 방어 — 이메일 기준 5회 연속 실패 시 15분 잠금 (단일 프로세스 메모리 기반)
+const MAX_LOGIN_ATTEMPTS = 5;
+const LOGIN_LOCKOUT_MS = 15 * 60 * 1000;
+const loginAttempts = new Map(); // email -> { count, lockedUntil }
+
+function getLoginState(email) {
+  const state = loginAttempts.get(email);
+  if (state?.lockedUntil && state.lockedUntil < Date.now()) {
+    loginAttempts.delete(email);
+    return null;
+  }
+  return state || null;
+}
+
 // 로그인
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
-    const user = await knex('users').where({ email, is_active: true }).first();
-    if (!user) return res.status(401).json({ error: '이메일 또는 비밀번호가 올바르지 않습니다' });
+    const state = getLoginState(email);
+    if (state?.lockedUntil) {
+      const minutesLeft = Math.ceil((state.lockedUntil - Date.now()) / 60000);
+      return res.status(429).json({ error: `로그인 시도가 너무 많습니다. ${minutesLeft}분 후 다시 시도해주세요` });
+    }
 
-    const ok = await bcrypt.compare(password, user.password_hash);
-    if (!ok) return res.status(401).json({ error: '이메일 또는 비밀번호가 올바르지 않습니다' });
+    const user = await knex('users').where({ email, is_active: true }).first();
+    const ok = user ? await bcrypt.compare(password, user.password_hash) : false;
+    if (!ok) {
+      const next = { count: (state?.count || 0) + 1 };
+      if (next.count >= MAX_LOGIN_ATTEMPTS) next.lockedUntil = Date.now() + LOGIN_LOCKOUT_MS;
+      loginAttempts.set(email, next);
+      return res.status(401).json({ error: '이메일 또는 비밀번호가 올바르지 않습니다' });
+    }
+    loginAttempts.delete(email);
 
     const token = signToken(user);
     const { password_hash, ...userInfo } = user;

@@ -73,30 +73,40 @@ initDb().then(async () => {
     }
   } catch (e) { console.error('[백필] 오류:', e.message); }
 
+  // 이전 실행이 아직 끝나지 않았으면 겹쳐 돌지 않도록 건너뛰는 래퍼
+  function withOverlapGuard(name, fn) {
+    let running = false;
+    return async () => {
+      if (running) { console.log(`[크론] ${name} 이전 실행이 아직 진행 중이라 건너뜀`); return; }
+      running = true;
+      try { await fn(); } finally { running = false; }
+    };
+  }
+
   // 결제 미완료 리스크 체크: 1시간마다
   const { checkPaymentOverdue, checkLowStock } = require('./routes/risks');
-  const runOverdueCheck = async () => {
+  const runOverdueCheck = withOverlapGuard('결제 미완료 체크', async () => {
     try {
       const brands = await knex('brands').select('id');
       for (const b of brands) await checkPaymentOverdue(b.id);
     } catch (e) { console.error('[리스크] 결제 미완료 체크 오류:', e.message); }
-  };
+  });
   runOverdueCheck();
   setInterval(runOverdueCheck, 60 * 60 * 1000);
 
   // 재고 부족 리스크 체크: 10분마다 (재고부족 팝업과 별개로 리스크 알림 탭에도 쌓이도록)
-  const runLowStockCheck = async () => {
+  const runLowStockCheck = withOverlapGuard('재고 부족 체크', async () => {
     try {
       const brands = await knex('brands').select('id');
       for (const b of brands) await checkLowStock(b.id);
     } catch (e) { console.error('[리스크] 재고 부족 체크 오류:', e.message); }
-  };
+  });
   runLowStockCheck();
   setInterval(runLowStockCheck, 10 * 60 * 1000);
 
   // Toss Place 과거/누락 매출 자동 동기화: 토스플레이스 매장 ID가 등록된 가맹점만 3분마다 재동기화
   // 한 번도 동기화 안 한 가맹점은 전체 매출(최근 5년)을, 이후엔 최근 2일치만 다시 가져옴 (API 호출량 보호)
-  const runAutoSync = async () => {
+  const runAutoSync = withOverlapGuard('토스 자동 동기화', async () => {
     try {
       const stores = await knex('stores').whereNotNull('toss_store_id').where('toss_store_id', '!=', '');
       const toDate = new Date().toISOString().split('T')[0];
@@ -111,9 +121,27 @@ initDb().then(async () => {
         } catch (e) { console.error(`[자동 동기화] ${store.name} 오류:`, e.message); }
       }
     } catch (e) { console.error('[자동 동기화] 오류:', e.message); }
-  };
+  });
   runAutoSync();
   setInterval(runAutoSync, 3 * 60 * 1000);
+
+  // 오래된 리스크/이력 데이터 정리: 1일마다 (무한 누적 방지)
+  // - 처리 완료(RESOLVED/DISMISSED) 리스크는 180일 보관 후 삭제
+  // - 발주 처리 이력(order_history)은 1년 보관 후 삭제 (분쟁/정산 추적 기간 고려)
+  const runDataCleanup = withOverlapGuard('오래된 데이터 정리', async () => {
+    try {
+      const riskCutoff = new Date(Date.now() - 180 * 86400000).toISOString();
+      const deletedRisks = await knex('risk_alerts')
+        .whereIn('status', ['RESOLVED', 'DISMISSED']).where('created_at', '<', riskCutoff).delete();
+      const historyCutoff = new Date(Date.now() - 365 * 86400000).toISOString();
+      const deletedHistory = await knex('order_history').where('created_at', '<', historyCutoff).delete();
+      if (deletedRisks || deletedHistory) {
+        console.log(`[정리] 리스크 ${deletedRisks}건, 발주이력 ${deletedHistory}건 삭제`);
+      }
+    } catch (e) { console.error('[정리] 오류:', e.message); }
+  });
+  runDataCleanup();
+  setInterval(runDataCleanup, 24 * 60 * 60 * 1000);
 }).catch(err => {
   console.error('DB init failed:', err);
   process.exit(1);
