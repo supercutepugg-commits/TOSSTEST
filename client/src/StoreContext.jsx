@@ -13,8 +13,10 @@ export function StoreProvider({ children }) {
       setStores(list);
       if (!currentStore && list.length > 0) {
         const saved = localStorage.getItem('currentStoreId');
-        const found = list.find(s => s.id === Number(saved)) || list[0];
-        setCurrentStore(found);
+        if (saved) {
+          const found = list.find(s => s.id === Number(saved));
+          if (found) setCurrentStore(found);
+        }
       }
     } catch {}
   };
