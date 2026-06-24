@@ -25,7 +25,10 @@ router.post('/login', async (req, res) => {
 
 // 내 정보
 router.get('/me', requireAuth, async (req, res) => {
-  const user = await knex('users').where({ id: req.user.id }).first();
+  const user = await knex('users as u')
+    .leftJoin('stores as s', 'u.store_id', 's.id')
+    .select('u.*', 's.name as store_name')
+    .where('u.id', req.user.id).first();
   if (!user) return res.status(404).json({ error: '사용자 없음' });
   const { password_hash, ...userInfo } = user;
   res.json(userInfo);

@@ -184,7 +184,7 @@ function HQLayout() {
           </div>
         </main>
       </div>
-      <StockAlert />
+      <StockAlert storeId={currentStore?.id} storeName={currentStore?.name} />
     </div>
   );
 }
@@ -213,6 +213,7 @@ function StoreLayout() {
           </Routes>
         </div>
       </main>
+      <StockAlert storeId={user?.store_id} storeName={user?.store_name} />
     </div>
   );
 }

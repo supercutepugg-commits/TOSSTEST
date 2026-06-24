@@ -1,21 +1,19 @@
 import { useEffect, useState, useRef } from 'react';
 import { api } from '../api';
-import { useStore } from '../StoreContext';
 
-export default function StockAlert() {
-  const { currentStore } = useStore();
+export default function StockAlert({ storeId, storeName }) {
   const [alerts, setAlerts] = useState([]);
   const prevLowIds = useRef(new Set());
 
   useEffect(() => {
     prevLowIds.current = new Set();
     setAlerts([]);
-  }, [currentStore?.id]);
+  }, [storeId]);
 
   useEffect(() => {
     const check = async () => {
       try {
-        const { lowStock } = await api.getDashboard(currentStore?.id);
+        const { lowStock } = await api.getDashboard(storeId);
         const currentIds = new Set(lowStock.map(i => i.id));
 
         // 이전엔 없었는데 새로 부족해진 재료만 알림
@@ -32,7 +30,7 @@ export default function StockAlert() {
     check();
     const interval = setInterval(check, 5000);
     return () => clearInterval(interval);
-  }, [currentStore?.id]);
+  }, [storeId]);
 
   if (alerts.length === 0) return null;
 
@@ -58,16 +56,16 @@ export default function StockAlert() {
           <div style={{ fontSize: 28, fontWeight: 800, color: '#dc2626', marginBottom: 4 }}>
             재고 부족!
           </div>
-          {currentStore?.name && (
+          {storeName && (
             <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--purple)', marginBottom: 16 }}>
-              {currentStore.name}
+              {storeName}
             </div>
           )}
           <div style={{ fontSize: 15, color: 'var(--text-2)', lineHeight: 1.8 }}>
             {alert.ingredients.map(i => (
               <div key={i.id}>
                 <b>{i.name}</b> — 현재 {i.stock}{i.unit} (기준: {i.threshold}{i.unit})
-                {!currentStore?.name && i.store_name && (
+                {!storeName && i.store_name && (
                   <span style={{ color: 'var(--purple)', fontWeight: 700 }}> [{i.store_name}]</span>
                 )}
               </div>
