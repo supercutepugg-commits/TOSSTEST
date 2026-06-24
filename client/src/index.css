@@ -500,8 +500,8 @@ input[readonly], input:read-only {
 }
 .dash-stat-tile {
   background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-left: 2px solid var(--border);
+  border: 1.5px solid var(--text-3);
+  border-left: 4px solid var(--text-3);
   border-radius: 10px;
   padding: 14px 12px;
   display: flex;
@@ -509,9 +509,10 @@ input[readonly], input:read-only {
   gap: 4px;
   transition: border-color 0.15s;
 }
-.dash-stat-tile.warn { border-left-color: #dc2626; }
-.dash-stat-label { font-size: 11px; color: var(--text-3); letter-spacing: 0.1px; }
-.dash-stat-value { font-size: 20px; font-weight: 800; letter-spacing: -0.3px; }
+.dash-stat-tile.warn { border-color: #dc2626; border-left-color: #dc2626; }
+.dash-stat-label { font-size: 12px; color: var(--text); font-weight: 600; letter-spacing: 0.1px; }
+.dash-stat-value { font-size: 22px; font-weight: 800; letter-spacing: -0.3px; color: var(--text); }
+.dash-stat-tile.warn .dash-stat-value { color: #dc2626; }
 
 .dash-revenue-card {
   background: var(--bg-card);
