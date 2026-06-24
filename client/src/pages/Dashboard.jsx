@@ -16,9 +16,9 @@ const TYPE_LABEL = {
 // 판매분석·가맹점순위 등 브랜드 전체를 보는 화면은 본사 탭(가맹점 미선택 메뉴)에 이미 있어 여기서는 제외 —
 // 이 대시보드는 '한 가맹점' 단위 화면이므로, 그 가맹점에 한정된 작업으로만 구성
 const QUICK_LINKS = [
-  { to: '/ingredients', label: '재료 관리', icon: '🧺' },
-  { to: '/menus', label: '메뉴 & 레시피', icon: '🍽️' },
-  { to: '/waste', label: '폐기 관리', icon: '🗑️' },
+  { to: '/ingredients', label: '재료 관리' },
+  { to: '/menus', label: '메뉴 & 레시피' },
+  { to: '/waste', label: '폐기 관리' },
 ];
 
 const won = (v) => `${Math.round(v || 0).toLocaleString()}원`;
@@ -49,10 +49,10 @@ export default function Dashboard() {
   const maxRevenue = Math.max(cmp.lastWeekSameDay?.revenue || 0, cmp.yesterday?.revenue || 0, cmp.today?.revenue || 0, 1);
 
   const statTiles = [
-    { label: '재고부족', value: data.lowStock.length, warn: data.lowStock.length > 0, icon: '📦' },
-    { label: '검토대기발주', value: data.pendingOrders, warn: data.pendingOrders > 0, icon: '📝' },
-    { label: '결제대기발주', value: data.paymentPending, warn: data.paymentPending > 0, icon: '💳' },
-    { label: '미처리리스크', value: data.risks.length, warn: data.risks.length > 0, icon: '⚠️' },
+    { label: '재고부족', value: data.lowStock.length, warn: data.lowStock.length > 0 },
+    { label: '검토대기발주', value: data.pendingOrders, warn: data.pendingOrders > 0 },
+    { label: '결제대기발주', value: data.paymentPending, warn: data.paymentPending > 0 },
+    { label: '미처리리스크', value: data.risks.length, warn: data.risks.length > 0 },
   ];
 
   const todayVsYesterday = cmp.yesterday?.revenue > 0
@@ -72,7 +72,6 @@ export default function Dashboard() {
         <div className="dash-stat-tiles">
           {statTiles.map(t => (
             <div key={t.label} className={'dash-stat-tile' + (t.warn ? ' warn' : '')}>
-              <span className="dash-stat-icon">{t.icon}</span>
               <span className="dash-stat-value" style={{ color: t.warn ? '#dc2626' : 'var(--text)' }}>{t.value}</span>
               <span className="dash-stat-label">{t.label}</span>
             </div>
@@ -80,10 +79,10 @@ export default function Dashboard() {
         </div>
 
         <div className="dash-revenue-card">
-          <div style={{ fontWeight: 700, marginBottom: 8, fontSize: 13, color: 'var(--text-2)' }}>오늘 매출</div>
-          <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--purple)' }}>{won(data.todayRevenue)}</div>
+          <div className="dash-section-title" style={{ marginBottom: 10 }}>오늘 매출</div>
+          <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--purple)', letterSpacing: '-0.3px' }}>{won(data.todayRevenue)}</div>
           {todayVsYesterday !== null && (
-            <div style={{ marginTop: 6, fontSize: 12.5, fontWeight: 700, color: todayVsYesterday >= 0 ? '#16a34a' : '#dc2626' }}>
+            <div style={{ marginTop: 8, fontSize: 12.5, fontWeight: 700, color: todayVsYesterday >= 0 ? '#16a34a' : '#dc2626' }}>
               {todayVsYesterday >= 0 ? '▲' : '▼'} 전일 대비 {Math.abs(todayVsYesterday)}%
             </div>
           )}
@@ -92,8 +91,8 @@ export default function Dashboard() {
         <div className="dash-quicklinks">
           {QUICK_LINKS.map(l => (
             <Link key={l.to} to={l.to} className="dash-quicklink">
-              <span className="dash-quicklink-icon">{l.icon}</span>
               <span>{l.label}</span>
+              <span className="dash-quicklink-arrow">&rarr;</span>
             </Link>
           ))}
         </div>
@@ -103,7 +102,7 @@ export default function Dashboard() {
       <div className="dash-main">
         {/* 전주/전일 매출현황 */}
         <div className="card">
-          <div style={{ fontWeight: 700, marginBottom: 12 }}>📊 전주/전일 매출현황</div>
+          <div className="dash-section-title">전주/전일 매출현황</div>
           <table>
             <thead>
               <tr><th>항목</th><th>전주 동요일</th><th>전일</th><th>당일</th></tr>
@@ -147,7 +146,7 @@ export default function Dashboard() {
 
         {/* 1주일간 매출통계 */}
         <div className="card">
-          <div style={{ fontWeight: 700, marginBottom: 12 }}>📅 1주일간 매출통계</div>
+          <div className="dash-section-title">1주일간 매출통계</div>
           <table>
             <thead>
               <tr><th>일자</th><th>요일</th><th>매출액</th><th>주문건수</th></tr>
@@ -170,7 +169,7 @@ export default function Dashboard() {
 
         {data.lowStock.length > 0 && (
           <div className="card" style={{ borderLeft: '4px solid #dc2626' }}>
-            <div style={{ fontWeight: 700, marginBottom: 12, color: '#dc2626' }}>📦 재고 부족 재료</div>
+            <div className="dash-section-title" style={{ color: '#dc2626' }}>재고 부족 재료</div>
             <table>
               <thead>
                 <tr><th>재료명</th><th>현재 재고</th><th>알림 기준</th><th>상태</th></tr>
@@ -200,7 +199,7 @@ export default function Dashboard() {
         {data.risks.length > 0 && (
           <div className="card" style={{ borderLeft: '4px solid #ef4444' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <div style={{ fontWeight: 700, color: '#ef4444' }}>⚠️ 리스크 알림 (미처리)</div>
+              <div className="dash-section-title" style={{ color: '#ef4444', marginBottom: 0 }}>리스크 알림 (미처리)</div>
               <Link to="/risks" style={{ fontSize: 12.5 }}>전체 보기 &rarr;</Link>
             </div>
             <table>
@@ -221,7 +220,7 @@ export default function Dashboard() {
         )}
 
         <div className="card">
-          <div style={{ fontWeight: 700, marginBottom: 12 }}>🔔 최근 재고 알림 내역</div>
+          <div className="dash-section-title">최근 재고 알림 내역</div>
           {data.recentAlerts.length === 0 ? (
             <div className="empty">알림 내역 없음</div>
           ) : (
