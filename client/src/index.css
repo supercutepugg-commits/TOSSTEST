@@ -471,14 +471,25 @@ input[readonly], input:read-only {
 }
 
 .dash-info-card {
+  position: relative;
+  overflow: hidden;
   background: linear-gradient(135deg, var(--kicc-red), var(--kicc-red-dark));
   color: #fff;
-  border-radius: 12px;
-  padding: 16px 18px;
+  border-radius: 14px;
+  padding: 18px 20px;
+  box-shadow: 0 8px 20px rgba(0, 100, 255, 0.25);
 }
-.dash-date { font-size: 12px; opacity: 0.85; margin-bottom: 8px; }
-.dash-store-name { font-size: 16px; font-weight: 800; }
-.dash-user-name { font-size: 13px; opacity: 0.9; margin-top: 2px; }
+.dash-info-card::after {
+  content: '';
+  position: absolute;
+  top: -40px; right: -40px;
+  width: 140px; height: 140px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+}
+.dash-date { font-size: 12px; opacity: 0.85; margin-bottom: 8px; letter-spacing: 0.2px; }
+.dash-store-name { font-size: 17px; font-weight: 800; position: relative; z-index: 1; }
+.dash-user-name { font-size: 13px; opacity: 0.9; margin-top: 2px; position: relative; z-index: 1; }
 
 .dash-stat-tiles {
   display: grid;
@@ -488,17 +499,27 @@ input[readonly], input:read-only {
 .dash-stat-tile {
   background: var(--bg-card);
   border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 12px 8px;
+  border-radius: 12px;
+  padding: 14px 8px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
   text-align: center;
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
-.dash-stat-icon { font-size: 18px; }
+.dash-stat-tile.warn { border-color: #fecaca; background: linear-gradient(180deg, #fef2f2, var(--bg-card) 60%); }
+.dash-stat-icon { font-size: 19px; margin-bottom: 2px; }
 .dash-stat-label { font-size: 11px; color: var(--text-3); }
-.dash-stat-value { font-size: 17px; font-weight: 800; }
+.dash-stat-value { font-size: 18px; font-weight: 800; }
+
+.dash-revenue-card {
+  background: linear-gradient(135deg, var(--bg-card), var(--purple-light));
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px 18px;
+  box-shadow: var(--shadow);
+}
 
 .dash-quicklinks {
   display: grid;
@@ -517,9 +538,11 @@ input[readonly], input:read-only {
   text-decoration: none;
   color: var(--text);
   font-size: 12px;
+  font-weight: 600;
   text-align: center;
+  transition: background 0.15s, color 0.15s, border-color 0.15s, transform 0.15s;
 }
-.dash-quicklink:hover { background: var(--purple-light); color: var(--purple); }
+.dash-quicklink:hover { background: var(--purple-light); color: var(--purple); border-color: var(--purple); transform: translateY(-1px); }
 .dash-quicklink-icon { font-size: 20px; }
 
 @media (max-width: 900px) {
