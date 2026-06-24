@@ -627,6 +627,45 @@ router.get('/store-rankings', requireAuth, async (req, res) => {
   });
 });
 
+// ─── 정산 리포트 (가맹점별 결제/환불 집계) ──────────────
+router.get('/settlement', requireAuth, requireRole(...HQ_ROLES), async (req, res) => {
+  const { from, to } = req.query;
+  const brand_id = req.user.brand_id;
+  const toISO = (to ? new Date(to) : new Date()).toISOString();
+  const fromISO = (from ? new Date(from) : new Date(Date.now() - 30 * 86400000)).toISOString();
+
+  const rows = await knex('purchase_orders as po')
+    .join('stores as s', 'po.store_id', 's.id')
+    .where('po.brand_id', brand_id)
+    .whereNotNull('po.paid_at')
+    .where('po.paid_at', '>=', fromISO).where('po.paid_at', '<=', toISO)
+    .select('po.store_id', 's.name as store_name', 'po.confirmed_amount', 'po.total_amount', 'po.refunded_amount');
+
+  const byStore = new Map();
+  for (const r of rows) {
+    const gross = Math.round(r.confirmed_amount ?? r.total_amount);
+    const refunded = Math.round(r.refunded_amount || 0);
+    const cur = byStore.get(r.store_id) || { store_id: r.store_id, store_name: r.store_name, order_count: 0, gross: 0, refunded: 0 };
+    cur.order_count += 1;
+    cur.gross += gross;
+    cur.refunded += refunded;
+    byStore.set(r.store_id, cur);
+  }
+
+  const settlement = [...byStore.values()]
+    .map(s => ({ ...s, net: s.gross - s.refunded }))
+    .sort((a, b) => b.net - a.net);
+
+  const totals = settlement.reduce((acc, s) => ({
+    order_count: acc.order_count + s.order_count,
+    gross: acc.gross + s.gross,
+    refunded: acc.refunded + s.refunded,
+    net: acc.net + s.net,
+  }), { order_count: 0, gross: 0, refunded: 0, net: 0 });
+
+  res.json({ settlement, totals, period: { from: fromISO, to: toISO } });
+});
+
 // ─── 감사 로그 ────────────────────────────────────────
 router.get('/audit-log', requireAuth, requireRole('SUPER_ADMIN', 'HQ_ADMIN'), async (req, res) => {
   const { entity_type, limit } = req.query;

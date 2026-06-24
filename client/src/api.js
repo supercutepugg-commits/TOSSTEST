@@ -87,7 +87,7 @@ export const api = {
   cancelOrder: (id) => a(`/orders/${id}`, { method: 'DELETE' }),
   preparePayment: (id) => a(`/orders/${id}/payment/prepare`, { method: 'POST' }),
   confirmPayment: (id, data) => a(`/orders/${id}/payment/confirm`, { method: 'POST', body: JSON.stringify(data) }),
-  refundOrder: (id, reason) => a(`/orders/${id}/refund`, { method: 'POST', body: JSON.stringify({ reason }) }),
+  refundOrder: (id, reason, amount) => a(`/orders/${id}/refund`, { method: 'POST', body: JSON.stringify({ reason, amount }) }),
 
   // 폐기
   getWaste: (params) => a(`/waste${qs(params)}`),
@@ -110,6 +110,9 @@ export const api = {
 
   // 가맹점 순위
   getStoreRankings: (params) => a(`/store-rankings${qs(params)}`),
+
+  // 정산 리포트
+  getSettlement: (params) => a(`/settlement${qs(params)}`),
 
   // 사입 이상 모니터링
   getPurchaseAnomalies: (params) => a(`/purchase-anomalies${qs(params)}`),

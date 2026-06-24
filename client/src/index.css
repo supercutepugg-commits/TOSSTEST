@@ -550,4 +550,5 @@ input[readonly], input:read-only {
   .kicc-search-btn, .analytics-search-btn { margin-left: 0; width: 100%; }
   .topnav-brand { padding: 0 12px; font-size: 14px; }
   .topbar-info { padding: 0 12px; }
+  .split-layout { grid-template-columns: 1fr !important; }
 }

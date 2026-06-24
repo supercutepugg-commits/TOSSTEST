@@ -17,6 +17,7 @@ import Risks from './pages/Risks';
 import Products from './pages/Products';
 import Analytics from './pages/Analytics';
 import StoreRankings from './pages/StoreRankings';
+import Settlement from './pages/Settlement';
 import PurchaseAnomalies from './pages/PurchaseAnomalies';
 import AuditLog from './pages/AuditLog';
 import Login from './pages/Login';
@@ -54,6 +55,7 @@ const SIDE_MENU_GROUPS = [
   { title: '가맹점 (전체)', storeRequired: false, items: [
     { to: '/', end: true, label: '가맹점 목록' },
     { to: '/rankings', end: true, label: '가맹점 순위' },
+    { to: '/settlement', end: true, label: '정산 리포트' },
     { to: '/purchase-anomalies', end: true, label: '사입 이상 모니터링' },
   ] },
   { title: '대시보드 · 매출', storeRequired: true, items: [
@@ -127,6 +129,7 @@ function HQLayout() {
           {/* 가맹점 선택 없이도 쓸 수 있는 메뉴 */}
           <NavTab to="/" end label="가맹점" />
           <NavTab to="/rankings" label="가맹점순위" />
+          <NavTab to="/settlement" label="정산리포트" />
           <NavTab to="/purchase-anomalies" label="사입이상모니터링" />
           <span style={{ width: 1, alignSelf: 'stretch', margin: '0 8px', background: 'var(--border)' }} />
           {/* 특정 가맹점을 선택해야 의미가 있는 메뉴 */}
@@ -150,6 +153,7 @@ function HQLayout() {
             <Routes>
               <Route path="/" element={<Stores />} />
               <Route path="/rankings" element={<StoreRankings />} />
+              <Route path="/settlement" element={<Settlement />} />
               <Route path="/purchase-anomalies" element={<PurchaseAnomalies />} />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/orders" element={<HQOrders />} />

@@ -118,7 +118,7 @@ export default function StoreOrder() {
       </div>
 
       {tab === 'new' && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 20 }}>
+        <div className="split-layout" style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 20 }}>
           <div className="card">
             <div style={{ fontWeight: 700, marginBottom: 12 }}>
               상품 목록
@@ -189,7 +189,7 @@ export default function StoreOrder() {
       )}
 
       {tab === 'history' && (
-        <div style={{ display: 'grid', gridTemplateColumns: detailOrder ? '1fr 400px' : '1fr', gap: 20 }}>
+        <div className="split-layout" style={{ display: 'grid', gridTemplateColumns: detailOrder ? '1fr 400px' : '1fr', gap: 20 }}>
           <div className="card">
             {orders.length === 0
               ? <div className="empty">발주 내역 없음</div>

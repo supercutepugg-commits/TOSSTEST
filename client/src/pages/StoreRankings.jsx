@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api';
 import { exportCsv } from '../exportCsv';
+import Loading from '../components/Loading';
 
 const QUICK_RANGES = [
   { label: '1주일', days: 7 },
@@ -91,7 +92,7 @@ export default function StoreRankings() {
 
       <div className="card">
         <div style={{ fontWeight: 700, marginBottom: 12 }}>매출 순위</div>
-        {!data || data.salesRanking.length === 0 ? (
+        {loading ? <Loading /> : !data || data.salesRanking.length === 0 ? (
           <div className="empty">데이터 없음</div>
         ) : (
           <table>
@@ -119,7 +120,7 @@ export default function StoreRankings() {
 
       <div className="card">
         <div style={{ fontWeight: 700, marginBottom: 12 }}>발주 순위</div>
-        {!data || data.orderRanking.length === 0 ? (
+        {loading ? <Loading /> : !data || data.orderRanking.length === 0 ? (
           <div className="empty">데이터 없음</div>
         ) : (
           <table>
@@ -150,7 +151,7 @@ export default function StoreRankings() {
         <div className="text-muted" style={{ fontSize: 12, marginBottom: 12 }}>
           발주율 = 발주금액 ÷ 매출. 매출에 비해 발주(원가 지출)가 얼마나 큰지 보여줍니다 — 높을수록 마진이 줄어들거나 과다 발주일 가능성, 매출이 있는데 발주율이 너무 낮으면 재고 소진/품절 위험이 있을 수 있습니다.
         </div>
-        {!data || data.efficiencyRanking.length === 0 ? (
+        {loading ? <Loading /> : !data || data.efficiencyRanking.length === 0 ? (
           <div className="empty">데이터 없음</div>
         ) : (
           <table>

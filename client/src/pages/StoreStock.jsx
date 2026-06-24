@@ -72,7 +72,7 @@ export default function StoreStock() {
         <button className="secondary" onClick={load}>새로고침</button>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 20 }}>
+      <div className="split-layout" style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 20 }}>
         <div className="card">
           {list.length === 0 ? (
             <div className="empty">등록된 재고 없음 (납품 완료 시 자동 등록됩니다)</div>

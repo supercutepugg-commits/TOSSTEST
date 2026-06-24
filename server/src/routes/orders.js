@@ -7,6 +7,7 @@ function isStoreRole(role) {
   return ['STORE_OWNER', 'STORE_STAFF'].includes(role);
 }
 const { createRisk, getRiskSettings } = require('./risks');
+const { logAudit } = require('../auditLog');
 const crypto = require('crypto');
 
 const TOSS_SECRET_KEY = process.env.TOSS_SECRET_KEY || '';
@@ -334,11 +335,12 @@ router.post('/:id/payment/confirm', requireAuth, async (req, res) => {
     status: 'PAID', toss_payment_key: paymentKey, paid_at: new Date().toISOString(),
   });
   await logHistory(order.id, 'STATUS_CHANGE', { status: order.status }, { status: 'PAID' }, '결제 완료', req.user.id);
+  await logAudit(req.user.brand_id, req.user.id, 'PAYMENT', order.id, 'PAID', null, { amount, paymentKey });
 
   res.json({ ok: true, order: result });
 });
 
-// ── 결제 취소 (환불) — 결제 완료된 발주서를 본사가 환불 처리 ─────────
+// ── 결제 취소 (환불, 전액/부분) — 결제 완료된 발주서를 본사가 환불 처리 ─
 router.post('/:id/refund', requireAuth, requireRole(...LOGISTICS_ROLES), async (req, res) => {
   const order = await knex('purchase_orders').where({ id: req.params.id, brand_id: req.user.brand_id }).first();
   if (!order) return res.status(404).json({ error: '없음' });
@@ -348,25 +350,45 @@ router.post('/:id/refund', requireAuth, requireRole(...LOGISTICS_ROLES), async (
   if (!order.toss_payment_key) return res.status(400).json({ error: '결제 정보가 없습니다' });
   if (!TOSS_SECRET_KEY) return res.status(500).json({ error: '결제 설정 오류 (TOSS_SECRET_KEY 미설정)' });
 
-  const { reason } = req.body;
+  const { reason, amount } = req.body;
   if (!reason || !reason.trim()) return res.status(400).json({ error: '환불 사유를 입력해주세요' });
+
+  const totalAmount = Math.round(order.confirmed_amount ?? order.total_amount);
+  const alreadyRefunded = Math.round(order.refunded_amount || 0);
+  const remaining = totalAmount - alreadyRefunded;
+  if (remaining <= 0) return res.status(400).json({ error: '이미 전액 환불되었습니다' });
+
+  const refundAmount = amount !== undefined ? Math.round(amount) : remaining;
+  if (!refundAmount || refundAmount <= 0 || refundAmount > remaining) {
+    return res.status(400).json({ error: `환불 금액이 올바르지 않습니다 (남은 환불 가능 금액: ${remaining.toLocaleString()}원)` });
+  }
 
   const authHeader = 'Basic ' + Buffer.from(`${TOSS_SECRET_KEY}:`).toString('base64');
   const tossRes = await fetch(`${TOSS_API_BASE}/${order.toss_payment_key}/cancel`, {
     method: 'POST',
     headers: { Authorization: authHeader, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ cancelReason: reason }),
+    body: JSON.stringify({ cancelReason: reason, cancelAmount: refundAmount }),
   });
   const result = await tossRes.json();
   if (!tossRes.ok) {
     return res.status(tossRes.status).json({ error: result.message || '환불 처리 실패', code: result.code });
   }
 
-  if (order.status === 'DELIVERED') await applyDeliveryStock(order, -1);
+  const newRefunded = alreadyRefunded + refundAmount;
+  const isFull = newRefunded >= totalAmount;
 
-  await knex('purchase_orders').where({ id: order.id }).update({ status: 'CANCELED' });
-  await logHistory(order.id, 'STATUS_CHANGE', { status: order.status }, { status: 'CANCELED' }, `환불: ${reason}`, req.user.id);
-  res.json({ ok: true, order: result });
+  if (isFull && order.status === 'DELIVERED') await applyDeliveryStock(order, -1);
+
+  const next = { refunded_amount: newRefunded };
+  if (isFull) next.status = 'CANCELED';
+  await knex('purchase_orders').where({ id: order.id }).update(next);
+
+  const label = isFull ? '전액 환불' : `부분 환불 (${refundAmount.toLocaleString()}원)`;
+  await logHistory(order.id, 'STATUS_CHANGE', { status: order.status }, { status: next.status || order.status }, `${label}: ${reason}`, req.user.id);
+  await logAudit(req.user.brand_id, req.user.id, 'PAYMENT', order.id, isFull ? 'REFUND_FULL' : 'REFUND_PARTIAL',
+    { refunded_amount: alreadyRefunded }, { refunded_amount: newRefunded, reason });
+
+  res.json({ ok: true, order: result, refunded_amount: newRefunded, status: next.status || order.status });
 });
 
 // ── 발주서 취소 ───────────────────────────────────────

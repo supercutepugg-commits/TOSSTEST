@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import { api } from '../api';
 import { exportCsv } from '../exportCsv';
 
-const ENTITY_LABEL = { PRODUCT: '상품', INGREDIENT: '재료', MENU: '메뉴', STORE: '가맹점', USER: '사용자' };
-const ACTION_LABEL = { CREATE: '생성', UPDATE: '수정', DELETE: '삭제' };
+const ENTITY_LABEL = { PRODUCT: '상품', INGREDIENT: '재료', MENU: '메뉴', STORE: '가맹점', USER: '사용자', PAYMENT: '결제' };
+const ACTION_LABEL = { CREATE: '생성', UPDATE: '수정', DELETE: '삭제', PAID: '결제완료', REFUND_FULL: '전액환불', REFUND_PARTIAL: '부분환불' };
 
 function diffSummary(before, after) {
   if (!before && after) return JSON.stringify(after);

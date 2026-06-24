@@ -92,11 +92,17 @@ export default function HQOrders() {
   };
 
   const refund = async (order) => {
+    const total = Math.round(order.confirmed_amount ?? order.total_amount);
+    const remaining = total - Math.round(order.refunded_amount || 0);
+    const amountInput = prompt(`환불 금액을 입력하세요 (전액: ${remaining.toLocaleString()}원)`, remaining);
+    if (amountInput === null) return;
+    const amount = Number(amountInput.replace(/[^0-9]/g, ''));
+    if (!amount || amount <= 0 || amount > remaining) { toast('환불 금액이 올바르지 않습니다', 'error'); return; }
     const reason = prompt('환불 사유를 입력하세요');
     if (!reason) return;
-    if (!confirm('실제 카드 결제가 취소됩니다. 환불하시겠습니까?')) return;
+    if (!confirm(`${amount.toLocaleString()}원이 환불됩니다. 실제 카드 결제가 취소됩니다. 진행하시겠습니까?`)) return;
     try {
-      await api.refundOrder(order.id, reason);
+      await api.refundOrder(order.id, reason, amount);
       toast('환불이 완료되었습니다', 'success');
       loadDetail(order.id);
       load();
@@ -110,7 +116,7 @@ export default function HQOrders() {
   );
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: detail ? '1fr 480px' : '1fr', gap: 20 }}>
+    <div className="split-layout" style={{ display: 'grid', gridTemplateColumns: detail ? '1fr 480px' : '1fr', gap: 20 }}>
       <div>
         <div className="top-bar">
           <h2>주문 관리</h2>
@@ -176,8 +182,13 @@ export default function HQOrders() {
 
           <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10 }}>
             <StatusBadge status={detail.status} />
+            {detail.refunded_amount > 0 && (
+              <span className="badge yellow">환불 {detail.refunded_amount.toLocaleString()}원</span>
+            )}
             {canEdit && ['PAID', 'PREPARING_SHIPMENT', 'SHIPPED', 'DELIVERED'].includes(detail.status) && (
-              <button className="secondary small" onClick={() => refund(detail)}>환불</button>
+              <button className="secondary small" onClick={() => refund(detail)}>
+                {detail.refunded_amount > 0 ? '추가 환불' : '환불'}
+              </button>
             )}
           </div>
 
