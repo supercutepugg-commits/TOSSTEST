@@ -74,7 +74,7 @@ initDb().then(async () => {
   } catch (e) { console.error('[백필] 오류:', e.message); }
 
   // 결제 미완료 리스크 체크: 1시간마다
-  const { checkPaymentOverdue } = require('./routes/risks');
+  const { checkPaymentOverdue, checkLowStock } = require('./routes/risks');
   const runOverdueCheck = async () => {
     try {
       const brands = await knex('brands').select('id');
@@ -83,6 +83,16 @@ initDb().then(async () => {
   };
   runOverdueCheck();
   setInterval(runOverdueCheck, 60 * 60 * 1000);
+
+  // 재고 부족 리스크 체크: 10분마다 (재고부족 팝업과 별개로 리스크 알림 탭에도 쌓이도록)
+  const runLowStockCheck = async () => {
+    try {
+      const brands = await knex('brands').select('id');
+      for (const b of brands) await checkLowStock(b.id);
+    } catch (e) { console.error('[리스크] 재고 부족 체크 오류:', e.message); }
+  };
+  runLowStockCheck();
+  setInterval(runLowStockCheck, 10 * 60 * 1000);
 
   // Toss Place 과거/누락 매출 자동 동기화: 토스플레이스 매장 ID가 등록된 가맹점만 3분마다 재동기화
   // 한 번도 동기화 안 한 가맹점은 전체 매출(최근 5년)을, 이후엔 최근 2일치만 다시 가져옴 (API 호출량 보호)

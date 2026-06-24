@@ -274,7 +274,7 @@ async function initDb() {
     t.integer('brand_id').references('brands.id').onDelete('CASCADE');
     t.integer('store_id').references('stores.id').onDelete('CASCADE').nullable();
     t.string('type').notNullable();
-    // OVER_PURCHASE, SALES_DOWN_ORDER_UP, LOW_TURNOVER, HIGH_WASTE, STORE_OUTLIER, PAYMENT_OVERDUE
+    // OVER_PURCHASE, SALES_DOWN_ORDER_UP, LOW_TURNOVER, HIGH_WASTE, STORE_OUTLIER, PAYMENT_OVERDUE, LOW_STOCK
     t.string('severity').defaultTo('MEDIUM'); // HIGH, MEDIUM, LOW
     t.string('status').defaultTo('OPEN');
     // OPEN, ACKNOWLEDGED, IN_PROGRESS, RESOLVED, DISMISSED

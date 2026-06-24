@@ -10,6 +10,7 @@ const TYPE_LABEL = {
   OVER_PURCHASE: '과다 사입', SALES_DOWN_ORDER_UP: '매출↓발주↑',
   LOW_TURNOVER: '저회전', HIGH_WASTE: '폐기 과다',
   STORE_OUTLIER: '이상 매장', PAYMENT_OVERDUE: '결제 미완료',
+  LOW_STOCK: '재고 부족',
 };
 
 const QUICK_LINKS = [

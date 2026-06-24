@@ -112,4 +112,22 @@ async function checkPaymentOverdue(brand_id) {
   }
 }
 
-module.exports = { router, createRisk, checkHighWaste, checkPaymentOverdue, getRiskSettings };
+// 재고 부족 알림 체크 (가맹점별로 부족 재료가 있으면 1건 등록 — 동일 OPEN 알림 있으면 건너뜀)
+async function checkLowStock(brand_id) {
+  const rows = await knex('ingredients')
+    .where({ brand_id }).whereRaw('stock <= threshold').whereNotNull('store_id')
+    .select('store_id', 'name', 'stock', 'unit', 'threshold');
+  const byStore = {};
+  for (const r of rows) {
+    (byStore[r.store_id] = byStore[r.store_id] || []).push(r);
+  }
+  for (const [store_id, items] of Object.entries(byStore)) {
+    const names = items.slice(0, 3).map(i => i.name).join(', ');
+    const more = items.length > 3 ? ` 외 ${items.length - 3}종` : '';
+    await createRisk(brand_id, Number(store_id), 'LOW_STOCK', 'MEDIUM',
+      `재고 부족: ${names}${more} (${items.length}건)`,
+      { items: items.map(i => ({ name: i.name, stock: i.stock, threshold: i.threshold, unit: i.unit })) });
+  }
+}
+
+module.exports = { router, createRisk, checkHighWaste, checkPaymentOverdue, checkLowStock, getRiskSettings };

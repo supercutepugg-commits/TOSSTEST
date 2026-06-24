@@ -7,6 +7,7 @@ const TYPE_LABEL = {
   OVER_PURCHASE: '과다 사입', SALES_DOWN_ORDER_UP: '매출감소·발주증가',
   LOW_TURNOVER: '저회전 식자재', HIGH_WASTE: '폐기 과다',
   STORE_OUTLIER: '유사 매장 대비 이상', PAYMENT_OVERDUE: '결제 미완료',
+  LOW_STOCK: '재고 부족',
 };
 const STATUS_LABEL = {
   OPEN: '미확인', ACKNOWLEDGED: '확인완료', IN_PROGRESS: '조치중', RESOLVED: '조치완료', DISMISSED: '제외처리',
