@@ -174,8 +174,7 @@ body {
 }
 .side-menu-collapse:hover { color: var(--purple); }
 
-.side-menu-group { padding-bottom: 8px; margin-bottom: 8px; }
-.side-menu-group:last-child { border-bottom: none; }
+.side-menu-group { padding: 2px 0; }
 .side-menu-group-title {
   width: calc(100% - 16px);
   margin: 0 8px;
@@ -185,22 +184,47 @@ body {
   padding: 9px 10px;
   font-size: 12.5px;
   font-weight: 600;
-  color: var(--text-2);
+  color: var(--text-3);
   background: none;
   border: none;
   border-radius: 8px;
   cursor: pointer;
   text-align: left;
+  transition: color 0.15s, background 0.15s;
 }
 .side-menu-group-title:hover { color: var(--text); background: var(--bg-elevated); }
-.side-menu-group-chevron { font-size: 9px; width: 9px; flex-shrink: 0; color: var(--text-3); transition: transform 0.15s; }
+.side-menu-group.open .side-menu-group-title { color: var(--text); }
+.side-menu-group-chevron {
+  font-size: 9px;
+  width: 9px;
+  flex-shrink: 0;
+  color: var(--text-3);
+  display: inline-block;
+  transition: transform 0.18s ease, color 0.15s;
+}
+.side-menu-group.open .side-menu-group-chevron { transform: rotate(90deg); color: var(--purple); }
+
+.side-menu-group-items {
+  position: relative;
+  margin: 2px 8px 4px 20px;
+  padding-left: 10px;
+  border-left: 1.5px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  animation: side-menu-expand 0.15s ease;
+}
+@keyframes side-menu-expand {
+  from { opacity: 0; transform: translateY(-2px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 .side-menu-item {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin: 1px 8px;
-  padding: 9px 12px 9px 22px;
-  border-radius: 8px;
+  padding: 8px 12px;
+  border-radius: 7px;
   font-size: 13.5px;
   font-weight: 500;
   color: var(--text-2);

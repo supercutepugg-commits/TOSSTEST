@@ -111,17 +111,21 @@ function SideMenu({ collapsed, onToggle, storeSelected, isHqAdmin }) {
       {!collapsed && visibleGroups.map(group => {
         const isOpen = openGroups.has(group.title);
         return (
-          <div key={group.title} className="side-menu-group">
+          <div key={group.title} className={'side-menu-group' + (isOpen ? ' open' : '')}>
             <button className="side-menu-group-title" onClick={() => toggleGroup(group.title)}>
-              <span className="side-menu-group-chevron">{isOpen ? '▾' : '▸'}</span>
+              <span className="side-menu-group-chevron">▸</span>
               <span>{group.title}</span>
             </button>
-            {isOpen && group.items.map(item => (
-              <NavLink key={item.to} to={item.to} end={item.end}
-                className={({ isActive }) => 'side-menu-item' + (isActive ? ' active' : '')}>
-                {item.label}
-              </NavLink>
-            ))}
+            {isOpen && (
+              <div className="side-menu-group-items">
+                {group.items.map(item => (
+                  <NavLink key={item.to} to={item.to} end={item.end}
+                    className={({ isActive }) => 'side-menu-item' + (isActive ? ' active' : '')}>
+                    {item.label}
+                  </NavLink>
+                ))}
+              </div>
+            )}
           </div>
         );
       })}
