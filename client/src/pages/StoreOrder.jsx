@@ -227,7 +227,7 @@ export default function StoreOrder() {
             {orders.length === 0
               ? <div className="empty">발주 내역 없음</div>
               : <table>
-                <thead><tr><th>발주일</th><th>상태</th><th>금액</th><th>메모</th><th></th></tr></thead>
+                <thead><tr><th>발주일</th><th>상태</th><th>금액</th><th>메모</th><th style={{ width: 150 }}></th></tr></thead>
                 <tbody>
                   {orders.map(o => (
                     <tr key={o.id} style={{ cursor: 'pointer', background: detailOrder?.id === o.id ? 'var(--bg-elevated)' : '' }}
@@ -236,11 +236,13 @@ export default function StoreOrder() {
                       <td><StatusBadge status={o.status} /></td>
                       <td>{(o.confirmed_amount ?? o.total_amount).toLocaleString()}원</td>
                       <td className="text-muted" style={{ fontSize: 13 }}>{o.memo || '-'}</td>
-                      <td style={{ display: 'flex', gap: 4 }}>
-                        {['DRAFT', 'REVISION_REQUESTED'].includes(o.status) && (
-                          <button className="primary small" onClick={e => { e.stopPropagation(); loadOrderToCart(o); }}>이어하기</button>
-                        )}
-                        <button className="secondary small" onClick={e => { e.stopPropagation(); reorderFromOrder(o); }}>지난번처럼 발주</button>
+                      <td>
+                        <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
+                          {['DRAFT', 'REVISION_REQUESTED'].includes(o.status) && (
+                            <button className="primary small" onClick={e => { e.stopPropagation(); loadOrderToCart(o); }}>이어하기</button>
+                          )}
+                          <button className="secondary small" title="지난번처럼 발주" onClick={e => { e.stopPropagation(); reorderFromOrder(o); }}>재주문</button>
+                        </div>
                       </td>
                     </tr>
                   ))}

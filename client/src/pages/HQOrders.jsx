@@ -135,14 +135,15 @@ export default function HQOrders() {
       <div>
         <div className="top-bar">
           <h2>주문 관리</h2>
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <button className={tab === 'active' ? 'primary' : 'secondary'} onClick={() => { setTab('active'); setDetail(null); setSelected(null); }}>
               처리중 {orders.filter(o => ACTIVE.includes(o.status)).length > 0 && `(${orders.filter(o => ACTIVE.includes(o.status)).length})`}
             </button>
             <button className={tab === 'done' ? 'primary' : 'secondary'} onClick={() => { setTab('done'); setDetail(null); setSelected(null); }}>
               완료/취소
             </button>
-            <button className="secondary" onClick={() => exportOrderList(visibleOrders)}>엑셀 다운로드</button>
+            <div style={{ width: 1, height: 20, background: 'var(--border)', margin: '0 4px' }} />
+            <button className="secondary" onClick={() => exportOrderList(visibleOrders)}>⬇ 엑셀 다운로드</button>
           </div>
         </div>
         <div className="card">
@@ -299,10 +300,10 @@ export default function HQOrders() {
           )}
 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <button className="secondary small" onClick={() => exportExcel(detail)}>엑셀 다운로드</button>
             <div style={{ fontWeight: 700 }}>
               확정금액: {(detail.confirmed_amount ?? detail.total_amount).toLocaleString()}원
             </div>
+            <button className="secondary small" onClick={() => exportExcel(detail)}>⬇ 엑셀 다운로드</button>
           </div>
 
           {detail.memo && (

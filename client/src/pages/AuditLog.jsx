@@ -45,7 +45,7 @@ export default function AuditLog() {
     <div>
       <div className="top-bar">
         <h2 style={{ marginBottom: 0 }}>변경 이력 (감사 로그)</h2>
-        <button className="secondary" onClick={exportLogs} disabled={logs.length === 0}>엑셀 다운로드</button>
+        <button className="secondary" onClick={exportLogs} disabled={logs.length === 0}>⬇ 엑셀 다운로드</button>
       </div>
       <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
         <button className={!entityType ? 'primary' : 'secondary'} onClick={() => setEntityType('')}>전체</button>

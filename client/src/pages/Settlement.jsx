@@ -56,7 +56,7 @@ export default function Settlement() {
     <div>
       <div className="top-bar">
         <h2 style={{ marginBottom: 0 }}>정산 리포트</h2>
-        <button className="secondary" onClick={exportSettlement} disabled={!data}>엑셀 다운로드</button>
+        <button className="secondary" onClick={exportSettlement} disabled={!data}>⬇ 엑셀 다운로드</button>
       </div>
 
       <div className="card kicc-search-panel">
@@ -89,23 +89,6 @@ export default function Settlement() {
         <div className="card"><div className="empty">정산 데이터 없음</div></div>
       ) : (
         <>
-          {data.previousPeriod && (() => {
-            const prevNet = data.previousPeriod.totals.net;
-            const diff = data.totals.net - prevNet;
-            const pct = prevNet > 0 ? Math.round((diff / prevNet) * 1000) / 10 : null;
-            const up = diff >= 0;
-            return (
-              <div className="card" style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 16 }}>
-                <div className="text-muted" style={{ fontSize: 13 }}>
-                  직전 동일 기간 ({data.previousPeriod.from.slice(0, 10)} ~ {data.previousPeriod.to.slice(0, 10)}) 순매출 {won(prevNet)} 대비
-                </div>
-                <div style={{ fontWeight: 700, color: up ? '#16a34a' : '#dc2626', fontSize: 15 }}>
-                  {up ? '▲' : '▼'} {won(Math.abs(diff))}{pct !== null && ` (${up ? '+' : ''}${pct}%)`}
-                </div>
-              </div>
-            );
-          })()}
-
           <div className="card" style={{ marginBottom: 16 }}>
             <table>
               <thead>
@@ -130,7 +113,23 @@ export default function Settlement() {
                   <td style={{ color: data.totals.refunded > 0 ? '#dc2626' : undefined }}>
                     {data.totals.refunded > 0 ? `-${won(data.totals.refunded)}` : '-'}
                   </td>
-                  <td style={{ color: 'var(--purple)' }}>{won(data.totals.net)}</td>
+                  <td style={{ color: 'var(--purple)' }}>
+                    {won(data.totals.net)}
+                    {data.previousPeriod && (() => {
+                      const prevNet = data.previousPeriod.totals.net;
+                      const diff = data.totals.net - prevNet;
+                      const pct = prevNet > 0 ? Math.round((diff / prevNet) * 1000) / 10 : null;
+                      const up = diff >= 0;
+                      return (
+                        <span
+                          title={`직전 동일 기간 (${data.previousPeriod.from.slice(0, 10)} ~ ${data.previousPeriod.to.slice(0, 10)}) 순매출 ${won(prevNet)} 대비`}
+                          style={{ display: 'inline-block', marginLeft: 8, fontSize: 12, fontWeight: 700, color: up ? '#16a34a' : '#dc2626' }}
+                        >
+                          {up ? '▲' : '▼'} {pct !== null ? `${up ? '+' : ''}${pct}%` : won(Math.abs(diff))}
+                        </span>
+                      );
+                    })()}
+                  </td>
                 </tr>
               </tfoot>
             </table>

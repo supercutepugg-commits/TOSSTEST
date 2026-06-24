@@ -67,7 +67,7 @@ export default function Waste() {
       <div className="top-bar">
         <h2>폐기 관리{currentStore?.name ? ` — ${currentStore.name}` : ''}</h2>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button className="secondary" onClick={exportLogs} disabled={logs.length === 0}>엑셀 다운로드</button>
+          <button className="secondary" onClick={exportLogs} disabled={logs.length === 0}>⬇ 엑셀 다운로드</button>
           {!isHQ && <button className="primary" onClick={openModal}>+ 폐기 입력</button>}
         </div>
       </div>

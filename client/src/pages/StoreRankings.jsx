@@ -63,7 +63,7 @@ export default function StoreRankings() {
     <div>
       <div className="top-bar">
         <h2 style={{ marginBottom: 0 }}>가맹점 순위</h2>
-        <button className="secondary" onClick={exportRankings} disabled={!data}>엑셀 다운로드</button>
+        <button className="secondary" onClick={exportRankings} disabled={!data}>⬇ 엑셀 다운로드</button>
       </div>
 
       <div className="card kicc-search-panel">
