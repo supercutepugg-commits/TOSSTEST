@@ -74,6 +74,10 @@ router.post('/users', requireAuth, requireRole('SUPER_ADMIN', 'HQ_ADMIN'), async
     if (role === 'SUPER_ADMIN' && req.user.role !== 'SUPER_ADMIN') {
       return res.status(403).json({ error: '최고관리자만 최고관리자 계정을 생성할 수 있습니다' });
     }
+    // 가맹점 역할은 가맹점이 지정되지 않으면 재고/주문 조회 필터가 무력화되어 다른 가맹점 데이터까지 보일 수 있음
+    if (['STORE_OWNER', 'STORE_STAFF'].includes(role || 'STORE_OWNER') && !store_id) {
+      return res.status(400).json({ error: '가맹점 역할(점주/직원)은 소속 가맹점을 반드시 지정해야 합니다' });
+    }
     const hash = await bcrypt.hash(password, 10);
     const [{ id }] = await knex('users').insert({
       brand_id: req.user.brand_id,
@@ -97,10 +101,15 @@ router.put('/users/:id', requireAuth, requireRole('SUPER_ADMIN', 'HQ_ADMIN'), as
   if (role === 'SUPER_ADMIN' && req.user.role !== 'SUPER_ADMIN') {
     return res.status(403).json({ error: '최고관리자만 최고관리자 권한을 부여할 수 있습니다' });
   }
+  const nextRole = role ?? existing.role;
+  const nextStoreId = store_id !== undefined ? (store_id || null) : existing.store_id;
+  if (['STORE_OWNER', 'STORE_STAFF'].includes(nextRole) && !nextStoreId) {
+    return res.status(400).json({ error: '가맹점 역할(점주/직원)은 소속 가맹점을 반드시 지정해야 합니다' });
+  }
   const update = {
     name: name ?? existing.name,
-    role: role ?? existing.role,
-    store_id: store_id !== undefined ? (store_id || null) : existing.store_id,
+    role: nextRole,
+    store_id: nextStoreId,
     is_active: is_active !== undefined ? is_active : existing.is_active,
   };
   if (password) update.password_hash = await bcrypt.hash(password, 10);

@@ -80,7 +80,9 @@ router.delete('/stores/:id', requireAuth, requireRole(...ADMIN_ROLES), async (re
 router.get('/ingredients', requireAuth, async (req, res) => {
   const { store_id } = req.query;
   // 가맹점 역할은 쿼리파라미터로 다른 가맹점을 조회할 수 없도록 강제
-  const sid = ['STORE_OWNER', 'STORE_STAFF'].includes(req.user.role) ? req.user.store_id : (store_id || req.user.store_id);
+  const isStoreRole = ['STORE_OWNER', 'STORE_STAFF'].includes(req.user.role);
+  if (isStoreRole && !req.user.store_id) return res.json([]); // 소속 가맹점이 없으면 전체 브랜드 데이터가 노출되지 않도록 빈 목록 반환
+  const sid = isStoreRole ? req.user.store_id : (store_id || req.user.store_id);
   const q = knex('ingredients').where({ brand_id: req.user.brand_id }).orderBy('name');
   if (sid) {
     // 가맹점 전용 재료 + 같은 이름의 가맹점 전용이 없는 브랜드 공통 재료만 반환 (중복 제거)
@@ -98,6 +100,9 @@ router.get('/ingredients', requireAuth, async (req, res) => {
 router.post('/ingredients', requireAuth, requireRole(...LOGISTICS_ROLES), async (req, res) => {
   const { name, unit, stock, threshold, store_id, order_unit, order_unit_conversion } = req.body;
   if (!name || !name.trim()) return res.status(400).json({ error: '재료명을 입력해주세요' });
+  if ((stock !== undefined && Number(stock) < 0) || (threshold !== undefined && Number(threshold) < 0)) {
+    return res.status(400).json({ error: '재고와 알림 기준은 0 이상이어야 합니다' });
+  }
   const [{ id }] = await knex('ingredients').insert({
     brand_id: req.user.brand_id,
     store_id: store_id || req.user.store_id,
@@ -115,6 +120,9 @@ router.put('/ingredients/:id', requireAuth, requireRole(...LOGISTICS_ROLES), asy
   if (!existing) return res.status(404).json({ error: '없음' });
   const { name, unit, stock, threshold, order_unit, order_unit_conversion, is_key } = req.body;
   if (name !== undefined && !name.trim()) return res.status(400).json({ error: '재료명을 입력해주세요' });
+  if ((stock !== undefined && Number(stock) < 0) || (threshold !== undefined && Number(threshold) < 0)) {
+    return res.status(400).json({ error: '재고와 알림 기준은 0 이상이어야 합니다' });
+  }
   await knex('ingredients').where({ id: req.params.id, brand_id: req.user.brand_id })
     .update({
       name: name ?? existing.name,
@@ -142,7 +150,9 @@ router.post('/ingredients/:id/restock', requireAuth, requireRole(...LOGISTICS_RO
 // ─── 메뉴 ───────────────────────────────────────────
 router.get('/menus', requireAuth, async (req, res) => {
   const { store_id } = req.query;
-  const sid = ['STORE_OWNER', 'STORE_STAFF'].includes(req.user.role) ? req.user.store_id : (store_id || req.user.store_id);
+  const isStoreRole = ['STORE_OWNER', 'STORE_STAFF'].includes(req.user.role);
+  if (isStoreRole && !req.user.store_id) return res.json([]); // 소속 가맹점이 없으면 전체 브랜드 데이터가 노출되지 않도록 빈 목록 반환
+  const sid = isStoreRole ? req.user.store_id : (store_id || req.user.store_id);
   const q = knex('menus').where({ brand_id: req.user.brand_id }).orderBy('name');
   if (sid) q.where({ store_id: sid });
   const menus = await q;
@@ -187,6 +197,10 @@ router.post('/menus/:menuId/recipes', requireAuth, requireRole(...LOGISTICS_ROLE
   const menu = await knex('menus').where({ id: req.params.menuId, brand_id: req.user.brand_id }).first();
   if (!menu) return res.status(404).json({ error: '없음' });
   const { ingredient_id, amount } = req.body;
+  if (!Number.isFinite(Number(amount)) || Number(amount) <= 0) {
+    // 0 이하 값은 예상 소진량 계산에서 비율이 null이 되어 과다사입 리스크 감지가 조용히 무력화되므로 차단
+    return res.status(400).json({ error: '사용량은 0보다 큰 값이어야 합니다' });
+  }
   const existing = await knex('recipes').where({ menu_id: req.params.menuId, ingredient_id }).first();
   const ing = await knex('ingredients').where({ id: ingredient_id, brand_id: req.user.brand_id }).first();
   if (!ing) return res.status(400).json({ error: '재료를 찾을 수 없습니다' });
@@ -224,7 +238,10 @@ router.get('/menus/:menuId/recipe-history', requireAuth, async (req, res) => {
 // ─── 대시보드 ─────────────────────────────────────────
 router.get('/dashboard', requireAuth, async (req, res) => {
   const { store_id } = req.query;
-  const sid = ['STORE_OWNER', 'STORE_STAFF'].includes(req.user.role) ? req.user.store_id : (store_id || req.user.store_id);
+  const isStoreRole = ['STORE_OWNER', 'STORE_STAFF'].includes(req.user.role);
+  // 가맹점 역할 계정에 소속 가맹점이 없으면 브랜드 전체 데이터가 보이지 않도록 차단
+  if (isStoreRole && !req.user.store_id) return res.status(400).json({ error: '소속 가맹점 정보가 없습니다. 관리자에게 문의해주세요' });
+  const sid = isStoreRole ? req.user.store_id : (store_id || req.user.store_id);
   const brand_id = req.user.brand_id;
 
   const ingQ = knex('ingredients as i')
@@ -306,7 +323,9 @@ router.get('/dashboard', requireAuth, async (req, res) => {
 // ─── 판매 분석 ────────────────────────────────────────
 router.get('/analytics', requireAuth, async (req, res) => {
   const { store_id, from, to } = req.query;
-  const sid = ['STORE_OWNER', 'STORE_STAFF'].includes(req.user.role) ? req.user.store_id : (store_id ? Number(store_id) : req.user.store_id);
+  const isStoreRole = ['STORE_OWNER', 'STORE_STAFF'].includes(req.user.role);
+  if (isStoreRole && !req.user.store_id) return res.status(400).json({ error: '소속 가맹점 정보가 없습니다. 관리자에게 문의해주세요' });
+  const sid = isStoreRole ? req.user.store_id : (store_id ? Number(store_id) : req.user.store_id);
   const brand_id = req.user.brand_id;
 
   const toDate = to ? new Date(to) : new Date();
