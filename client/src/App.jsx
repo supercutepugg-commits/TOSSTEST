@@ -57,6 +57,7 @@ const SIDE_MENU_GROUPS = [
     { to: '/', end: true, label: '가맹점 목록' },
     { to: '/rankings', end: true, label: '가맹점 순위' },
     { to: '/settlement', end: true, label: '정산 리포트' },
+    { to: '/analytics', end: true, label: '매출 분석' },
     { to: '/purchase-anomalies', end: true, label: '사입 이상 모니터링' },
   ] },
   { title: '주문 · 발주 (전체)', storeRequired: false, items: [
@@ -70,9 +71,8 @@ const SIDE_MENU_GROUPS = [
   { title: '감사', storeRequired: false, hqAdminOnly: true, items: [
     { to: '/audit-log', end: true, label: '변경 이력' },
   ] },
-  { title: '대시보드 · 매출', storeRequired: true, items: [
+  { title: '대시보드', storeRequired: true, items: [
     { to: '/dashboard', end: true, label: '대시보드 홈' },
-    { to: '/analytics', end: true, label: '매출 분석' },
   ] },
   { title: '재고 · 메뉴', storeRequired: true, items: [
     { to: '/ingredients', end: true, label: '재료 목록' },
