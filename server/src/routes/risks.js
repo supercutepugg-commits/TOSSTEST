@@ -59,14 +59,25 @@ router.post('/:id/status', requireAuth, requireRole(...HQ_ROLES), async (req, re
   res.json({ ok: true });
 });
 
-// 내부용: 리스크 생성 (배치/웹훅에서 호출)
+// 내부용: 리스크 생성 (배치/웹훅에서 호출). 새로 생성됐으면 true, 이미 동일 OPEN 알림이 있으면 false 반환
 async function createRisk(brand_id, store_id, type, severity, description, detail) {
   // 동일 타입·가맹점 OPEN 알림 중복 방지
   const existing = await knex('risk_alerts')
     .where({ brand_id, store_id, type, status: 'OPEN' }).first();
-  if (existing) return;
+  if (existing) return false;
   await knex('risk_alerts').insert({ brand_id, store_id, type, severity, description, detail: JSON.stringify(detail) });
+  return true;
 }
+
+// 본사가 다른 화면(사입 이상 모니터링 등)에서 수동으로 리스크 알림을 등록
+router.post('/', requireAuth, requireRole(...HQ_ROLES), async (req, res) => {
+  const { store_id, type, severity, description, detail } = req.body;
+  if (!store_id || !description || !description.trim()) {
+    return res.status(400).json({ error: '가맹점과 알림 내용을 입력해주세요' });
+  }
+  const created = await createRisk(req.user.brand_id, store_id, type || 'OVER_PURCHASE', severity || 'MEDIUM', description, detail || {});
+  res.json({ ok: true, created });
+});
 
 // 폐기 과다 알림 체크 (가맹점 폐기 등록 후 호출)
 async function checkHighWaste(brand_id, store_id) {

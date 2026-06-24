@@ -1,3 +1,4 @@
+import { toast } from '../toast';
 import { useEffect, useState } from 'react';
 import { api } from '../api';
 
@@ -30,6 +31,18 @@ export default function PurchaseAnomalies() {
     const start = new Date(end.getTime() - days * 86400000);
     setFromDate(start.toISOString().split('T')[0]);
     setToDate(end.toISOString().split('T')[0]);
+  };
+
+  const registerRisk = async (a) => {
+    const description = a.worst_over
+      ? `사입 이상 모니터링: ${a.worst_over.name} 발주량이 예상 소진량의 ${a.worst_over.ratio}배 (과다사입 의심 ${a.over_count}건)`
+      : `사입 이상 모니터링: 과다사입 의심 ${a.over_count}건, 발주부족 의심 ${a.under_count}건`;
+    try {
+      const result = await api.createRisk({ store_id: a.store_id, type: 'OVER_PURCHASE', severity: 'MEDIUM', description });
+      toast(result.created ? '리스크 알림에 등록되었습니다' : '이미 등록된 동일 알림이 있습니다', result.created ? 'success' : 'info');
+    } catch (e) {
+      toast(e.message || '등록에 실패했습니다', 'error');
+    }
   };
 
   return (
@@ -79,6 +92,7 @@ export default function PurchaseAnomalies() {
                 <th>발주부족 의심 식자재</th>
                 <th>가장 심한 항목</th>
                 <th>리스크 알림 발생</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
@@ -102,6 +116,11 @@ export default function PurchaseAnomalies() {
                     {a.risk_alert_count > 0
                       ? <span className="badge red">{a.risk_alert_count}회</span>
                       : <span className="text-sub">0회</span>}
+                  </td>
+                  <td>
+                    {(a.over_count > 0 || a.under_count > 0) && (
+                      <button className="secondary small" onClick={() => registerRisk(a)}>리스크에 등록</button>
+                    )}
                   </td>
                 </tr>
               ))}

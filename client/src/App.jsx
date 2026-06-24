@@ -50,7 +50,8 @@ function NavTab({ to, end, label }) {
 }
 
 // 관리자 페이지 메뉴 — 가맹점 선택 없이도 쓸 수 있는 그룹과, 특정 가맹점을 선택해야 의미가 있는 그룹으로 구분
-// (storeRequired: true 항목은 가맹점 미선택 시에도 클릭은 가능하지만, 각 페이지가 "가맹점을 선택해주세요" 안내를 보여줌)
+// storeRequired: false = 가맹점 선택과 무관하게 전체 브랜드 단위로 보는 메뉴 (선택 전 화면에 노출)
+// storeRequired: true = 특정 가맹점 데이터를 보는 메뉴 (가맹점 선택 후 화면에 노출)
 const SIDE_MENU_GROUPS = [
   { title: '가맹점 (전체)', storeRequired: false, items: [
     { to: '/', end: true, label: '가맹점 목록' },
@@ -58,33 +59,31 @@ const SIDE_MENU_GROUPS = [
     { to: '/settlement', end: true, label: '정산 리포트' },
     { to: '/purchase-anomalies', end: true, label: '사입 이상 모니터링' },
   ] },
+  { title: '주문 · 발주 (전체)', storeRequired: false, items: [
+    { to: '/orders', end: true, label: '주문 목록' },
+    { to: '/products', end: true, label: '발주 상품' },
+  ] },
+  { title: '리스크 · 사용자 (전체)', storeRequired: false, items: [
+    { to: '/risks', end: true, label: '리스크 알림' },
+    { to: '/users', end: true, label: '사용자 관리' },
+  ] },
+  { title: '감사', storeRequired: false, hqAdminOnly: true, items: [
+    { to: '/audit-log', end: true, label: '변경 이력' },
+  ] },
   { title: '대시보드 · 매출', storeRequired: true, items: [
     { to: '/dashboard', end: true, label: '대시보드 홈' },
     { to: '/analytics', end: true, label: '매출 분석' },
-  ] },
-  { title: '주문 · 발주', storeRequired: true, items: [
-    { to: '/orders', end: true, label: '주문 목록' },
-    { to: '/products', end: true, label: '발주 상품' },
   ] },
   { title: '재고 · 메뉴', storeRequired: true, items: [
     { to: '/ingredients', end: true, label: '재료 목록' },
     { to: '/menus', end: true, label: '메뉴 & 레시피' },
     { to: '/waste', end: true, label: '폐기 내역' },
   ] },
-  { title: '리스크', storeRequired: true, items: [
-    { to: '/risks', end: true, label: '리스크 알림' },
-  ] },
-  { title: '사용자', storeRequired: true, items: [
-    { to: '/users', end: true, label: '사용자 관리' },
-  ] },
-  { title: '감사', storeRequired: false, hqAdminOnly: true, items: [
-    { to: '/audit-log', end: true, label: '변경 이력' },
-  ] },
 ];
 
 function SideMenu({ collapsed, onToggle, storeSelected, isHqAdmin }) {
   const location = useLocation();
-  const visibleGroups = SIDE_MENU_GROUPS.filter(g => !g.hqAdminOnly || isHqAdmin);
+  const visibleGroups = SIDE_MENU_GROUPS.filter(g => (!g.hqAdminOnly || isHqAdmin) && g.storeRequired === storeSelected);
 
   const [openGroups, setOpenGroups] = useState(() => {
     const saved = localStorage.getItem('sideMenuOpenGroups');
@@ -116,9 +115,6 @@ function SideMenu({ collapsed, onToggle, storeSelected, isHqAdmin }) {
             <button className="side-menu-group-title" onClick={() => toggleGroup(group.title)}>
               <span className="side-menu-group-chevron">{isOpen ? '▾' : '▸'}</span>
               <span>{group.title}</span>
-              {group.storeRequired && !storeSelected && (
-                <span className="side-menu-group-badge" title="가맹점을 먼저 선택해주세요">가맹점 선택 필요</span>
-              )}
             </button>
             {isOpen && group.items.map(item => (
               <NavLink key={item.to} to={item.to} end={item.end}
@@ -140,6 +136,11 @@ function HQLayout() {
   const isHqAdmin = ['SUPER_ADMIN', 'HQ_ADMIN'].includes(user?.role);
   const [collapsed, setCollapsed] = useState(false);
 
+  // 가맹점 선택 여부에 따라 상단 탭도 좌측 메뉴와 동일한 기준으로 보여줄 메뉴를 가른다
+  const visibleTabs = SIDE_MENU_GROUPS
+    .filter(g => (!g.hqAdminOnly || isHqAdmin) && g.storeRequired === storeSelected)
+    .flatMap(g => g.items);
+
   return (
     <div className="kicc-layout">
       <div className="admin-back-bar">
@@ -148,23 +149,9 @@ function HQLayout() {
       <header className="topnav">
         <div className="topnav-brand">포스모스</div>
         <nav className="topnav-menu">
-          {/* 가맹점 선택 없이도 쓸 수 있는 메뉴 */}
-          <NavTab to="/" end label="가맹점" />
-          <NavTab to="/rankings" label="가맹점순위" />
-          <NavTab to="/settlement" label="정산리포트" />
-          <NavTab to="/purchase-anomalies" label="사입이상모니터링" />
-          <span style={{ width: 1, alignSelf: 'stretch', margin: '0 8px', background: 'var(--border)' }} />
-          {/* 특정 가맹점을 선택해야 의미가 있는 메뉴 */}
-          <NavTab to="/dashboard" label="대시보드" />
-          <NavTab to="/analytics" label="매출분석" />
-          <NavTab to="/orders" label="주문관리" />
-          <NavTab to="/products" label="매입발주" />
-          <NavTab to="/ingredients" label="재고관리" />
-          <NavTab to="/menus" label="메뉴관리" />
-          <NavTab to="/waste" label="폐기 내역" />
-          <NavTab to="/risks" label="리스크" />
-          <NavTab to="/users" label="사용자" />
-          {isHqAdmin && <NavTab to="/audit-log" label="변경 이력" />}
+          {visibleTabs.map(item => (
+            <NavTab key={item.to} to={item.to} end={item.end} label={item.label} />
+          ))}
         </nav>
       </header>
       <TopBar name={user?.name} currentStore={currentStore} />

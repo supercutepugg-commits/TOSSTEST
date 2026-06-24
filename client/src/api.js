@@ -98,6 +98,7 @@ export const api = {
 
   // 리스크
   getRisks: (params) => a(`/risks${qs(params)}`),
+  createRisk: (data) => a('/risks', { method: 'POST', body: JSON.stringify(data) }),
   updateRiskStatus: (id, status, memo) => a(`/risks/${id}/status`, { method: 'POST', body: JSON.stringify({ status, memo }) }),
   getRiskSettings: () => a('/risks/settings'),
   updateRiskSettings: (data) => a('/risks/settings', { method: 'PUT', body: JSON.stringify(data) }),
