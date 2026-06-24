@@ -227,8 +227,11 @@ router.get('/dashboard', requireAuth, async (req, res) => {
   const sid = ['STORE_OWNER', 'STORE_STAFF'].includes(req.user.role) ? req.user.store_id : (store_id || req.user.store_id);
   const brand_id = req.user.brand_id;
 
-  const ingQ = knex('ingredients').where({ brand_id }).whereRaw('stock <= threshold').orderByRaw('stock - threshold');
-  if (sid) ingQ.where({ store_id: sid });
+  const ingQ = knex('ingredients as i')
+    .leftJoin('stores as s', 'i.store_id', 's.id')
+    .select('i.*', 's.name as store_name')
+    .where({ 'i.brand_id': brand_id }).whereRaw('i.stock <= i.threshold').orderByRaw('i.stock - i.threshold');
+  if (sid) ingQ.where({ 'i.store_id': sid });
   const lowStock = await ingQ;
 
   const alertQ = knex('alert_log as a')

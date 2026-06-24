@@ -55,13 +55,21 @@ export default function StockAlert() {
           maxWidth: 420,
           width: '90vw',
         }}>
-          <div style={{ fontSize: 28, fontWeight: 800, color: '#dc2626', marginBottom: 16 }}>
+          <div style={{ fontSize: 28, fontWeight: 800, color: '#dc2626', marginBottom: 4 }}>
             재고 부족!
           </div>
+          {currentStore?.name && (
+            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--purple)', marginBottom: 16 }}>
+              {currentStore.name}
+            </div>
+          )}
           <div style={{ fontSize: 15, color: 'var(--text-2)', lineHeight: 1.8 }}>
             {alert.ingredients.map(i => (
-              <div key={i.name}>
+              <div key={i.id}>
                 <b>{i.name}</b> — 현재 {i.stock}{i.unit} (기준: {i.threshold}{i.unit})
+                {!currentStore?.name && i.store_name && (
+                  <span style={{ color: 'var(--purple)', fontWeight: 700 }}> [{i.store_name}]</span>
+                )}
               </div>
             ))}
           </div>
