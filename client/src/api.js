@@ -109,6 +109,7 @@ export const api = {
   // 판매 분석
   getAnalytics: (params) => a(`/analytics${qs(params)}`),
   syncStore: (id, data) => a(`/stores/${id}/sync`, { method: 'POST', body: JSON.stringify(data) }),
+  getSampleOrder: (id) => a(`/stores/${id}/sample-order`),
 
   // 가맹점 순위
   getStoreRankings: (params) => a(`/store-rankings${qs(params)}`),

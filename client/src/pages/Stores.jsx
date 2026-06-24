@@ -209,6 +209,19 @@ export default function Stores() {
     window.open(`${window.location.origin}/dashboard`, '_blank');
   };
 
+  // 임시 진단용: 토스플레이스 동기화 원본 데이터 구조를 콘솔에 출력 (대시보드 항목 확장 검토용)
+  const inspectSampleOrder = async (store) => {
+    try {
+      const result = await api.getSampleOrder(store.id);
+      if (result.error) { toast(result.error, 'error'); return; }
+      console.log(`[원본 데이터 확인] ${store.name} — 가장 최근 주문 (${result.processed_at})`);
+      console.log(JSON.stringify(result.raw, null, 2));
+      toast('콘솔(F12)에서 데이터 구조를 확인해주세요', 'info');
+    } catch (e) {
+      toast(e.message || '조회에 실패했습니다', 'error');
+    }
+  };
+
   const runSearch = () => setFilters({ nameQuery, bizQuery, franchiseType, openStatus });
 
   const filteredStores = stores.filter(s => {
@@ -331,6 +344,7 @@ export default function Stores() {
                     <button className="primary small" onClick={() => handleLogin(s)}>로그인</button>
                     {canEdit && (
                       <>
+                        <button className="secondary small" onClick={() => inspectSampleOrder(s)} title="동기화된 원본 주문 구조를 콘솔에 출력 (임시 진단용)">원본 확인</button>
                         <button className="secondary small" onClick={() => setModal({ edit: s })}>수정</button>
                         <button className="danger small" onClick={() => handleDelete(s)}>삭제</button>
                       </>

@@ -584,6 +584,17 @@ async function syncStoreSales(store, fromDate, toDate) {
   return inserted;
 }
 
+// 임시 진단용: 토스플레이스에서 받아온 주문 원본 구조 확인 (대시보드에 결제수단별/할인/고객수 항목을 추가할 수 있는지 보기 위함)
+router.get('/stores/:id/sample-order', requireAuth, requireRole(...ADMIN_ROLES), async (req, res) => {
+  const order = await knex('orders')
+    .where({ store_id: req.params.id, brand_id: req.user.brand_id })
+    .orderBy('processed_at', 'desc').first();
+  if (!order) return res.json({ error: '동기화된 주문이 없습니다' });
+  let raw;
+  try { raw = JSON.parse(order.raw_payload); } catch { raw = order.raw_payload; }
+  res.json({ processed_at: order.processed_at, raw });
+});
+
 router.post('/stores/:id/sync', requireAuth, async (req, res) => {
   const store = await knex('stores').where({ id: req.params.id, brand_id: req.user.brand_id }).first();
   if (!store) return res.status(404).json({ error: '가맹점 없음' });
