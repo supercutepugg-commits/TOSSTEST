@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const router = express.Router();
 const { knex } = require('../db/schema');
 const { broadcast } = require('./sse');
+const { extractOrderFinance } = require('../orderFinance');
 
 async function adjustStock(lineItems, multiplier, storeId) {
   const lowStockIngredients = [];
@@ -99,7 +100,8 @@ async function handleWebhook(req, res, store) {
         || `manual_${Date.now()}`;
 
       const existing = await knex('orders').where({ toss_order_id: orderId }).first();
-      if (existing) return res.sendStatus(200);
+      // REST 동기화가 이미 결제완료 데이터로 채워둔 행을, 나중에 도착한 생성(OPENED) 웹훅이 다시 덮어쓰지 않도록 방지
+      if (existing && existing.order_state === 'COMPLETED') return res.sendStatus(200);
 
       const soldAt = (payload.data && payload.data.order && payload.data.order.createdAt)
         || (payload.data && payload.data.createdAt)
@@ -108,7 +110,12 @@ async function handleWebhook(req, res, store) {
       await knex('orders').insert({
         toss_order_id: orderId, raw_payload: JSON.stringify(payload),
         store_id: store.id, brand_id: store.brand_id, processed_at: soldAt,
-      });
+        ...extractOrderFinance(payload),
+      }).onConflict('toss_order_id').merge();
+
+      // 같은 주문에 대한 생성 웹훅이 재전송된 경우 — 주문행 자체는 위에서 최신 내용으로 갱신했지만,
+      // 재고 차감/판매내역 적립은 이미 처리됐으므로 중복 실행을 막기 위해 여기서 멈춤
+      if (existing) return res.sendStatus(200);
 
       const lineItems = (payload.data && payload.data.order && payload.data.order.lineItems)
         || (payload.data && payload.data.lineItems)

@@ -302,6 +302,15 @@ async function initDb() {
   await addColumnIfMissing('orders', 'store_id', t => t.integer('store_id').defaultTo(defaultStoreId));
   await knex('orders').whereNull('brand_id').update({ brand_id: defaultBrandId });
   await knex('orders').whereNull('store_id').update({ store_id: defaultStoreId });
+  // 매번 raw_payload를 파싱하지 않고 대시보드/정산에서 바로 합산할 수 있도록 정규화해서 같이 저장
+  await addColumnIfMissing('orders', 'order_state', t => t.string('order_state').nullable());
+  await addColumnIfMissing('orders', 'list_price', t => t.float('list_price').defaultTo(0));
+  await addColumnIfMissing('orders', 'discount_amount', t => t.float('discount_amount').defaultTo(0));
+  await addColumnIfMissing('orders', 'supply_amount', t => t.float('supply_amount').defaultTo(0));
+  await addColumnIfMissing('orders', 'total_amount', t => t.float('total_amount').defaultTo(0));
+  await addColumnIfMissing('orders', 'cash_amount', t => t.float('cash_amount').defaultTo(0));
+  await addColumnIfMissing('orders', 'card_amount', t => t.float('card_amount').defaultTo(0));
+  await addColumnIfMissing('orders', 'other_amount', t => t.float('other_amount').defaultTo(0));
 
   // ── 판매 내역 (정규화된 메뉴별 판매) ─────────────────
   await createIfMissing('sales_items', t => {

@@ -109,10 +109,46 @@ export default function Dashboard() {
             </thead>
             <tbody>
               <tr>
-                <td>매출액</td>
+                <td>총매출액</td>
                 <td>{won(cmp.lastWeekSameDay?.revenue)}</td>
                 <td>{won(cmp.yesterday?.revenue)}</td>
                 <td><b>{won(cmp.today?.revenue)}</b></td>
+              </tr>
+              <tr>
+                <td>할인총액</td>
+                <td>{won(cmp.lastWeekSameDay?.discountAmount)}</td>
+                <td>{won(cmp.yesterday?.discountAmount)}</td>
+                <td><b>{won(cmp.today?.discountAmount)}</b></td>
+              </tr>
+              <tr>
+                <td>순매출액</td>
+                <td>{won(cmp.lastWeekSameDay?.netAmount)}</td>
+                <td>{won(cmp.yesterday?.netAmount)}</td>
+                <td><b>{won(cmp.today?.netAmount)}</b></td>
+              </tr>
+              <tr>
+                <td>NET매출액</td>
+                <td>{won(cmp.lastWeekSameDay?.supplyAmount)}</td>
+                <td>{won(cmp.yesterday?.supplyAmount)}</td>
+                <td><b>{won(cmp.today?.supplyAmount)}</b></td>
+              </tr>
+              <tr>
+                <td>현금금액</td>
+                <td>{won(cmp.lastWeekSameDay?.cashAmount)}</td>
+                <td>{won(cmp.yesterday?.cashAmount)}</td>
+                <td><b>{won(cmp.today?.cashAmount)}</b></td>
+              </tr>
+              <tr>
+                <td>카드금액</td>
+                <td>{won(cmp.lastWeekSameDay?.cardAmount)}</td>
+                <td>{won(cmp.yesterday?.cardAmount)}</td>
+                <td><b>{won(cmp.today?.cardAmount)}</b></td>
+              </tr>
+              <tr>
+                <td>기타금액</td>
+                <td>{won(cmp.lastWeekSameDay?.otherAmount)}</td>
+                <td>{won(cmp.yesterday?.otherAmount)}</td>
+                <td><b>{won(cmp.today?.otherAmount)}</b></td>
               </tr>
               <tr>
                 <td>주문건수</td>
@@ -149,7 +185,7 @@ export default function Dashboard() {
           <div className="dash-section-title">1주일간 매출통계</div>
           <table>
             <thead>
-              <tr><th>일자</th><th>요일</th><th>매출액</th><th>주문건수</th></tr>
+              <tr><th>일자</th><th>요일</th><th>총매출액</th><th>순매출액</th><th>NET매출액</th><th>건수</th></tr>
             </thead>
             <tbody>
               {weekly.map(w => {
@@ -159,6 +195,8 @@ export default function Dashboard() {
                     <td style={{ color }}>{w.date}</td>
                     <td style={{ color }}>{w.weekday}</td>
                     <td>{won(w.revenue)}</td>
+                    <td>{won(w.netAmount)}</td>
+                    <td>{won(w.supplyAmount)}</td>
                     <td>{w.orderCount.toLocaleString()}</td>
                   </tr>
                 );

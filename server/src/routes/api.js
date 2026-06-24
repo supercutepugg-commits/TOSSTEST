@@ -3,6 +3,7 @@ const router = createAsyncRouter();
 const { knex, isProduction } = require('../db/schema');
 const { requireAuth, requireRole, HQ_ROLES, LOGISTICS_ROLES, ADMIN_ROLES } = require('../middleware/auth');
 const { logAudit } = require('../auditLog');
+const { extractOrderFinance } = require('../orderFinance');
 
 // ─── 브랜드 ───────────────────────────────────────────
 router.get('/brands', requireAuth, async (req, res) => {
@@ -286,6 +287,8 @@ router.get('/dashboard', requireAuth, async (req, res) => {
   const todayRevenue = Number(todayRow?.total || 0);
 
   // 일자별 매출/주문건수 집계 헬퍼 (특정 하루치)
+  // 매출액/주문건수는 기존처럼 sales_items(메뉴별 판매)에서, 할인·순매출·NET매출·결제수단별 금액은
+  // 주문 단위 chargePrice/payments를 정규화해 저장해둔 orders의 새 컬럼에서 집계 (결제완료 주문만)
   const dayStats = async (date) => {
     const start = new Date(date); start.setHours(0, 0, 0, 0);
     const end = new Date(date); end.setHours(23, 59, 59, 999);
@@ -294,7 +297,23 @@ router.get('/dashboard', requireAuth, async (req, res) => {
     if (sid) q.where({ store_id: sid });
     const row = await q.clone().sum('amount as revenue').first();
     const cnt = await q.clone().countDistinct('toss_order_id as cnt').first();
-    return { revenue: Number(row?.revenue || 0), orderCount: Number(cnt?.cnt || 0) };
+
+    const financeQ = knex('orders').where({ brand_id, order_state: 'COMPLETED' })
+      .where('processed_at', '>=', start.toISOString()).where('processed_at', '<=', end.toISOString());
+    if (sid) financeQ.where({ store_id: sid });
+    const finance = await financeQ
+      .sum({ discountAmount: 'discount_amount', totalAmount: 'total_amount', supplyAmount: 'supply_amount',
+             cashAmount: 'cash_amount', cardAmount: 'card_amount', otherAmount: 'other_amount' }).first();
+
+    return {
+      revenue: Number(row?.revenue || 0), orderCount: Number(cnt?.cnt || 0),
+      discountAmount: Number(finance?.discountAmount || 0),
+      netAmount: Number(finance?.totalAmount || 0),
+      supplyAmount: Number(finance?.supplyAmount || 0),
+      cashAmount: Number(finance?.cashAmount || 0),
+      cardAmount: Number(finance?.cardAmount || 0),
+      otherAmount: Number(finance?.otherAmount || 0),
+    };
   };
 
   const yesterday = new Date(Date.now() - 86400000);
@@ -554,11 +573,14 @@ async function syncStoreSales(store, fromDate, toDate) {
                     : new Date(fromTs).toISOString();
       const lineItems = order.lineItems || order.orderItems || order.items || [];
 
+      // REST 동기화는 orderStates=COMPLETED만 가져오므로 항상 최종 확정 데이터 — 웹훅이 먼저 OPENED 상태로
+      // 저장해둔 행이 있어도 결제완료 데이터로 덮어써야 하므로 ignore 대신 merge로 갱신
       await knex('orders').insert({
         brand_id: store.brand_id, store_id: store.id,
         toss_order_id: String(orderId), raw_payload: JSON.stringify(order),
         processed_at: soldAt,
-      }).onConflict('toss_order_id').ignore();
+        ...extractOrderFinance(order),
+      }).onConflict('toss_order_id').merge();
 
       for (const item of lineItems) {
         const menuName  = (item.item?.title) || item.name || item.menuName || '';
