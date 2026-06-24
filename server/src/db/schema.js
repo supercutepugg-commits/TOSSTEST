@@ -197,6 +197,7 @@ async function initDb() {
     t.string('substitute_note').nullable();
     t.datetime('created_at').defaultTo(knex.fn.now());
   });
+  await addColumnIfMissing('purchase_order_items', 'refunded_quantity', t => t.float('refunded_quantity').defaultTo(0));
 
   // ── 레시피 변경 이력 ──────────────────────────────────
   await createIfMissing('recipe_history', t => {

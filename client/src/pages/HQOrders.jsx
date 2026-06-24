@@ -65,6 +65,7 @@ export default function HQOrders() {
   const [selected, setSelected] = useState(null);
   const [detail, setDetail] = useState(null);
   const [tab, setTab] = useState('active');
+  const [refundQty, setRefundQty] = useState({});
 
   const load = () => api.getOrders().then(setOrders).catch(() => {});
   useEffect(() => { load(); }, []);
@@ -73,6 +74,7 @@ export default function HQOrders() {
     const d = await api.getOrder(id);
     setDetail(d);
     setSelected(id);
+    setRefundQty({});
   };
 
   const reject = async (order) => {
@@ -94,6 +96,28 @@ export default function HQOrders() {
     if (!confirm(`${amount.toLocaleString()}원이 환불됩니다. 실제 카드 결제가 취소됩니다. 진행하시겠습니까?`)) return;
     try {
       await api.refundOrder(order.id, reason, amount);
+      toast('환불이 완료되었습니다', 'success');
+      loadDetail(order.id);
+      load();
+    } catch (e) {
+      toast(e.message || '환불에 실패했습니다', 'error');
+    }
+  };
+
+  const refundItems = async (order) => {
+    const items = Object.entries(refundQty)
+      .map(([item_id, qty]) => ({ item_id: Number(item_id), quantity: Number(qty) }))
+      .filter(i => i.quantity > 0);
+    if (items.length === 0) { toast('환불할 품목의 수량을 입력해주세요', 'error'); return; }
+    const total = items.reduce((s, i) => {
+      const item = order.items.find(x => x.id === i.item_id);
+      return s + (item ? item.unit_price * i.quantity : 0);
+    }, 0);
+    const reason = prompt(`선택한 품목 환불 금액: ${total.toLocaleString()}원\n환불 사유를 입력하세요`);
+    if (!reason) return;
+    if (!confirm(`${total.toLocaleString()}원이 환불됩니다. 실제 카드 결제가 취소됩니다. 진행하시겠습니까?`)) return;
+    try {
+      await api.refundOrderItems(order.id, reason, items);
       toast('환불이 완료되었습니다', 'success');
       loadDetail(order.id);
       load();
@@ -180,17 +204,26 @@ export default function HQOrders() {
             )}
             {canEdit && ['PAID', 'PREPARING_SHIPMENT', 'SHIPPED', 'DELIVERED'].includes(detail.status) && (
               <button className="secondary small" onClick={() => refund(detail)}>
-                {detail.refunded_amount > 0 ? '추가 환불' : '환불'}
+                {detail.refunded_amount > 0 ? '추가 금액 환불' : '금액 환불'}
               </button>
             )}
           </div>
+          {canEdit && ['PAID', 'PREPARING_SHIPMENT', 'SHIPPED', 'DELIVERED'].includes(detail.status) && (
+            <div className="text-muted" style={{ fontSize: 12, marginBottom: 8 }}>
+              아래 표에서 반품된 품목의 수량을 입력하면 해당 품목만 환불(재고도 함께 차감)됩니다.
+            </div>
+          )}
 
           <table style={{ marginBottom: 16 }}>
-            <thead><tr><th>상품</th><th>단위</th><th>발주량</th><th>확정량</th><th>상태</th><th>대체/메모</th><th>금액</th></tr></thead>
+            <thead><tr><th>상품</th><th>단위</th><th>발주량</th><th>확정량</th><th>상태</th><th>대체/메모</th><th>금액</th>
+              {canEdit && ['PAID', 'PREPARING_SHIPMENT', 'SHIPPED', 'DELIVERED'].includes(detail.status) && <th>환불수량</th>}
+            </tr></thead>
             <tbody>
               {detail.items?.map(item => {
                 const editable = canEdit && ['REVIEWING', 'CONFIRMED'].includes(detail.status);
                 const isOOS = item.status === 'OUT_OF_STOCK';
+                const refundable = canEdit && ['PAID', 'PREPARING_SHIPMENT', 'SHIPPED', 'DELIVERED'].includes(detail.status);
+                const maxRefundQty = (item.confirmed_quantity ?? item.quantity) - (item.refunded_quantity || 0);
                 return (
                   <tr key={item.id} style={{ opacity: isOOS ? 0.5 : 1 }}>
                     <td>{item.product_name}</td>
@@ -238,11 +271,29 @@ export default function HQOrders() {
                       )}
                     </td>
                     <td>{item.amount.toLocaleString()}원</td>
+                    {refundable && (
+                      <td>
+                        {maxRefundQty > 0 ? (
+                          <input type="number" min={0} max={maxRefundQty} placeholder="0"
+                            value={refundQty[item.id] ?? ''}
+                            onChange={e => setRefundQty(q => ({ ...q, [item.id]: e.target.value }))}
+                            style={{ width: 60, textAlign: 'center' }} />
+                        ) : (
+                          <span className="badge yellow" style={{ fontSize: 11 }}>전량 환불됨</span>
+                        )}
+                      </td>
+                    )}
                   </tr>
                 );
               })}
             </tbody>
           </table>
+
+          {canEdit && ['PAID', 'PREPARING_SHIPMENT', 'SHIPPED', 'DELIVERED'].includes(detail.status) && (
+            <div style={{ marginBottom: 16 }}>
+              <button className="secondary small" onClick={() => refundItems(detail)}>선택 품목 환불</button>
+            </div>
+          )}
 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
             <button className="secondary small" onClick={() => exportExcel(detail)}>엑셀 다운로드</button>
