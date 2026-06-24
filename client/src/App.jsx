@@ -113,7 +113,6 @@ function SideMenu({ collapsed, onToggle, storeSelected, isHqAdmin }) {
         return (
           <div key={group.title} className={'side-menu-group' + (isOpen ? ' open' : '')}>
             <button className="side-menu-group-title" onClick={() => toggleGroup(group.title)}>
-              <span className="side-menu-group-chevron">▸</span>
               <span>{group.title}</span>
             </button>
             {isOpen && (
