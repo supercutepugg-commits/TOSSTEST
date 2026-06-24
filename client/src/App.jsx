@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BrowserRouter, Routes, Route, NavLink, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, NavLink, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './AuthContext';
 import { StoreProvider, useStore } from './StoreContext';
 import { ThemeProvider, useTheme } from './ThemeContext';
@@ -24,13 +24,16 @@ import Login from './pages/Login';
 import StockAlert from './components/StockAlert';
 import ToastHost from './components/ToastHost';
 
-function TopBar({ name, currentStore }) {
+function TopBar({ name, currentStore, onBackToAdmin }) {
   const { logout } = useAuth();
   const { theme, toggle } = useTheme();
   return (
     <div className="topbar-info">
       <div className="topbar-info-left">
         {currentStore && <span className="topbar-current-store">{currentStore.name}</span>}
+        {onBackToAdmin && (
+          <button className="topbar-link" onClick={onBackToAdmin}>관리자로 돌아가기</button>
+        )}
       </div>
       <div className="topbar-info-right">
         <span className="topbar-user">{name} 님</span>
@@ -138,19 +141,17 @@ function HQLayout() {
   const storeSelected = !!currentStore;
   const isHqAdmin = ['SUPER_ADMIN', 'HQ_ADMIN'].includes(user?.role);
   const [collapsed, setCollapsed] = useState(false);
+  const navigate = useNavigate();
 
   // 가맹점 선택 여부에 따라 상단 탭도 좌측 메뉴와 동일한 기준으로 보여줄 메뉴를 가른다
   const visibleTabs = SIDE_MENU_GROUPS
     .filter(g => (!g.hqAdminOnly || isHqAdmin) && g.storeRequired === storeSelected)
     .flatMap(g => g.items);
 
+  const backToAdmin = () => { clearStore(); navigate('/'); };
+
   return (
     <div className="kicc-layout">
-      {storeSelected && (
-        <div className="admin-back-bar">
-          <NavLink to="/" onClick={clearStore}>관리자로 돌아가기 (가맹점 선택 해제)</NavLink>
-        </div>
-      )}
       <header className="topnav">
         <div className="topnav-brand">포스모스</div>
         <nav className="topnav-menu">
@@ -159,7 +160,7 @@ function HQLayout() {
           ))}
         </nav>
       </header>
-      <TopBar name={user?.name} currentStore={currentStore} />
+      <TopBar name={user?.name} currentStore={currentStore} onBackToAdmin={storeSelected ? backToAdmin : null} />
       <div className="kicc-body">
         <SideMenu collapsed={collapsed} onToggle={() => setCollapsed(c => !c)} storeSelected={storeSelected} isHqAdmin={isHqAdmin} />
         <main className="kicc-main">

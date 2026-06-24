@@ -54,19 +54,6 @@ body {
 
 .kicc-layout { display: flex; flex-direction: column; min-height: 100vh; }
 
-.admin-back-bar {
-  background: #1a1a2e;
-  padding: 4px 20px;
-  text-align: right;
-  flex-shrink: 0;
-}
-.admin-back-bar a {
-  color: rgba(255,255,255,0.75);
-  font-size: 12px;
-  text-decoration: none;
-}
-.admin-back-bar a:hover { color: #fff; }
-
 .topnav {
   display: flex;
   align-items: stretch;
@@ -133,8 +120,9 @@ body {
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
 }
-.topbar-info-left { display: flex; align-items: center; gap: 8px; }
+.topbar-info-left { display: flex; align-items: center; gap: 10px; }
 .topbar-current-store { font-size: 13px; font-weight: 700; color: var(--text); }
+.topbar-info-left .topbar-link { border-left: 1px solid var(--border); padding-left: 12px; }
 .topbar-info-right { display: flex; align-items: center; gap: 10px; }
 .topbar-user { font-size: 13px; color: var(--text-2); }
 .topbar-link {
