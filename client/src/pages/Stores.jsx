@@ -1,6 +1,5 @@
 import { toast } from '../toast';
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import { useStore } from '../StoreContext';
 import { useAuth } from '../AuthContext';
@@ -188,8 +187,7 @@ function StoreModal({ item, onClose, onSave }) {
 export default function Stores() {
   const { user } = useAuth();
   const canEdit = ADMIN_ROLES.includes(user?.role);
-  const { stores, currentStore, selectStore, reloadStores } = useStore();
-  const navigate = useNavigate();
+  const { stores, currentStore, reloadStores } = useStore();
   const [modal, setModal] = useState(null);
   const [bulkSyncOpen, setBulkSyncOpen] = useState(false);
 
@@ -199,9 +197,10 @@ export default function Stores() {
   const [openStatus, setOpenStatus] = useState('');
   const [filters, setFilters] = useState(null); // 조회 버튼 눌렀을 때 적용되는 값
 
-  const handleSelect = (store) => {
-    selectStore(store);
-    navigate('/dashboard');
+  // 새 탭에서 해당 가맹점이 선택된 상태로 관리자 화면(대시보드)을 바로 연다
+  const handleLogin = (store) => {
+    localStorage.setItem('currentStoreId', store.id);
+    window.open(`${window.location.origin}/dashboard`, '_blank');
   };
 
   const runSearch = () => setFilters({ nameQuery, bizQuery, franchiseType, openStatus });
@@ -323,7 +322,7 @@ export default function Stores() {
                   <td className="text-sub" style={{ fontSize: 13 }}>{s.order_deadline || '-'}</td>
                   <td className="text-sub" style={{ fontSize: 13 }}>{days}</td>
                   <td style={{ display: 'flex', gap: 6 }}>
-                    <button className="secondary small" onClick={() => handleSelect(s)}>선택</button>
+                    <button className="primary small" onClick={() => handleLogin(s)}>로그인</button>
                     {canEdit && (
                       <>
                         <button className="secondary small" onClick={() => setModal({ edit: s })}>수정</button>

@@ -21,13 +21,8 @@ export function StoreProvider({ children }) {
 
   useEffect(() => { loadStores(); }, []);
 
-  const selectStore = (store) => {
-    setCurrentStore(store);
-    localStorage.setItem('currentStoreId', store.id);
-  };
-
   return (
-    <StoreContext.Provider value={{ stores, currentStore, selectStore, reloadStores: loadStores }}>
+    <StoreContext.Provider value={{ stores, currentStore, reloadStores: loadStores }}>
       {children}
     </StoreContext.Provider>
   );
