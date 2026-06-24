@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BrowserRouter, Routes, Route, NavLink, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, NavLink, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './AuthContext';
 import { StoreProvider, useStore } from './StoreContext';
 import { ThemeProvider, useTheme } from './ThemeContext';
@@ -83,30 +83,52 @@ const SIDE_MENU_GROUPS = [
 ];
 
 function SideMenu({ collapsed, onToggle, storeSelected, isHqAdmin }) {
+  const location = useLocation();
   const visibleGroups = SIDE_MENU_GROUPS.filter(g => !g.hqAdminOnly || isHqAdmin);
+
+  const [openGroups, setOpenGroups] = useState(() => {
+    const saved = localStorage.getItem('sideMenuOpenGroups');
+    if (saved) {
+      try { return new Set(JSON.parse(saved)); } catch { /* fall through */ }
+    }
+    const activeGroup = SIDE_MENU_GROUPS.find(g => g.items.some(i => i.to === location.pathname));
+    return new Set(activeGroup ? [activeGroup.title] : [SIDE_MENU_GROUPS[0].title]);
+  });
+
+  const toggleGroup = (title) => {
+    setOpenGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(title)) next.delete(title); else next.add(title);
+      localStorage.setItem('sideMenuOpenGroups', JSON.stringify([...next]));
+      return next;
+    });
+  };
+
   return (
     <aside className={'side-menu' + (collapsed ? ' collapsed' : '')}>
       <button className="side-menu-collapse" onClick={onToggle} title={collapsed ? '펼치기' : '접기'}>
         {collapsed ? '»' : '«'}
       </button>
-      {!collapsed && visibleGroups.map(group => (
-        <div key={group.title} className="side-menu-group">
-          <div className="side-menu-group-title">
-            {group.title}
-            {group.storeRequired && !storeSelected && (
-              <span style={{ marginLeft: 6, fontSize: 10, color: '#f59e0b', fontWeight: 400 }} title="가맹점을 먼저 선택해주세요">
-                가맹점 선택 필요
-              </span>
-            )}
+      {!collapsed && visibleGroups.map(group => {
+        const isOpen = openGroups.has(group.title);
+        return (
+          <div key={group.title} className="side-menu-group">
+            <button className="side-menu-group-title" onClick={() => toggleGroup(group.title)}>
+              <span className="side-menu-group-chevron">{isOpen ? '▾' : '▸'}</span>
+              <span>{group.title}</span>
+              {group.storeRequired && !storeSelected && (
+                <span className="side-menu-group-badge" title="가맹점을 먼저 선택해주세요">가맹점 선택 필요</span>
+              )}
+            </button>
+            {isOpen && group.items.map(item => (
+              <NavLink key={item.to} to={item.to} end={item.end}
+                className={({ isActive }) => 'side-menu-item' + (isActive ? ' active' : '')}>
+                {item.label}
+              </NavLink>
+            ))}
           </div>
-          {group.items.map(item => (
-            <NavLink key={item.to} to={item.to} end={item.end}
-              className={({ isActive }) => 'side-menu-item' + (isActive ? ' active' : '')}>
-              {item.label}
-            </NavLink>
-          ))}
-        </div>
-      ))}
+        );
+      })}
     </aside>
   );
 }
