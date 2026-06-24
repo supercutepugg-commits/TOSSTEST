@@ -12,7 +12,7 @@
   --text-3:      #6b7280;
   --border:      #e2e8f0;
   --border-input:#d1d5db;
-  --shadow:      0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow:      0 2px 8px rgba(15,23,42,0.05), 0 1px 2px rgba(15,23,42,0.04);
   --purple:      #0064ff;
   --purple-dark: #0050cc;
   --purple-light:#e8f1ff;
@@ -174,36 +174,37 @@ body {
 }
 .side-menu-collapse:hover { color: var(--purple); }
 
-.side-menu-group { border-bottom: 1px solid var(--border); padding-bottom: 6px; margin-bottom: 6px; }
+.side-menu-group { padding-bottom: 8px; margin-bottom: 8px; }
 .side-menu-group:last-child { border-bottom: none; }
 .side-menu-group-title {
-  width: 100%;
+  width: calc(100% - 16px);
+  margin: 0 8px;
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 9px 16px;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-  color: var(--text-3);
-  text-transform: uppercase;
+  gap: 8px;
+  padding: 9px 10px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-2);
   background: none;
   border: none;
+  border-radius: 8px;
   cursor: pointer;
   text-align: left;
 }
-.side-menu-group-title:hover { color: var(--text-2); background: var(--bg-elevated); }
-.side-menu-group-chevron { font-size: 10px; width: 10px; flex-shrink: 0; }
+.side-menu-group-title:hover { color: var(--text); background: var(--bg-elevated); }
+.side-menu-group-chevron { font-size: 9px; width: 9px; flex-shrink: 0; color: var(--text-3); transition: transform 0.15s; }
 .side-menu-item {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 9px 16px;
-  font-size: 13px;
+  margin: 1px 8px;
+  padding: 9px 12px 9px 22px;
+  border-radius: 8px;
+  font-size: 13.5px;
   font-weight: 500;
   color: var(--text-2);
   text-decoration: none;
-  border-left: 3px solid transparent;
   transition: background 0.15s, color 0.15s;
 }
 .side-menu-item-icon { font-size: 14px; width: 18px; text-align: center; }
@@ -211,7 +212,6 @@ body {
 .side-menu-item.active {
   background: var(--purple-light);
   color: var(--purple);
-  border-left-color: var(--purple);
   font-weight: 700;
 }
 .side-menu-item.disabled { color: var(--text-3); opacity: 0.5; cursor: not-allowed; }
@@ -251,8 +251,8 @@ h2 { font-size: 20px; font-weight: 700; letter-spacing: -0.3px; margin-bottom: 0
 /* ── 카드 ────────────────────────────────────────────── */
 .card {
   background: var(--bg-card);
-  border-radius: 12px;
-  padding: 20px;
+  border-radius: 14px;
+  padding: 22px;
   box-shadow: var(--shadow);
   margin-bottom: 20px;
   border: 1px solid var(--border);
@@ -261,10 +261,11 @@ h2 { font-size: 20px; font-weight: 700; letter-spacing: -0.3px; margin-bottom: 0
 /* ── 뱃지 ────────────────────────────────────────────── */
 .badge {
   display: inline-block;
-  padding: 3px 10px;
+  padding: 4px 11px;
   border-radius: 99px;
   font-size: 12px;
   font-weight: 600;
+  letter-spacing: -0.1px;
 }
 .badge.red    { background: #fee2e2; color: #b91c1c; }
 .badge.green  { background: #dcfce7; color: #15803d; }
@@ -275,18 +276,18 @@ h2 { font-size: 20px; font-weight: 700; letter-spacing: -0.3px; margin-bottom: 0
 [data-theme="dark"] .badge.yellow { background: #422006; color: #fcd34d; }
 
 /* ── 테이블 ──────────────────────────────────────────── */
-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 th {
   text-align: left;
-  padding: 10px 12px;
-  background: var(--bg-muted);
+  padding: 11px 14px;
+  background: none;
   font-weight: 600;
-  color: var(--text-2);
+  color: var(--text-3);
   border-bottom: 1px solid var(--border);
-  font-size: 13px;
+  font-size: 12px;
 }
 td {
-  padding: 10px 12px;
+  padding: 13px 14px;
   border-bottom: 1px solid var(--border);
   vertical-align: middle;
   color: var(--text);
@@ -298,10 +299,11 @@ tr:hover td { background: var(--bg-elevated); }
 button {
   cursor: pointer;
   border: none;
-  border-radius: 8px;
+  border-radius: 9px;
   padding: 8px 16px;
   font-size: 14px;
   font-weight: 600;
+  letter-spacing: -0.1px;
   transition: background-color 0.15s, color 0.15s, border-color 0.15s;
 }
 button:disabled { cursor: not-allowed; opacity: 0.6; }
@@ -309,9 +311,9 @@ button.primary    { background: var(--purple); color: #fff; }
 button.primary:hover    { background: var(--purple-dark); }
 button.danger     { background: #fee2e2; color: #b91c1c; }
 button.danger:hover     { background: #fecaca; }
-button.secondary  { background: var(--bg-elevated); color: var(--text); border: 1px solid var(--border); }
-button.secondary:hover  { background: var(--border); }
-button.small      { padding: 4px 10px; font-size: 12px; }
+button.secondary  { background: var(--bg-elevated); color: var(--text-2); border: 1px solid var(--border); }
+button.secondary:hover  { background: var(--border); color: var(--text); }
+button.small      { padding: 5px 11px; font-size: 12.5px; border-radius: 7px; }
 
 [data-theme="dark"] button.danger { background: #450a0a; color: #fca5a5; }
 [data-theme="dark"] button.danger:hover { background: #5c0f0f; }
@@ -319,16 +321,16 @@ button.small      { padding: 4px 10px; font-size: 12px; }
 /* ── 폼 ──────────────────────────────────────────────── */
 input, select, textarea {
   width: 100%;
-  padding: 8px 12px;
+  padding: 9px 12px;
   border: 1px solid var(--border-input);
-  border-radius: 8px;
+  border-radius: 9px;
   font-size: 14px;
   outline: none;
   background: var(--bg-input);
   color: var(--text);
-  transition: border-color 0.15s;
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
-input:focus, select:focus, textarea:focus { border-color: var(--purple); }
+input:focus, select:focus, textarea:focus { border-color: var(--purple); box-shadow: 0 0 0 3px var(--purple-light); }
 input[readonly], input:read-only {
   background: var(--bg-muted);
   color: var(--text-3);
@@ -360,7 +362,7 @@ input[readonly], input:read-only {
 }
 .stat-card {
   background: var(--bg-card);
-  border-radius: 12px;
+  border-radius: 14px;
   padding: 20px;
   box-shadow: var(--shadow);
   border: 1px solid var(--border);
@@ -380,7 +382,7 @@ input[readonly], input:read-only {
 }
 .modal {
   background: var(--bg-card);
-  border-radius: 16px;
+  border-radius: 18px;
   padding: 28px;
   width: 480px;
   max-width: 95vw;
