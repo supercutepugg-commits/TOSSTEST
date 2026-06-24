@@ -585,14 +585,23 @@ async function syncStoreSales(store, fromDate, toDate) {
 }
 
 // 임시 진단용: 토스플레이스에서 받아온 주문 원본 구조 확인 (대시보드에 결제수단별/할인/고객수 항목을 추가할 수 있는지 보기 위함)
+// 결제수단(payments) 데이터를 보려면 결제완료(COMPLETED) 주문이어야 하므로, 최근 주문 중 완료된 것을 우선 찾는다
 router.get('/stores/:id/sample-order', requireAuth, requireRole(...ADMIN_ROLES), async (req, res) => {
-  const order = await knex('orders')
+  const orders = await knex('orders')
     .where({ store_id: req.params.id, brand_id: req.user.brand_id })
-    .orderBy('processed_at', 'desc').first();
-  if (!order) return res.json({ error: '동기화된 주문이 없습니다' });
+    .orderBy('processed_at', 'desc').limit(30);
+  if (orders.length === 0) return res.json({ error: '동기화된 주문이 없습니다' });
+
+  let picked = orders[0];
+  for (const o of orders) {
+    try {
+      const parsed = JSON.parse(o.raw_payload);
+      if (parsed?.data?.order?.orderState === 'COMPLETED') { picked = o; break; }
+    } catch { /* skip */ }
+  }
   let raw;
-  try { raw = JSON.parse(order.raw_payload); } catch { raw = order.raw_payload; }
-  res.json({ processed_at: order.processed_at, raw });
+  try { raw = JSON.parse(picked.raw_payload); } catch { raw = picked.raw_payload; }
+  res.json({ processed_at: picked.processed_at, raw });
 });
 
 router.post('/stores/:id/sync', requireAuth, async (req, res) => {
