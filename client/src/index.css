@@ -174,7 +174,8 @@ body {
 }
 .side-menu-collapse:hover { color: var(--purple); }
 
-.side-menu-group { padding: 2px 0; }
+.side-menu-group { padding: 6px 0; border-bottom: 1px solid var(--border); }
+.side-menu-group:last-child { border-bottom: none; }
 .side-menu-group-title {
   width: calc(100% - 16px);
   margin: 0 8px;
@@ -185,15 +186,15 @@ body {
   font-size: 12.5px;
   font-weight: 600;
   color: var(--text-3);
-  background: none;
+  background: var(--bg-elevated);
   border: none;
   border-radius: 8px;
   cursor: pointer;
   text-align: left;
   transition: color 0.15s, background 0.15s;
 }
-.side-menu-group-title:hover { color: var(--text); background: var(--bg-elevated); }
-.side-menu-group.open .side-menu-group-title { color: var(--text); }
+.side-menu-group-title:hover { color: var(--text); background: var(--border); }
+.side-menu-group.open .side-menu-group-title { color: var(--purple); background: var(--purple-light); }
 .side-menu-group-chevron {
   font-size: 9px;
   width: 9px;
