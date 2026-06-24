@@ -192,10 +192,13 @@ export default function HQOrders() {
 
       {detail && (
         <div className="card" style={{ position: 'sticky', top: 0, maxHeight: '90vh', overflowY: 'auto' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
             <div style={{ fontWeight: 700, fontSize: 16 }}>발주서 #{detail.id} — {detail.store_name}</div>
             <button className="secondary small" onClick={() => { setDetail(null); setSelected(null); }}>닫기</button>
           </div>
+          {detail.created_by_name && (
+            <div className="text-muted" style={{ fontSize: 12.5, marginBottom: 12 }}>작성자: {detail.created_by_name}</div>
+          )}
 
           <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10 }}>
             <StatusBadge status={detail.status} />

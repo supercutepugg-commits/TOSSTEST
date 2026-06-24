@@ -284,6 +284,8 @@ async function initDb() {
     t.text('memo').nullable();
     t.datetime('created_at').defaultTo(knex.fn.now());
   });
+  await addColumnIfMissing('risk_alerts', 'occurrence_count', t => t.integer('occurrence_count').defaultTo(1));
+  await addColumnIfMissing('risk_alerts', 'last_occurred_at', t => t.datetime('last_occurred_at').nullable());
 
   // ── POS 주문 (기존 orders → 토스 POS 판매 데이터) ─────
   await createIfMissing('orders', t => {

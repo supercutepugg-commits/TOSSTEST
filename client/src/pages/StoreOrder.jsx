@@ -246,13 +246,28 @@ export default function StoreOrder() {
               <table style={{ marginBottom: 12 }}>
                 <thead><tr><th>상품</th><th>수량</th><th>금액</th></tr></thead>
                 <tbody>
-                  {detailOrder.items?.map(item => (
-                    <tr key={item.id}>
-                      <td>{item.product_name}</td>
-                      <td>{item.confirmed_quantity ?? item.quantity} {item.unit}</td>
-                      <td>{item.amount.toLocaleString()}원</td>
-                    </tr>
-                  ))}
+                  {detailOrder.items?.map(item => {
+                    const changed = item.confirmed_quantity != null && item.confirmed_quantity !== item.quantity;
+                    return (
+                      <tr key={item.id}>
+                        <td>
+                          {item.product_name}
+                          {item.status === 'SOLD_OUT' && <span className="badge red" style={{ marginLeft: 6 }}>품절</span>}
+                          {item.substitute_note && (
+                            <div className="text-muted" style={{ fontSize: 12, marginTop: 2 }}>본사 메모: {item.substitute_note}</div>
+                          )}
+                        </td>
+                        <td>
+                          {changed && (
+                            <span className="text-muted" style={{ textDecoration: 'line-through', marginRight: 4 }}>{item.quantity}{item.unit}</span>
+                          )}
+                          <span style={{ fontWeight: changed ? 700 : 400 }}>{item.confirmed_quantity ?? item.quantity} {item.unit}</span>
+                          {changed && <span className="badge yellow" style={{ marginLeft: 6 }}>변경됨</span>}
+                        </td>
+                        <td>{item.amount.toLocaleString()}원</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
               <div style={{ fontWeight: 700, textAlign: 'right', marginBottom: 12 }}>
@@ -260,6 +275,9 @@ export default function StoreOrder() {
                   ? `확정금액: ${detailOrder.confirmed_amount.toLocaleString()}원`
                   : `총 금액: ${detailOrder.total_amount.toLocaleString()}원`}
               </div>
+              {detailOrder.created_by_name && (
+                <div className="text-muted" style={{ fontSize: 12, marginBottom: 8 }}>작성자: {detailOrder.created_by_name}</div>
+              )}
               {detailOrder.memo && (
                 <div className="elevated-card" style={{ padding: 10, fontSize: 13, marginBottom: 12 }}>메모: {detailOrder.memo}</div>
               )}

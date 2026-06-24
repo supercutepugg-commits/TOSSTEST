@@ -104,7 +104,7 @@ export default function Risks() {
       <div className="card">
         {risks.length === 0 ? <div className="empty">알림 없음</div> : (
           <table>
-            <thead><tr><th>심각도</th><th>유형</th><th>가맹점</th><th>내용</th><th>상태</th><th>발생일</th><th>조치</th></tr></thead>
+            <thead><tr><th>심각도</th><th>유형</th><th>가맹점</th><th>내용</th><th>재발</th><th>상태</th><th>발생일</th><th>조치</th></tr></thead>
             <tbody>
               {risks.map(r => (
                 <tr key={r.id}>
@@ -112,8 +112,18 @@ export default function Risks() {
                   <td><span className="badge yellow">{TYPE_LABEL[r.type] || r.type}</span></td>
                   <td>{r.store_name || '-'}</td>
                   <td style={{ fontSize: 13, maxWidth: 240 }}>{r.description}</td>
+                  <td>
+                    {r.occurrence_count > 1
+                      ? <span className="badge red">{r.occurrence_count}회</span>
+                      : <span className="text-muted" style={{ fontSize: 12 }}>1회</span>}
+                  </td>
                   <td><span className="badge green">{STATUS_LABEL[r.status]}</span></td>
-                  <td style={{ fontSize: 12, color: '#94a3b8' }}>{new Date(r.created_at).toLocaleDateString('ko-KR')}</td>
+                  <td style={{ fontSize: 12, color: '#94a3b8' }}>
+                    {new Date(r.created_at).toLocaleDateString('ko-KR')}
+                    {r.last_occurred_at && r.occurrence_count > 1 && (
+                      <div>최근: {new Date(r.last_occurred_at).toLocaleDateString('ko-KR')}</div>
+                    )}
+                  </td>
                   <td style={{ display: 'flex', gap: 4 }}>
                     {r.status === 'OPEN' && <button className="secondary small" onClick={() => updateStatus(r.id, 'ACKNOWLEDGED')}>확인</button>}
                     {r.status === 'ACKNOWLEDGED' && <button className="secondary small" onClick={() => updateStatus(r.id, 'IN_PROGRESS')}>조치중</button>}

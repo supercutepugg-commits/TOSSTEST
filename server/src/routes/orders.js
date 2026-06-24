@@ -96,7 +96,8 @@ router.get('/', requireAuth, async (req, res) => {
 router.get('/:id', requireAuth, async (req, res) => {
   const order = await knex('purchase_orders as po')
     .join('stores as s', 'po.store_id', 's.id')
-    .select('po.*', 's.name as store_name')
+    .leftJoin('users as u', 'po.created_by', 'u.id')
+    .select('po.*', 's.name as store_name', 'u.name as created_by_name')
     .where('po.id', req.params.id)
     .where('po.brand_id', req.user.brand_id)
     .first();
