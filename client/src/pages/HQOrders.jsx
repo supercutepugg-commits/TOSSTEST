@@ -19,16 +19,7 @@ const STATUS_COLOR = {
   PREPARING_SHIPMENT: '#8b5cf6', SHIPPED: '#3b82f6', DELIVERED: '#16a34a',
   CLOSED: '#64748b', CANCELED: '#ef4444', DRAFT: '#94a3b8',
 };
-const NEXT_STATUS = {
-  ORDERED: 'REVIEWING', REVIEWING: 'CONFIRMED',
-  CONFIRMED: 'PAYMENT_PENDING', PAYMENT_PENDING: 'PAID',
-  PAID: 'PREPARING_SHIPMENT', PREPARING_SHIPMENT: 'SHIPPED', SHIPPED: 'DELIVERED',
-};
-const NEXT_LABEL = {
-  ORDERED: '검토 시작', REVIEWING: '주문 확정',
-  CONFIRMED: '결제 요청', PAYMENT_PENDING: '결제 확인',
-  PAID: '출고 준비', PREPARING_SHIPMENT: '출고 완료', SHIPPED: '납품 완료',
-};
+const STATUS_FLOW = ['ORDERED', 'REVIEWING', 'CONFIRMED', 'PAYMENT_PENDING', 'PAID', 'PREPARING_SHIPMENT', 'SHIPPED', 'DELIVERED'];
 const ACTIVE = ['ORDERED', 'REVIEWING', 'REVISION_REQUESTED', 'CONFIRMED', 'PAYMENT_PENDING', 'PAID', 'PREPARING_SHIPMENT', 'SHIPPED'];
 const DONE = ['DELIVERED', 'CLOSED', 'CANCELED'];
 
@@ -160,7 +151,9 @@ export default function HQOrders() {
                           style={{ width: 'auto', fontSize: 12, padding: '5px 8px' }}
                         >
                           <option value={o.status}>{STATUS_LABEL[o.status]}</option>
-                          {NEXT_STATUS[o.status] && <option value={NEXT_STATUS[o.status]}>{NEXT_LABEL[o.status]}</option>}
+                          {STATUS_FLOW.indexOf(o.status) >= 0 && STATUS_FLOW.slice(STATUS_FLOW.indexOf(o.status) + 1).map(s => (
+                            <option key={s} value={s}>{STATUS_LABEL[s]}</option>
+                          ))}
                           {o.status === 'REVIEWING' && <option value="REVISION_REQUESTED">수정요청</option>}
                         </select>
                       </td>
