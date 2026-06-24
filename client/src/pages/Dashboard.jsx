@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { api } from '../api';
 import { useStore } from '../StoreContext';
 import { useAuth } from '../AuthContext';
+import { toast } from '../toast';
 
 const SEVERITY_COLOR = { HIGH: '#ef4444', MEDIUM: '#f59e0b', LOW: '#6366f1' };
 const TYPE_LABEL = {
@@ -28,14 +29,20 @@ export default function Dashboard() {
   const { currentStore } = useStore();
   const { user } = useAuth();
   const [data, setData] = useState(null);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     if (!currentStore) return;
     setData(null);
-    api.getDashboard(currentStore.id).then(setData).catch(() => {});
+    setError(null);
+    api.getDashboard(currentStore.id).then(setData).catch(e => {
+      setError(e.message || '대시보드를 불러오지 못했습니다');
+      toast(e.message || '대시보드를 불러오지 못했습니다', 'error');
+    });
   }, [currentStore?.id]);
 
   if (!currentStore) return <div className="empty">가맹점을 선택해주세요</div>;
+  if (error) return <div className="empty">{error}</div>;
   if (!data) return <div className="empty">불러오는 중...</div>;
 
   const cmp = data.salesComparison || {};
