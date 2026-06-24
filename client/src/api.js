@@ -87,6 +87,7 @@ export const api = {
   cancelOrder: (id) => a(`/orders/${id}`, { method: 'DELETE' }),
   preparePayment: (id) => a(`/orders/${id}/payment/prepare`, { method: 'POST' }),
   confirmPayment: (id, data) => a(`/orders/${id}/payment/confirm`, { method: 'POST', body: JSON.stringify(data) }),
+  refundOrder: (id, reason) => a(`/orders/${id}/refund`, { method: 'POST', body: JSON.stringify({ reason }) }),
 
   // 폐기
   getWaste: (params) => a(`/waste${qs(params)}`),

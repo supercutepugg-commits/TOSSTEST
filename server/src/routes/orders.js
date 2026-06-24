@@ -329,6 +329,33 @@ router.post('/:id/payment/confirm', requireAuth, async (req, res) => {
   res.json({ ok: true, order: result });
 });
 
+// ── 결제 취소 (환불) — 결제 완료된 발주서를 본사가 환불 처리 ─────────
+router.post('/:id/refund', requireAuth, requireRole(...LOGISTICS_ROLES), async (req, res) => {
+  const order = await knex('purchase_orders').where({ id: req.params.id, brand_id: req.user.brand_id }).first();
+  if (!order) return res.status(404).json({ error: '없음' });
+  if (order.status !== 'PAID') return res.status(400).json({ error: '결제 완료 상태에서만 환불할 수 있습니다' });
+  if (!order.toss_payment_key) return res.status(400).json({ error: '결제 정보가 없습니다' });
+  if (!TOSS_SECRET_KEY) return res.status(500).json({ error: '결제 설정 오류 (TOSS_SECRET_KEY 미설정)' });
+
+  const { reason } = req.body;
+  if (!reason || !reason.trim()) return res.status(400).json({ error: '환불 사유를 입력해주세요' });
+
+  const authHeader = 'Basic ' + Buffer.from(`${TOSS_SECRET_KEY}:`).toString('base64');
+  const tossRes = await fetch(`${TOSS_API_BASE}/${order.toss_payment_key}/cancel`, {
+    method: 'POST',
+    headers: { Authorization: authHeader, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ cancelReason: reason }),
+  });
+  const result = await tossRes.json();
+  if (!tossRes.ok) {
+    return res.status(tossRes.status).json({ error: result.message || '환불 처리 실패', code: result.code });
+  }
+
+  await knex('purchase_orders').where({ id: order.id }).update({ status: 'CANCELED' });
+  await logHistory(order.id, 'STATUS_CHANGE', { status: order.status }, { status: 'CANCELED' }, `환불: ${reason}`, req.user.id);
+  res.json({ ok: true, order: result });
+});
+
 // ── 발주서 취소 ───────────────────────────────────────
 router.delete('/:id', requireAuth, async (req, res) => {
   const order = await knex('purchase_orders').where({ id: req.params.id, brand_id: req.user.brand_id }).first();

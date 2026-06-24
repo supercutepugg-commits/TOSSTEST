@@ -1,3 +1,4 @@
+import { toast } from '../toast';
 import { useEffect, useState } from 'react';
 import { api } from '../api';
 import { useAuth } from '../AuthContext';
@@ -90,6 +91,20 @@ export default function HQOrders() {
     load();
   };
 
+  const refund = async (order) => {
+    const reason = prompt('환불 사유를 입력하세요');
+    if (!reason) return;
+    if (!confirm('실제 카드 결제가 취소됩니다. 환불하시겠습니까?')) return;
+    try {
+      await api.refundOrder(order.id, reason);
+      toast('환불이 완료되었습니다', 'success');
+      loadDetail(order.id);
+      load();
+    } catch (e) {
+      toast(e.message || '환불에 실패했습니다', 'error');
+    }
+  };
+
   const visibleOrders = orders.filter(o =>
     tab === 'active' ? ACTIVE.includes(o.status) : DONE.includes(o.status)
   );
@@ -159,8 +174,11 @@ export default function HQOrders() {
             <button className="secondary small" onClick={() => { setDetail(null); setSelected(null); }}>닫기</button>
           </div>
 
-          <div style={{ marginBottom: 16 }}>
+          <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10 }}>
             <StatusBadge status={detail.status} />
+            {canEdit && detail.status === 'PAID' && (
+              <button className="secondary small" onClick={() => refund(detail)}>환불</button>
+            )}
           </div>
 
           <table style={{ marginBottom: 16 }}>
