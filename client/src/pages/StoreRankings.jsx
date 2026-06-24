@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api';
+import { exportCsv } from '../exportCsv';
 
 const QUICK_RANGES = [
   { label: '1주일', days: 7 },
@@ -37,9 +38,32 @@ export default function StoreRankings() {
   const maxRevenue = Math.max(1, ...(data?.salesRanking || []).map(r => r.revenue));
   const maxOrderAmt = Math.max(1, ...(data?.orderRanking || []).map(r => r.order_amount));
 
+  const exportRankings = () => {
+    if (!data) return;
+    const rows = [
+      [`조회기간: ${fromDate} ~ ${toDate}`],
+      [],
+      ['매출 순위'],
+      ['순위', '가맹점', '매출', '주문건수'],
+      ...data.salesRanking.map((r, i) => [i + 1, r.store_name, r.revenue, r.order_count]),
+      [],
+      ['발주 순위'],
+      ['순위', '가맹점', '발주금액', '발주건수'],
+      ...data.orderRanking.map((r, i) => [i + 1, r.store_name, r.order_amount, r.order_count]),
+      [],
+      ['매출 대비 발주율'],
+      ['순위', '가맹점', '매출', '발주금액', '발주율(%)'],
+      ...data.efficiencyRanking.map((r, i) => [i + 1, r.store_name, r.revenue, r.order_amount, r.ratio ?? '']),
+    ];
+    exportCsv(`가맹점_순위_${fromDate}_${toDate}.csv`, rows);
+  };
+
   return (
     <div>
-      <h2 style={{ marginBottom: 16 }}>가맹점 순위</h2>
+      <div className="top-bar">
+        <h2 style={{ marginBottom: 0 }}>가맹점 순위</h2>
+        <button className="secondary" onClick={exportRankings} disabled={!data}>엑셀 다운로드</button>
+      </div>
 
       <div className="card kicc-search-panel">
         <div className="kicc-search-row">

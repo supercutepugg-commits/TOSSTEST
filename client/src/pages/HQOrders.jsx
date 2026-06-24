@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api';
 import { useAuth } from '../AuthContext';
+import { exportCsv } from '../exportCsv';
 
 const LOGISTICS_ROLES = ['SUPER_ADMIN', 'HQ_ADMIN', 'HQ_LOGISTICS'];
 
@@ -42,13 +43,18 @@ function exportExcel(detail) {
     [],
     ['', '', '', '', '', '확정금액', detail.confirmed_amount ?? detail.total_amount],
   ];
-  const csv = rows.map(r => r.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
-  const bom = '﻿';
-  const blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = `발주서_${detail.id}_${detail.store_name}.csv`;
-  a.click(); URL.revokeObjectURL(url);
+  exportCsv(`발주서_${detail.id}_${detail.store_name}.csv`, rows);
+}
+
+function exportOrderList(orders) {
+  const rows = [
+    ['가맹점', '발주일', '상태', '금액'],
+    ...orders.map(o => [
+      o.store_name, new Date(o.created_at).toLocaleDateString('ko-KR'),
+      STATUS_LABEL[o.status], o.confirmed_amount ?? o.total_amount,
+    ]),
+  ];
+  exportCsv(`발주_목록_${new Date().toISOString().slice(0, 10)}.csv`, rows);
 }
 
 function StatusBadge({ status }) {
@@ -100,6 +106,7 @@ export default function HQOrders() {
             <button className={tab === 'done' ? 'primary' : 'secondary'} onClick={() => { setTab('done'); setDetail(null); setSelected(null); }}>
               완료/취소
             </button>
+            <button className="secondary" onClick={() => exportOrderList(visibleOrders)}>엑셀 다운로드</button>
           </div>
         </div>
         <div className="card">

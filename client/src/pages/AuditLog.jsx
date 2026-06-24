@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api';
+import { exportCsv } from '../exportCsv';
 
 const ENTITY_LABEL = { PRODUCT: '상품', INGREDIENT: '재료', MENU: '메뉴', STORE: '가맹점', USER: '사용자' };
 const ACTION_LABEL = { CREATE: '생성', UPDATE: '수정', DELETE: '삭제' };
@@ -28,9 +29,24 @@ export default function AuditLog() {
   const load = () => api.getAuditLog({ entity_type: entityType || undefined }).then(setLogs).catch(() => {});
   useEffect(() => { load(); }, [entityType]);
 
+  const exportLogs = () => {
+    const rows = [
+      ['일시', '처리자', '대상', 'ID', '작업', '변경 내용'],
+      ...logs.map(l => [
+        new Date(l.created_at).toLocaleString('ko-KR'), l.user_name || '시스템',
+        ENTITY_LABEL[l.entity_type] || l.entity_type, l.entity_id,
+        ACTION_LABEL[l.action] || l.action, diffSummary(l.before_value, l.after_value),
+      ]),
+    ];
+    exportCsv(`감사로그_${new Date().toISOString().slice(0, 10)}.csv`, rows);
+  };
+
   return (
     <div>
-      <h2 style={{ marginBottom: 16 }}>변경 이력 (감사 로그)</h2>
+      <div className="top-bar">
+        <h2 style={{ marginBottom: 0 }}>변경 이력 (감사 로그)</h2>
+        <button className="secondary" onClick={exportLogs} disabled={logs.length === 0}>엑셀 다운로드</button>
+      </div>
       <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
         <button className={!entityType ? 'primary' : 'secondary'} onClick={() => setEntityType('')}>전체</button>
         {Object.entries(ENTITY_LABEL).map(([k, v]) => (

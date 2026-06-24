@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { api } from '../api';
 import { useAuth } from '../AuthContext';
 import { useStore } from '../StoreContext';
+import { exportCsv } from '../exportCsv';
 
 const REASONS = ['유통기한 경과', '품질 저하', '보관 문제', '조리 실수', '오배송 또는 파손', '기타'];
 
@@ -50,11 +51,25 @@ export default function Waste() {
     setModal(true);
   };
 
+  const exportLogs = () => {
+    const rows = [
+      ['폐기일', ...(isHQ ? ['가맹점'] : []), '식자재', '수량', '단위', '사유', '메모'],
+      ...logs.map(l => [
+        l.waste_date, ...(isHQ ? [l.store_name] : []),
+        l.ingredient_name, l.quantity, l.unit, l.reason, l.memo || '',
+      ]),
+    ];
+    exportCsv(`폐기내역_${new Date().toISOString().slice(0, 10)}.csv`, rows);
+  };
+
   return (
     <div>
       <div className="top-bar">
         <h2>폐기 관리{currentStore?.name ? ` — ${currentStore.name}` : ''}</h2>
-        {!isHQ && <button className="primary" onClick={openModal}>+ 폐기 입력</button>}
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="secondary" onClick={exportLogs} disabled={logs.length === 0}>엑셀 다운로드</button>
+          {!isHQ && <button className="primary" onClick={openModal}>+ 폐기 입력</button>}
+        </div>
       </div>
 
       <div className="card">
