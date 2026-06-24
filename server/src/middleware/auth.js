@@ -6,12 +6,11 @@ if (!SECRET) {
   throw new Error('JWT_SECRET 환경변수가 설정되지 않았습니다. server/.env에 JWT_SECRET을 설정하세요.');
 }
 
-function signToken(user) {
-  return jwt.sign(
-    { id: user.id, role: user.role, brand_id: user.brand_id, store_id: user.store_id },
-    SECRET,
-    { expiresIn: '7d' }
-  );
+function signToken(user, opts = {}) {
+  const { expiresIn = '7d', impersonated_by } = opts;
+  const payload = { id: user.id, role: user.role, brand_id: user.brand_id, store_id: user.store_id };
+  if (impersonated_by) payload.impersonated_by = impersonated_by;
+  return jwt.sign(payload, SECRET, { expiresIn });
 }
 
 async function requireAuth(req, res, next) {

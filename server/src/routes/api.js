@@ -76,6 +76,23 @@ router.delete('/stores/:id', requireAuth, requireRole(...ADMIN_ROLES), async (re
   res.json({ ok: true });
 });
 
+// 본사 관리자가 가맹점 계정으로 임시 로그인 (새 창에서 점주 화면 그대로 확인)
+router.post('/stores/:id/impersonate', requireAuth, requireRole(...HQ_ROLES), async (req, res) => {
+  const store = await knex('stores').where({ id: req.params.id, brand_id: req.user.brand_id }).first();
+  if (!store) return res.status(404).json({ error: '없음' });
+  const storeUser = await knex('users')
+    .where({ store_id: store.id, brand_id: req.user.brand_id })
+    .whereIn('role', ['STORE_OWNER', 'STORE_STAFF'])
+    .orderByRaw(`CASE role WHEN 'STORE_OWNER' THEN 0 ELSE 1 END`)
+    .first();
+  if (!storeUser) return res.status(400).json({ error: '이 가맹점에는 로그인 가능한 계정이 없습니다' });
+
+  const { signToken } = require('../middleware/auth');
+  const token = signToken(storeUser, { expiresIn: '2h', impersonated_by: req.user.id });
+  await logAudit(req.user.brand_id, req.user.id, 'STORE', store.id, 'IMPERSONATE', null, { target_user_id: storeUser.id, target_user_name: storeUser.name });
+  res.json({ token, storeName: store.name, userName: storeUser.name });
+});
+
 // ─── 재료 ───────────────────────────────────────────
 router.get('/ingredients', requireAuth, async (req, res) => {
   const { store_id } = req.query;

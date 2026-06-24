@@ -8,7 +8,7 @@ function normalizeApiBase(raw) {
 const BASE_API = normalizeApiBase(import.meta.env.VITE_API_URL);
 const BASE_AUTH = BASE_API.replace('/api', '/auth');
 
-function getToken() { return localStorage.getItem('token'); }
+function getToken() { return sessionStorage.getItem('impersonate_token') || localStorage.getItem('token'); }
 
 async function req(base, path, options = {}) {
   const token = getToken();
@@ -20,6 +20,7 @@ async function req(base, path, options = {}) {
     ...options,
   });
   if (res.status === 401) {
+    sessionStorage.removeItem('impersonate_token');
     localStorage.removeItem('token');
     window.location.href = '/login';
     throw new Error('Unauthorized');
@@ -53,6 +54,7 @@ export const api = {
   createStore: (data) => a('/stores', { method: 'POST', body: JSON.stringify(data) }),
   updateStore: (id, data) => a(`/stores/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteStore: (id) => a(`/stores/${id}`, { method: 'DELETE' }),
+  impersonateStore: (id) => a(`/stores/${id}/impersonate`, { method: 'POST' }),
 
   // 재료
   getIngredients: (store_id) => a(`/ingredients${qs({ store_id })}`),
