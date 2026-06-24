@@ -1,7 +1,7 @@
 const createAsyncRouter = require('../middleware/asyncRouter');
 const router = createAsyncRouter();
 const { knex } = require('../db/schema');
-const { requireAuth, requireRole, HQ_ROLES, LOGISTICS_ROLES, ADMIN_ROLES } = require('../middleware/auth');
+const { requireAuth, requireRole, LOGISTICS_ROLES } = require('../middleware/auth');
 
 function isStoreRole(role) {
   return ['STORE_OWNER', 'STORE_STAFF'].includes(role);
@@ -43,6 +43,23 @@ async function checkSalesDownOrderUp(brand_id, store_id) {
       { older_sales: olderCnt, recent_sales: recentCnt, prev_order: prevOrderAmt, recent_order: recentOrderAmt }
     );
   }
+}
+
+// 클라이언트가 보낸 unit_price를 신뢰하지 않고, product_id가 있으면 서버에 저장된 단가로 덮어쓴다
+async function resolveItemPrices(brand_id, items) {
+  const productIds = items.filter(i => i.product_id).map(i => i.product_id);
+  const products = productIds.length
+    ? await knex('products').where({ brand_id }).whereIn('id', productIds)
+    : [];
+  const byId = new Map(products.map(p => [p.id, p]));
+  return items.map(item => {
+    const product = item.product_id ? byId.get(Number(item.product_id)) : null;
+    return {
+      ...item,
+      unit_price: product ? product.price : (item.unit_price || 0),
+      unit: product ? product.unit : item.unit,
+    };
+  });
 }
 
 async function logHistory(order_id, action, before, after, reason, user_id, item_id = null) {
@@ -100,10 +117,11 @@ router.get('/:id', requireAuth, async (req, res) => {
 
 // ── 발주서 생성 (임시저장 or 발주완료) ────────────────
 router.post('/', requireAuth, async (req, res) => {
-  const { items, memo, submit } = req.body;
   const store_id = req.user.store_id;
   if (!store_id) return res.status(400).json({ error: '가맹점 정보 없음' });
 
+  const items = await resolveItemPrices(req.user.brand_id, req.body.items);
+  const { memo, submit } = req.body;
   const total = items.reduce((s, i) => s + (i.unit_price * i.quantity), 0);
   const status = submit ? 'ORDERED' : 'DRAFT';
 
@@ -148,7 +166,8 @@ router.put('/:id', requireAuth, async (req, res) => {
     return res.status(400).json({ error: '수정 불가 상태' });
   }
 
-  const { items, memo, submit } = req.body;
+  const items = await resolveItemPrices(req.user.brand_id, req.body.items);
+  const { memo, submit } = req.body;
   const total = items.reduce((s, i) => s + (i.unit_price * i.quantity), 0);
   const status = submit ? 'ORDERED' : order.status;
 
@@ -177,6 +196,9 @@ router.post('/:id/status', requireAuth, requireRole(...LOGISTICS_ROLES), async (
   const { status, reason } = req.body;
   const order = await knex('purchase_orders').where({ id: req.params.id, brand_id: req.user.brand_id }).first();
   if (!order) return res.status(404).json({ error: '없음' });
+  if (status === 'DELIVERED' && !order.paid_at) {
+    return res.status(400).json({ error: '결제가 완료되지 않은 발주서는 납품완료로 변경할 수 없습니다' });
+  }
 
   const update = { status };
   if (status === 'CONFIRMED') update.confirmed_at = new Date().toISOString();
@@ -377,12 +399,14 @@ router.post('/:id/refund', requireAuth, requireRole(...LOGISTICS_ROLES), async (
   const newRefunded = alreadyRefunded + refundAmount;
   const isFull = newRefunded >= totalAmount;
 
+  // stock_reversed=false 조건이 달린 조건부 업데이트로 재고 차감 권한을 원자적으로 선점
+  // (환불 버튼과 웹훅 동기화가 동시에 들어와도 재고가 두 번 깎이지 않도록)
   if (isFull && order.status === 'DELIVERED' && !order.stock_reversed) {
-    await applyDeliveryStock(order, -1);
+    const claimed = await knex('purchase_orders').where({ id: order.id, stock_reversed: false }).update({ stock_reversed: true });
+    if (claimed) await applyDeliveryStock(order, -1);
   }
 
   const next = { refunded_amount: newRefunded };
-  if (isFull) next.stock_reversed = order.status === 'DELIVERED' ? true : order.stock_reversed;
   if (isFull) next.status = 'CANCELED';
   await knex('purchase_orders').where({ id: order.id }).update(next);
 
@@ -438,14 +462,12 @@ router.post('/toss-webhook', async (req, res) => {
     const isFull = (payment.balanceAmount ?? 0) <= 0 || payment.status === 'CANCELED';
     console.log('[토스 웹훅] 동기화 진행: order_id', order.id, 'refundedAmount', refundedAmount, 'isFull', isFull);
     if (isFull && order.status === 'DELIVERED' && !order.stock_reversed) {
-      await applyDeliveryStock(order, -1);
+      const claimed = await knex('purchase_orders').where({ id: order.id, stock_reversed: false }).update({ stock_reversed: true });
+      if (claimed) await applyDeliveryStock(order, -1);
     }
 
     const next = { refunded_amount: refundedAmount };
-    if (isFull) {
-      next.status = 'CANCELED';
-      next.stock_reversed = order.status === 'DELIVERED' ? true : order.stock_reversed;
-    }
+    if (isFull) next.status = 'CANCELED';
     await knex('purchase_orders').where({ id: order.id }).update(next);
     await logHistory(order.id, 'STATUS_CHANGE', { status: order.status }, { status: next.status || order.status },
       '토스 대시보드에서 직접 취소 (웹훅 동기화)', null);
