@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import { useStore } from '../StoreContext';
 import { useAuth } from '../AuthContext';
@@ -28,6 +28,7 @@ const won = (v) => `${Math.round(v || 0).toLocaleString()}원`;
 export default function Dashboard() {
   const { currentStore } = useStore();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
 
@@ -184,12 +185,15 @@ export default function Dashboard() {
 
         {data.risks.length > 0 && (
           <div className="card" style={{ borderLeft: '4px solid #ef4444' }}>
-            <div style={{ fontWeight: 700, marginBottom: 12, color: '#ef4444' }}>리스크 알림 (미처리)</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <div style={{ fontWeight: 700, color: '#ef4444' }}>리스크 알림 (미처리)</div>
+              <Link to="/risks" style={{ fontSize: 12.5 }}>전체 보기 &rarr;</Link>
+            </div>
             <table>
               <thead><tr><th>심각도</th><th>유형</th><th>가맹점</th><th>내용</th><th>발생일</th></tr></thead>
               <tbody>
                 {data.risks.map(r => (
-                  <tr key={r.id}>
+                  <tr key={r.id} style={{ cursor: 'pointer' }} onClick={() => navigate('/risks')}>
                     <td><span style={{ color: SEVERITY_COLOR[r.severity], fontWeight: 700, fontSize: 13 }}>{r.severity}</span></td>
                     <td><span className="badge yellow">{TYPE_LABEL[r.type] || r.type}</span></td>
                     <td style={{ fontSize: 13 }}>{r.store_name || '-'}</td>

@@ -243,12 +243,13 @@ router.get('/dashboard', requireAuth, async (req, res) => {
   if (sid) orderQ.where({ store_id: sid });
   const recentOrders = await orderQ;
 
-  // 리스크 알림 (OPEN)
+  // 리스크 알림 (OPEN) — 현재 선택된 가맹점 기준으로만 표시
   const riskQ = knex('risk_alerts as r')
     .leftJoin('stores as s', 'r.store_id', 's.id')
     .select('r.*', 's.name as store_name')
     .where({ 'r.brand_id': brand_id, 'r.status': 'OPEN' })
     .orderBy('r.created_at', 'desc').limit(10);
+  if (sid) riskQ.where('r.store_id', sid);
   const risks = await riskQ;
 
   // 발주 현황
