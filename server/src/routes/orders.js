@@ -377,9 +377,12 @@ router.post('/:id/refund', requireAuth, requireRole(...LOGISTICS_ROLES), async (
   const newRefunded = alreadyRefunded + refundAmount;
   const isFull = newRefunded >= totalAmount;
 
-  if (isFull && order.status === 'DELIVERED') await applyDeliveryStock(order, -1);
+  if (isFull && order.status === 'DELIVERED' && !order.stock_reversed) {
+    await applyDeliveryStock(order, -1);
+  }
 
   const next = { refunded_amount: newRefunded };
+  if (isFull) next.stock_reversed = order.status === 'DELIVERED' ? true : order.stock_reversed;
   if (isFull) next.status = 'CANCELED';
   await knex('purchase_orders').where({ id: order.id }).update(next);
 
@@ -404,6 +407,48 @@ router.delete('/:id', requireAuth, async (req, res) => {
   await knex('purchase_orders').where({ id: order.id }).update({ status: 'CANCELED' });
   await logHistory(order.id, 'STATUS_CHANGE', { status: order.status }, { status: 'CANCELED' }, '취소', req.user.id);
   res.json({ ok: true });
+});
+
+// ── 토스페이먼츠 결제 상태 변경 웹훅 ───────────────────
+// 토스 개발자센터에서 직접 취소하는 등, 우리 사이트를 거치지 않은 결제 변경 사항도 동기화한다.
+// 웹훅 payload는 신뢰하지 않고 paymentKey로 토스 서버에 직접 조회해 받은 값만 반영한다.
+router.post('/toss-webhook', async (req, res) => {
+  try {
+    const paymentKey = req.body?.data?.paymentKey || req.body?.paymentKey;
+    if (!paymentKey || !TOSS_SECRET_KEY) return res.sendStatus(200);
+
+    const order = await knex('purchase_orders').where({ toss_payment_key: paymentKey }).first();
+    if (!order) return res.sendStatus(200);
+
+    const authHeader = 'Basic ' + Buffer.from(`${TOSS_SECRET_KEY}:`).toString('base64');
+    const tossRes = await fetch(`${TOSS_API_BASE}/${paymentKey}`, { headers: { Authorization: authHeader } });
+    if (!tossRes.ok) return res.sendStatus(200);
+    const payment = await tossRes.json();
+
+    const refundedAmount = Math.round((payment.totalAmount || 0) - (payment.balanceAmount ?? payment.totalAmount));
+    if (refundedAmount === Math.round(order.refunded_amount || 0)) return res.sendStatus(200); // 변경 없음
+
+    const isFull = (payment.balanceAmount ?? 0) <= 0 || payment.status === 'CANCELED';
+    if (isFull && order.status === 'DELIVERED' && !order.stock_reversed) {
+      await applyDeliveryStock(order, -1);
+    }
+
+    const next = { refunded_amount: refundedAmount };
+    if (isFull) {
+      next.status = 'CANCELED';
+      next.stock_reversed = order.status === 'DELIVERED' ? true : order.stock_reversed;
+    }
+    await knex('purchase_orders').where({ id: order.id }).update(next);
+    await logHistory(order.id, 'STATUS_CHANGE', { status: order.status }, { status: next.status || order.status },
+      '토스 대시보드에서 직접 취소 (웹훅 동기화)', null);
+    await logAudit(order.brand_id, null, 'PAYMENT', order.id, 'REFUND_SYNC',
+      { refunded_amount: order.refunded_amount || 0 }, { refunded_amount: refundedAmount });
+
+    res.sendStatus(200);
+  } catch (err) {
+    console.error('[토스 웹훅] 처리 오류:', err.message);
+    res.sendStatus(200); // 토스 쪽 재시도 폭주 방지
+  }
 });
 
 module.exports = router;

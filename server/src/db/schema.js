@@ -179,6 +179,7 @@ async function initDb() {
   await addColumnIfMissing('purchase_orders', 'toss_payment_key', t => t.string('toss_payment_key').nullable());
   await addColumnIfMissing('purchase_orders', 'paid_at', t => t.datetime('paid_at').nullable());
   await addColumnIfMissing('purchase_orders', 'refunded_amount', t => t.float('refunded_amount').defaultTo(0));
+  await addColumnIfMissing('purchase_orders', 'stock_reversed', t => t.boolean('stock_reversed').defaultTo(false));
 
   // ── 발주 상품 목록 ────────────────────────────────────
   await createIfMissing('purchase_order_items', t => {
