@@ -76,6 +76,32 @@ export default function StoreOrder() {
 
   const resetCart = () => { setCart([]); setMemo(''); setEditingOrderId(null); setEditingOrderUpdatedAt(null); };
 
+  // 지난번처럼 발주: 과거 발주서의 품목을 그대로 새 장바구니에 담음 (수정이 아니라 새 발주로 시작)
+  const reorderFromOrder = async (order) => {
+    const detail = await api.getOrder(order.id);
+    const newCart = [];
+    const skipped = [];
+    for (const item of detail.items) {
+      const product = products.find(p => p.id === item.product_id);
+      if (!product) { skipped.push(item.product_name); continue; }
+      const qty = item.confirmed_quantity ?? item.quantity;
+      const existing = newCart.find(i => i.product.id === product.id);
+      if (existing) existing.quantity += qty;
+      else newCart.push({ product, quantity: qty });
+    }
+    if (newCart.length === 0) {
+      toast('현재 판매 중인 상품이 없어 다시 담을 수 없습니다', 'error');
+      return;
+    }
+    setCart(newCart);
+    setMemo('');
+    setEditingOrderId(null);
+    setEditingOrderUpdatedAt(null);
+    setTab('new');
+    if (skipped.length > 0) toast(`${skipped.join(', ')}은 현재 판매 중인 상품이 아니라 제외되었습니다`, 'info');
+    else toast('지난 발주 내용을 장바구니에 담았습니다', 'success');
+  };
+
   const submitOrder = async (draft) => {
     if (cart.length === 0) { toast('상품을 선택해주세요', 'error'); return; }
     const payload = {
@@ -210,10 +236,11 @@ export default function StoreOrder() {
                       <td><StatusBadge status={o.status} /></td>
                       <td>{(o.confirmed_amount ?? o.total_amount).toLocaleString()}원</td>
                       <td className="text-muted" style={{ fontSize: 13 }}>{o.memo || '-'}</td>
-                      <td>
+                      <td style={{ display: 'flex', gap: 4 }}>
                         {['DRAFT', 'REVISION_REQUESTED'].includes(o.status) && (
                           <button className="primary small" onClick={e => { e.stopPropagation(); loadOrderToCart(o); }}>이어하기</button>
                         )}
+                        <button className="secondary small" onClick={e => { e.stopPropagation(); reorderFromOrder(o); }}>지난번처럼 발주</button>
                       </td>
                     </tr>
                   ))}

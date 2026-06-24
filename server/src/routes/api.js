@@ -686,7 +686,49 @@ router.get('/settlement', requireAuth, requireRole(...HQ_ROLES), async (req, res
     net: acc.net + s.net,
   }), { order_count: 0, gross: 0, refunded: 0, net: 0 });
 
-  res.json({ settlement, totals, period: { from: fromISO, to: toISO } });
+  // 상품별 매출 분해 — 결제완료(paid_at) 발주서의 품목 단위로 집계, 품목별 환불 수량을 반영한 순매출(net)까지 계산
+  const itemRows = await knex('purchase_order_items as poi')
+    .join('purchase_orders as po', 'poi.order_id', 'po.id')
+    .where('po.brand_id', brand_id)
+    .whereNotNull('po.paid_at')
+    .where('po.paid_at', '>=', fromISO).where('po.paid_at', '<=', toISO)
+    .select('poi.product_name', 'poi.unit_price', 'poi.quantity', 'poi.confirmed_quantity', 'poi.refunded_quantity', 'poi.amount');
+
+  const byProduct = new Map();
+  for (const r of itemRows) {
+    const qty = r.confirmed_quantity ?? r.quantity;
+    const refundedAmount = Math.round((r.refunded_quantity || 0) * r.unit_price);
+    const gross = Math.round(r.amount);
+    const cur = byProduct.get(r.product_name) || { product_name: r.product_name, qty: 0, gross: 0, refunded: 0 };
+    cur.qty += qty;
+    cur.gross += gross;
+    cur.refunded += refundedAmount;
+    byProduct.set(r.product_name, cur);
+  }
+  const byProductList = [...byProduct.values()]
+    .map(p => ({ ...p, net: p.gross - p.refunded }))
+    .sort((a, b) => b.net - a.net);
+
+  // 직전 동일 기간 대비 — 기간 길이를 그대로 앞으로 이동해 전 기간 합계만 비교 (트렌드 파악용)
+  const periodMs = new Date(toISO).getTime() - new Date(fromISO).getTime();
+  const prevToISO = fromISO;
+  const prevFromISO = new Date(new Date(fromISO).getTime() - periodMs).toISOString();
+  const prevRows = await knex('purchase_orders as po')
+    .where('po.brand_id', brand_id)
+    .whereNotNull('po.paid_at')
+    .where('po.paid_at', '>=', prevFromISO).where('po.paid_at', '<', prevToISO)
+    .select('po.confirmed_amount', 'po.total_amount', 'po.refunded_amount');
+  const previousTotals = prevRows.reduce((acc, r) => {
+    const gross = Math.round(r.confirmed_amount ?? r.total_amount);
+    const refunded = Math.round(r.refunded_amount || 0);
+    return { order_count: acc.order_count + 1, gross: acc.gross + gross, refunded: acc.refunded + refunded, net: acc.net + (gross - refunded) };
+  }, { order_count: 0, gross: 0, refunded: 0, net: 0 });
+
+  res.json({
+    settlement, totals, byProduct: byProductList,
+    previousPeriod: { totals: previousTotals, from: prevFromISO, to: prevToISO },
+    period: { from: fromISO, to: toISO },
+  });
 });
 
 // ─── 감사 로그 ────────────────────────────────────────
