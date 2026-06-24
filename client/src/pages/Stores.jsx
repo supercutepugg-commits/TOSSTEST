@@ -6,8 +6,14 @@ import { useAuth } from '../AuthContext';
 
 const ADMIN_ROLES = ['SUPER_ADMIN', 'HQ_ADMIN'];
 
+// 토스플레이스 API는 2022-01-01 이전 날짜를 from으로 보내면 에러를 반환함 (API 자체 제약)
+const TOSS_PLACE_MIN_DATE = '2022-01-01';
+
 function BulkSyncModal({ stores, onClose }) {
-  const [from, setFrom] = useState(() => new Date(Date.now() - 5 * 365 * 86400000).toISOString().split('T')[0]);
+  const [from, setFrom] = useState(() => {
+    const fiveYearsAgo = new Date(Date.now() - 5 * 365 * 86400000).toISOString().split('T')[0];
+    return fiveYearsAgo < TOSS_PLACE_MIN_DATE ? TOSS_PLACE_MIN_DATE : fiveYearsAgo;
+  });
   const [to, setTo] = useState(() => new Date().toISOString().split('T')[0]);
   const [running, setRunning] = useState(false);
   const [results, setResults] = useState([]);
@@ -39,7 +45,7 @@ function BulkSyncModal({ stores, onClose }) {
         <div className="form-row">
           <div className="form-group">
             <label>시작일</label>
-            <input type="date" value={from} onChange={e => setFrom(e.target.value)} disabled={running} />
+            <input type="date" value={from} min={TOSS_PLACE_MIN_DATE} onChange={e => setFrom(e.target.value)} disabled={running} />
           </div>
           <div className="form-group">
             <label>종료일</label>

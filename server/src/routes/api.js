@@ -511,11 +511,17 @@ router.get('/purchase-anomalies', requireAuth, requireRole(...HQ_ROLES), async (
 });
 
 // ─── Toss Place 과거 데이터 동기화 ────────────────────
+// 토스플레이스 API는 2022-01-01 이전 날짜를 from으로 보내면 400 에러를 반환함 (API 자체 제약)
+const TOSS_PLACE_MIN_DATE = '2022-01-01';
+
 async function syncStoreSales(store, fromDate, toDate) {
   const accessKey = process.env.TOSS_PLACE_ACCESS_KEY;
   const secretKey = process.env.TOSS_PLACE_SECRET_KEY;
   if (!accessKey || !secretKey) throw new Error('TOSS_PLACE_ACCESS_KEY / TOSS_PLACE_SECRET_KEY 환경변수가 설정되지 않았습니다');
   if (!store.toss_store_id) throw new Error('토스플레이스 매장 ID(toss_store_id)가 설정되지 않았습니다');
+
+  // 호출자가 그보다 이른 날짜를 넘겨도 API 제약(2022-01-01 이전 불가)에 맞게 자동으로 보정
+  if (fromDate < TOSS_PLACE_MIN_DATE) fromDate = TOSS_PLACE_MIN_DATE;
 
   const TOSS_BASE = process.env.TOSS_PLACE_API_URL || 'https://open-api.tossplace.com';
   const fromTs = new Date(fromDate + 'T00:00:00+09:00').getTime();
