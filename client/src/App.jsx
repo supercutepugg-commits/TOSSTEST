@@ -131,7 +131,7 @@ function SideMenu({ collapsed, onToggle, storeSelected, isHqAdmin }) {
 
 function HQLayout() {
   const { user } = useAuth();
-  const { currentStore } = useStore();
+  const { currentStore, clearStore } = useStore();
   const storeSelected = !!currentStore;
   const isHqAdmin = ['SUPER_ADMIN', 'HQ_ADMIN'].includes(user?.role);
   const [collapsed, setCollapsed] = useState(false);
@@ -143,9 +143,11 @@ function HQLayout() {
 
   return (
     <div className="kicc-layout">
-      <div className="admin-back-bar">
-        <NavLink to="/">관리자로 돌아가기</NavLink>
-      </div>
+      {storeSelected && (
+        <div className="admin-back-bar">
+          <NavLink to="/" onClick={clearStore}>관리자로 돌아가기 (가맹점 선택 해제)</NavLink>
+        </div>
+      )}
       <header className="topnav">
         <div className="topnav-brand">포스모스</div>
         <nav className="topnav-menu">

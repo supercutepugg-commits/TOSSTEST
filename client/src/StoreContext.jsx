@@ -21,8 +21,13 @@ export function StoreProvider({ children }) {
 
   useEffect(() => { loadStores(); }, []);
 
+  const clearStore = () => {
+    setCurrentStore(null);
+    localStorage.removeItem('currentStoreId');
+  };
+
   return (
-    <StoreContext.Provider value={{ stores, currentStore, reloadStores: loadStores }}>
+    <StoreContext.Provider value={{ stores, currentStore, reloadStores: loadStores, clearStore }}>
       {children}
     </StoreContext.Provider>
   );
