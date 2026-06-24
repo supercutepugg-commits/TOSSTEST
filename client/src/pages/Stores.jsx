@@ -204,15 +204,6 @@ export default function Stores() {
     navigate('/dashboard');
   };
 
-  const handleGo = async (store) => {
-    try {
-      const { token } = await api.impersonateStore(store.id);
-      window.open(`${window.location.origin}/store?impersonate=${token}`, '_blank');
-    } catch (e) {
-      toast(e.message || '로그인에 실패했습니다', 'error');
-    }
-  };
-
   const runSearch = () => setFilters({ nameQuery, bizQuery, franchiseType, openStatus });
 
   const filteredStores = stores.filter(s => {
@@ -333,7 +324,6 @@ export default function Stores() {
                   <td className="text-sub" style={{ fontSize: 13 }}>{days}</td>
                   <td style={{ display: 'flex', gap: 6 }}>
                     <button className="secondary small" onClick={() => handleSelect(s)}>선택</button>
-                    <button className="primary small" onClick={() => handleGo(s)}>Go</button>
                     {canEdit && (
                       <>
                         <button className="secondary small" onClick={() => setModal({ edit: s })}>수정</button>

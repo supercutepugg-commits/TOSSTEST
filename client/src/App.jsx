@@ -24,20 +24,17 @@ import StockAlert from './components/StockAlert';
 import ToastHost from './components/ToastHost';
 
 function TopBar({ name, currentStore }) {
-  const { logout, isImpersonating } = useAuth();
+  const { logout } = useAuth();
   const { theme, toggle } = useTheme();
   return (
     <div className="topbar-info">
       <div className="topbar-info-left">
-        {isImpersonating && <span className="badge yellow" style={{ marginRight: 8 }}>임시 로그인 중 (본사 관리자)</span>}
         {currentStore && <span className="topbar-current-store">{currentStore.name}</span>}
       </div>
       <div className="topbar-info-right">
         <span className="topbar-user">{name} 님</span>
         <button className="topbar-link" onClick={toggle}>{theme === 'light' ? '다크 모드' : '라이트 모드'}</button>
-        <button className="topbar-link" onClick={() => { logout(); if (isImpersonating) window.close(); }}>
-          {isImpersonating ? '창 닫기' : '로그아웃'}
-        </button>
+        <button className="topbar-link" onClick={logout}>로그아웃</button>
       </div>
     </div>
   );
