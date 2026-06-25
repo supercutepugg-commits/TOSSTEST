@@ -1,12 +1,15 @@
 import { useEffect, useState, useRef } from 'react';
 import { api } from '../api';
 
+const CHECK_INTERVAL_MS = 60000; // 5초는 너무 잦아서 1분으로 완화
+const REALERT_COOLDOWN_MS = 30 * 60000; // 재고가 기준선 근처에서 오르내려도 같은 재료는 30분 동안 재알림 안 함
+
 export default function StockAlert({ storeId, storeName }) {
   const [alerts, setAlerts] = useState([]);
-  const prevLowIds = useRef(new Set());
+  const lastAlertedAt = useRef(new Map()); // ingredient id -> 마지막으로 알림을 띄운 시각
 
   useEffect(() => {
-    prevLowIds.current = new Set();
+    lastAlertedAt.current = new Map();
     setAlerts([]);
   }, [storeId]);
 
@@ -14,21 +17,24 @@ export default function StockAlert({ storeId, storeName }) {
     const check = async () => {
       try {
         const { lowStock } = await api.getDashboard(storeId);
-        const currentIds = new Set(lowStock.map(i => i.id));
+        const now = Date.now();
 
-        // 이전엔 없었는데 새로 부족해진 재료만 알림
-        const newLow = lowStock.filter(i => !prevLowIds.current.has(i.id));
+        // 한 번도 안 알렸거나, 쿨다운이 지난 재료만 새로 알림
+        const newLow = lowStock.filter(i => {
+          const last = lastAlertedAt.current.get(i.id);
+          return !last || now - last > REALERT_COOLDOWN_MS;
+        });
         if (newLow.length > 0) {
-          const id = Date.now();
+          const id = now;
+          for (const i of newLow) lastAlertedAt.current.set(i.id, now);
           setAlerts(prev => [...prev, { id, ingredients: newLow }]);
           setTimeout(() => setAlerts(prev => prev.filter(a => a.id !== id)), 10000);
         }
-        prevLowIds.current = currentIds;
       } catch (e) { console.error('StockAlert error:', e); }
     };
 
     check();
-    const interval = setInterval(check, 5000);
+    const interval = setInterval(check, CHECK_INTERVAL_MS);
     return () => clearInterval(interval);
   }, [storeId]);
 
