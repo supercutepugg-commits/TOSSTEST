@@ -57,29 +57,41 @@ body {
 .topnav {
   display: flex;
   align-items: stretch;
-  height: 52px;
-  background: var(--kicc-red);
+  height: 56px;
+  background: linear-gradient(100deg, var(--kicc-red-dark) 0%, var(--kicc-red) 55%, var(--kicc-red) 100%);
   color: #fff;
   flex-shrink: 0;
-  box-shadow: 0 1px 8px rgba(0,0,0,0.12);
+  box-shadow: 0 2px 16px rgba(0,0,0,0.16);
+  position: relative;
+  z-index: 5;
 }
 
 .topnav-brand {
   display: flex;
   align-items: center;
-  padding: 0 22px;
+  gap: 9px;
+  padding: 0 24px;
   font-size: 16px;
   font-weight: 800;
-  letter-spacing: -0.2px;
+  letter-spacing: -0.1px;
   color: #fff;
   white-space: nowrap;
-  border-right: 1px solid rgba(255,255,255,0.2);
+}
+.topnav-brand::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 0 4px rgba(255,255,255,0.22);
 }
 
 .topnav-menu {
   flex: 1;
   display: flex;
+  align-items: center;
   justify-content: center;
+  gap: 2px;
   overflow-x: auto;
 }
 
@@ -88,13 +100,16 @@ body {
   flex-direction: row;
   align-items: center;
   gap: 6px;
-  padding: 0 18px;
-  color: rgba(255,255,255,0.8);
+  padding: 8px 17px;
+  margin: 0 1px;
+  border-radius: 9px;
+  color: rgba(255,255,255,0.72);
   text-decoration: none;
   font-size: 13px;
   font-weight: 600;
+  letter-spacing: -0.1px;
   white-space: nowrap;
-  transition: background 0.15s, color 0.15s;
+  transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease;
 }
 .topnav-tab-icon { font-size: 15px; line-height: 1; }
 .topnav-tab-label { line-height: 1; }
@@ -113,14 +128,16 @@ body {
   font-size: 11px;
   font-weight: 700;
   line-height: 1;
+  box-shadow: 0 0 0 2px rgba(255,255,255,0.18);
 }
-.topnav-tab:hover { background: rgba(255,255,255,0.1); color: #fff; }
+.topnav-tab:hover { background: rgba(255,255,255,0.12); color: #fff; transform: translateY(-1px); }
 .topnav-tab.active {
-  background: rgba(255,255,255,0.16);
-  color: #fff;
+  background: rgba(255,255,255,0.96);
+  color: var(--kicc-red-dark);
   font-weight: 700;
-  box-shadow: inset 0 -2px 0 #fff;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.14);
 }
+.topnav-tab.active:hover { transform: none; background: #fff; }
 .topnav-tab.disabled {
   color: rgba(255,255,255,0.4);
   cursor: not-allowed;
