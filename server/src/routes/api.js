@@ -294,34 +294,27 @@ router.get('/dashboard', requireAuth, async (req, res) => {
   const paymentPending = await knex('purchase_orders')
     .where({ brand_id, status: 'PAYMENT_PENDING' }).count('id as cnt').first();
 
-  // 오늘 매출 (sales_items)
-  const todayStart = new Date(); todayStart.setHours(0,0,0,0);
-  const todayQ = knex('sales_items').where({ brand_id }).where('sold_at', '>=', todayStart.toISOString());
-  if (sid) todayQ.where({ store_id: sid });
-  const todayRow = await todayQ.sum('amount as total').first();
-  const todayRevenue = Number(todayRow?.total || 0);
-
   // 일자별 매출/주문건수 집계 헬퍼 (특정 하루치)
   // 매출액/주문건수는 기존처럼 sales_items(메뉴별 판매)에서, 할인·순매출·NET매출·결제수단별 금액은
   // 주문 단위 chargePrice/payments를 정규화해 저장해둔 orders의 새 컬럼에서 집계 (결제완료 주문만)
   const dayStats = async (date) => {
     const start = new Date(date); start.setHours(0, 0, 0, 0);
     const end = new Date(date); end.setHours(23, 59, 59, 999);
-    const q = knex('sales_items').where({ brand_id })
-      .where('sold_at', '>=', start.toISOString()).where('sold_at', '<=', end.toISOString());
-    if (sid) q.where({ store_id: sid });
-    const row = await q.clone().sum('amount as revenue').first();
-    const cnt = await q.clone().countDistinct('toss_order_id as cnt').first();
 
+    // 총매출액/주문건수도 orders 테이블(결제 데이터)에서 집계한다.
+    // 과거엔 sales_items(메뉴별 라인아이템)에서 집계했는데, POS 설정에 따라 라인아이템 필드명이 달라
+    // 파싱이 안 되는 주문이 있으면 결제는 정상 기록(orders)되고도 메뉴별 내역(sales_items)만 비어
+    // "현금/카드 금액은 있는데 총매출액·건수는 0원"으로 보이는 불일치가 생겼음 — 결제 단위 집계로 통일해 해결
     const financeQ = knex('orders').where({ brand_id, order_state: 'COMPLETED' })
       .where('processed_at', '>=', start.toISOString()).where('processed_at', '<=', end.toISOString());
     if (sid) financeQ.where({ store_id: sid });
-    const finance = await financeQ
-      .sum({ discountAmount: 'discount_amount', totalAmount: 'total_amount', supplyAmount: 'supply_amount',
+    const finance = await financeQ.clone()
+      .sum({ listPrice: 'list_price', discountAmount: 'discount_amount', totalAmount: 'total_amount', supplyAmount: 'supply_amount',
              cashAmount: 'cash_amount', cardAmount: 'card_amount', otherAmount: 'other_amount' }).first();
+    const cnt = await financeQ.clone().count('id as cnt').first();
 
     return {
-      revenue: Number(row?.revenue || 0), orderCount: Number(cnt?.cnt || 0),
+      revenue: Number(finance?.listPrice || 0), orderCount: Number(cnt?.cnt || 0),
       discountAmount: Number(finance?.discountAmount || 0),
       netAmount: Number(finance?.totalAmount || 0),
       supplyAmount: Number(finance?.supplyAmount || 0),
@@ -348,7 +341,7 @@ router.get('/dashboard', requireAuth, async (req, res) => {
 
   res.json({
     lowStock, recentAlerts, recentOrders, risks,
-    pendingOrders: pendingOrders.cnt, paymentPending: paymentPending.cnt, todayRevenue,
+    pendingOrders: pendingOrders.cnt, paymentPending: paymentPending.cnt, todayRevenue: todayStats.revenue,
     salesComparison: { today: todayStats, yesterday: yesterdayStats, lastWeekSameDay: lastWeekStats },
     weeklyStats,
   });
