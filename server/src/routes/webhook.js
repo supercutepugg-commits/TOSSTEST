@@ -88,6 +88,15 @@ async function handleWebhook(req, res, store) {
 
       await adjustStock(lineItems, -1, store.id);
       await knex('sales_items').where({ toss_order_id: cancelledOrderId, store_id: store.id }).delete();
+      // orders 행도 취소 상태로 갱신해야 한다 — 대시보드 매출/건수가 sales_items가 아니라
+      // orders.order_state === 'COMPLETED' 기준으로 집계되기 때문에, 여기서 안 갱신하면
+      // 취소된 주문의 결제금액이 영원히 매출로 잡힌 채로 남아있게 됨 (REST 동기화도 취소 주문은
+      // orderStates=COMPLETED 조건에 안 걸려서 다시 안 내려오므로 다른 경로로 고쳐질 일이 없음)
+      await knex('orders').where({ toss_order_id: cancelledOrderId, store_id: store.id }).update({
+        order_state: 'CANCELLED',
+        list_price: 0, discount_amount: 0, supply_amount: 0, total_amount: 0,
+        cash_amount: 0, card_amount: 0, other_amount: 0,
+      });
       console.log('[웹훅] 취소 처리 완료, 재고 복구:', cancelledOrderId);
       return res.sendStatus(200);
     }
