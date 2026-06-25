@@ -106,16 +106,20 @@ function WeeklyTrendChart({ weekly }) {
         <path className="dash-trend-line" d={linePath} />
         {points.map((p, i) => {
           const isHighlight = highlightIdxs.has(i) && p.v > 0;
+          const label = `${Math.round(p.v).toLocaleString()}원`;
+          const boxW = label.length * 7 + 16;
+          const cx = Math.min(Math.max(p.x, boxW / 2 + 2), W - boxW / 2 - 2);
+          const cy = Math.max(p.y - 26, 16);
           return (
             <g key={i}>
               {isHighlight && (
-                <text
-                  className={'dash-trend-value' + (i === peakIdx ? ' peak' : '')}
-                  x={Math.min(Math.max(p.x, 30), W - 30)}
-                  y={Math.max(p.y - 14, 14)}
-                >
-                  {Math.round(p.v).toLocaleString()}원
-                </text>
+                <g>
+                  <rect className={'dash-trend-value-bg' + (i === peakIdx ? ' peak' : '')}
+                    x={cx - boxW / 2} y={cy - 11} width={boxW} height={20} rx={10} />
+                  <text className={'dash-trend-value' + (i === peakIdx ? ' peak' : '')} x={cx} y={cy + 4}>
+                    {label}
+                  </text>
+                </g>
               )}
               {p.v > 0 && (
                 <circle className={'dash-trend-dot' + (i === peakIdx ? ' peak' : i === lastIdx ? ' current' : '')}

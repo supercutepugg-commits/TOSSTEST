@@ -429,15 +429,16 @@ tr:hover td { background: var(--bg-elevated); }
 .dash-trend-label.weekend-sat .dash-trend-weekday { color: #2563eb; }
 .dash-trend-label.weekend-sun { color: #dc2626; }
 .dash-trend-label.weekend-sun .dash-trend-weekday { color: #dc2626; }
+.dash-trend-value-bg {
+  fill: var(--bg-card);
+  filter: drop-shadow(0 1px 3px rgba(15,23,42,0.18));
+}
+.dash-trend-value-bg.peak { fill: #fff7ed; }
 .dash-trend-value {
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 800;
   text-anchor: middle;
-  fill: var(--text);
-  paint-order: stroke;
-  stroke: var(--bg-card);
-  stroke-width: 5px;
-  stroke-linejoin: round;
+  fill: var(--purple-dark);
 }
 .dash-trend-value.peak { fill: #d97706; }
 
