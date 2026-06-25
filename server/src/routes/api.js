@@ -563,14 +563,31 @@ async function syncStoreSales(store, fromDate, toDate) {
 
   let page = 1;
   let inserted = 0;
+  // 네트워크가 멈추거나 토스 쪽이 같은 페이지를 반복 응답하는 등의 이상 상황에서
+  // while(true)가 영원히 끝나지 않아 화면이 "동기화 중..."에 멈춘 것처럼 보이는 문제를 막기 위한 안전장치
+  const MAX_PAGES = 2000;
 
   while (true) {
+    if (page > MAX_PAGES) {
+      throw new Error(`페이지 수가 ${MAX_PAGES}을 초과했습니다 — 토스플레이스 응답이 비정상적으로 반복되는 것으로 보입니다. 기간을 줄여서 다시 시도해주세요`);
+    }
+
     // docs.tossplace.com 기준 실제 엔드포인트
     const url = `${TOSS_BASE}/api-public/openapi/v1/merchants/${store.toss_store_id}/order/orders`
       + `?from=${fromTs}&to=${toTs}&page=${page}&size=100&orderStates=COMPLETED`;
 
     console.log(`[동기화] ${url}`);
-    const resp = await fetch(url, { headers: { 'x-access-key': accessKey, 'x-secret-key': secretKey } });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 20000);
+    let resp;
+    try {
+      resp = await fetch(url, { headers: { 'x-access-key': accessKey, 'x-secret-key': secretKey }, signal: controller.signal });
+    } catch (e) {
+      if (e.name === 'AbortError') throw new Error(`토스플레이스 API 응답이 20초 내에 오지 않았습니다 (page=${page})`);
+      throw e;
+    } finally {
+      clearTimeout(timeout);
+    }
 
     if (!resp.ok) {
       const txt = await resp.text();
@@ -581,6 +598,7 @@ async function syncStoreSales(store, fromDate, toDate) {
     // 응답이 배열이거나 { orders: [...] } 구조 모두 처리
     // 실제 토스플레이스 응답: { resultType: "SUCCESS", success: [...] }
     const orders = Array.isArray(data) ? data : (data.success || data.orders || data.content || data.data || []);
+    console.log(`[동기화] page=${page} ${orders.length}건 수신, 누적 ${inserted}건 반영됨`);
 
     for (const order of orders) {
       const orderId = order.id || order.orderId;
