@@ -179,21 +179,33 @@ body {
   flex-shrink: 0;
   background: var(--bg-card);
   border-right: 1px solid var(--border);
-  padding: 12px 0 20px;
+  padding: 46px 0 20px;
   overflow-y: auto;
   position: relative;
 }
 .side-menu.collapsed { width: 40px; }
 
 .side-menu-collapse {
-  background: none;
-  border: none;
-  color: var(--text-3);
+  position: absolute;
+  top: 20px;
+  right: -13px;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  color: var(--text-2);
   font-size: 13px;
+  line-height: 1;
   cursor: pointer;
-  padding: 6px 12px 14px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+  z-index: 2;
+  transition: color 0.15s, border-color 0.15s, transform 0.15s;
 }
-.side-menu-collapse:hover { color: var(--purple); }
+.side-menu-collapse:hover { color: #fff; background: var(--purple); border-color: var(--purple); transform: scale(1.08); }
 
 .side-menu-group { padding: 5px 8px; }
 
