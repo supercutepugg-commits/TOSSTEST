@@ -98,6 +98,22 @@ body {
 }
 .topnav-tab-icon { font-size: 15px; line-height: 1; }
 .topnav-tab-label { line-height: 1; }
+
+.nav-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  margin-left: 6px;
+  border-radius: 9px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+}
 .topnav-tab:hover { background: rgba(255,255,255,0.1); color: #fff; }
 .topnav-tab.active {
   background: rgba(255,255,255,0.16);
@@ -220,6 +236,7 @@ body {
 .side-menu-item {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 8px;
   padding: 7px 10px;
   border-radius: 6px;

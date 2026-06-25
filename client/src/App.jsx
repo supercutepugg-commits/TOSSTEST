@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, NavLink, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './AuthContext';
 import { StoreProvider, useStore } from './StoreContext';
 import { ThemeProvider, useTheme } from './ThemeContext';
+import { api } from './api';
 import Dashboard from './pages/Dashboard';
 import Ingredients from './pages/Ingredients';
 import Menus from './pages/Menus';
@@ -44,10 +45,11 @@ function TopBar({ name, currentStore, onBackToAdmin }) {
   );
 }
 
-function NavTab({ to, end, label }) {
+function NavTab({ to, end, label, count }) {
   return (
     <NavLink to={to} end={end} className={({ isActive }) => 'topnav-tab' + (isActive ? ' active' : '')}>
       <span className="topnav-tab-label">{label}</span>
+      {count > 0 && <span className="nav-badge">{count > 99 ? '99+' : count}</span>}
     </NavLink>
   );
 }
@@ -84,7 +86,7 @@ const SIDE_MENU_GROUPS = [
   ] },
 ];
 
-function SideMenu({ collapsed, onToggle, storeSelected, isHqAdmin }) {
+function SideMenu({ collapsed, onToggle, storeSelected, isHqAdmin, badgeCounts }) {
   const location = useLocation();
   const visibleGroups = SIDE_MENU_GROUPS.filter(g => (!g.hqAdminOnly || isHqAdmin) && g.storeRequired === storeSelected);
 
@@ -123,7 +125,10 @@ function SideMenu({ collapsed, onToggle, storeSelected, isHqAdmin }) {
                 {group.items.map(item => (
                   <NavLink key={item.to} to={item.to} end={item.end}
                     className={({ isActive }) => 'side-menu-item' + (isActive ? ' active' : '')}>
-                    {item.label}
+                    <span>{item.label}</span>
+                    {badgeCounts?.[item.to] > 0 && (
+                      <span className="nav-badge">{badgeCounts[item.to] > 99 ? '99+' : badgeCounts[item.to]}</span>
+                    )}
                   </NavLink>
                 ))}
               </div>
@@ -141,7 +146,18 @@ function HQLayout() {
   const storeSelected = !!currentStore;
   const isHqAdmin = ['SUPER_ADMIN', 'HQ_ADMIN'].includes(user?.role);
   const [collapsed, setCollapsed] = useState(false);
+  const [openRiskCount, setOpenRiskCount] = useState(0);
   const navigate = useNavigate();
+
+  // 미확인 리스크 개수를 메뉴에 배지로 표시 — 1분마다 갱신
+  useEffect(() => {
+    const load = () => api.getRisks({ status: 'OPEN' }).then(rows => setOpenRiskCount(rows.length)).catch(() => {});
+    load();
+    const interval = setInterval(load, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const badgeCounts = { '/risks': openRiskCount };
 
   // 가맹점 선택 여부에 따라 상단 탭도 좌측 메뉴와 동일한 기준으로 보여줄 메뉴를 가른다
   const visibleTabs = SIDE_MENU_GROUPS
@@ -156,13 +172,13 @@ function HQLayout() {
         <div className="topnav-brand">포스모스</div>
         <nav className="topnav-menu">
           {visibleTabs.map(item => (
-            <NavTab key={item.to} to={item.to} end={item.end} label={item.label} />
+            <NavTab key={item.to} to={item.to} end={item.end} label={item.label} count={badgeCounts[item.to]} />
           ))}
         </nav>
       </header>
       <TopBar name={user?.name} currentStore={currentStore} onBackToAdmin={storeSelected ? backToAdmin : null} />
       <div className="kicc-body">
-        <SideMenu collapsed={collapsed} onToggle={() => setCollapsed(c => !c)} storeSelected={storeSelected} isHqAdmin={isHqAdmin} />
+        <SideMenu collapsed={collapsed} onToggle={() => setCollapsed(c => !c)} storeSelected={storeSelected} isHqAdmin={isHqAdmin} badgeCounts={badgeCounts} />
         <main className="kicc-main">
           <div className="kicc-main-inner">
             <Routes>
