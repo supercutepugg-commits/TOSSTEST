@@ -61,12 +61,17 @@ router.post('/:id/status', requireAuth, requireRole(...HQ_ROLES), async (req, re
 
 // 내부용: 리스크 생성 (배치/웹훅에서 호출). 새로 생성됐으면 true, 이미 동일 OPEN 알림이 있으면 재발 횟수만 누적하고 false 반환
 async function createRisk(brand_id, store_id, type, severity, description, detail) {
-  // 동일 타입·가맹점 OPEN 알림이 있으면 새로 만들지 않고 재발 횟수/최신 시각/내용만 갱신 (추세 파악용)
+  // 동일 타입·가맹점 OPEN 알림이 있으면 새로 만들지 않고 최신 시각/내용만 갱신 (추세 파악용)
   const existing = await knex('risk_alerts')
     .where({ brand_id, store_id, type, status: 'OPEN' }).first();
   if (existing) {
+    // 재발 횟수는 "하루에 한 번"만 올린다 — 10분/1시간마다 도는 자동 점검이 같은 미해결 문제를
+    // 매번 다시 발견할 때마다 카운트가 올라가면(예: 3시간 방치 시 18회) 실제 재발이 아니라
+    // 단순 점검 주기를 세는 것이 되어버려 의미가 없어짐. 마지막 발생일과 날짜가 다를 때만 +1
+    const lastDate = existing.last_occurred_at ? new Date(existing.last_occurred_at).toDateString() : null;
+    const isNewDay = lastDate !== new Date().toDateString();
     await knex('risk_alerts').where({ id: existing.id }).update({
-      occurrence_count: (existing.occurrence_count || 1) + 1,
+      occurrence_count: isNewDay ? (existing.occurrence_count || 1) + 1 : (existing.occurrence_count || 1),
       last_occurred_at: knex.fn.now(),
       description, detail: JSON.stringify(detail),
     });
