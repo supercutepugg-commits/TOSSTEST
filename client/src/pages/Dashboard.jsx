@@ -222,7 +222,7 @@ export default function Dashboard() {
         {/* 전주/전일 매출현황 */}
         <div className="card">
           <div className="dash-section-title">전주/전일 매출현황</div>
-          <table className="dash-table">
+          <table className="dash-table dash-table-finance">
             <thead>
               <tr><th>항목</th><th>전주 동요일</th><th>전일</th><th>당일</th></tr>
             </thead>
@@ -266,9 +266,9 @@ export default function Dashboard() {
         {/* 1주일간 매출통계 */}
         <div className="card">
           <div className="dash-section-title">1주일간 매출통계</div>
-          <table className="dash-table">
+          <table className="dash-table dash-table-finance">
             <thead>
-              <tr><th>일자</th><th>요일</th><th>총매출액</th><th>순매출액</th><th>NET매출액</th><th>건수</th></tr>
+              <tr><th>일자</th><th style={{ textAlign: 'left' }}>요일</th><th>총매출액</th><th>순매출액</th><th>NET매출액</th><th>건수</th></tr>
             </thead>
             <tbody>
               {weekly.map(w => {
@@ -276,7 +276,7 @@ export default function Dashboard() {
                 return (
                   <tr key={w.date}>
                     <td style={{ color }}>{w.date}</td>
-                    <td style={{ color }}>{w.weekday}</td>
+                    <td style={{ color, textAlign: 'left' }}>{w.weekday}</td>
                     <td>{won(w.revenue)}</td>
                     <td>{won(w.netAmount)}</td>
                     <td>{won(w.supplyAmount)}</td>
