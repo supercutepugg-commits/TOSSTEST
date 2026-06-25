@@ -320,9 +320,16 @@ async function applyItemStock(order, item, qty, sign, trx = knex) {
 }
 
 // ── 본사 수량 수정 / 품절 / 대체상품 ─────────────────
+// 결제 단계 이후(결제대기~완료/배송)에는 수량을 건드릴 수 없게 막는다 — 결제 금액·재고반영 기준이 confirmed_quantity라서
+// 결제 후 수량이 바뀌면 결제승인 금액 검증이 깨지거나(이미 낸 돈과 불일치) 납품 시 재고가 실제와 다르게 반영됨
+const ITEM_EDIT_LOCKED_STATUSES = ['PAYMENT_PENDING', 'PAID', 'PREPARING_SHIPMENT', 'SHIPPED', 'DELIVERED', 'CLOSED', 'CANCELED'];
+
 router.put('/:id/items/:itemId', requireAuth, requireRole(...LOGISTICS_ROLES), async (req, res) => {
   const order = await knex('purchase_orders').where({ id: req.params.id, brand_id: req.user.brand_id }).first();
   if (!order) return res.status(404).json({ error: '없음' });
+  if (ITEM_EDIT_LOCKED_STATUSES.includes(order.status)) {
+    return res.status(400).json({ error: '결제가 시작된 이후에는 품목 수량을 수정할 수 없습니다' });
+  }
   const { confirmed_quantity, status, reason, substitute_note } = req.body;
   const item = await knex('purchase_order_items').where({ id: req.params.itemId, order_id: req.params.id }).first();
   if (!item) return res.status(404).json({ error: '없음' });
@@ -381,6 +388,8 @@ router.post('/:id/payment/confirm', requireAuth, async (req, res) => {
     return res.status(403).json({ error: '권한 없음' });
   }
   if (order.toss_order_code !== orderId) return res.status(400).json({ error: '주문 정보 불일치' });
+  // 중복 클릭/재시도로 같은 결제승인이 두 번 들어와도 Toss에 다시 확인 요청을 보내지 않도록 가드
+  if (order.status === 'PAID') return res.status(400).json({ error: '이미 결제가 완료된 발주서입니다' });
 
   const expectedAmount = Math.round(order.confirmed_amount ?? order.total_amount);
   if (Math.round(amount) !== expectedAmount) return res.status(400).json({ error: '결제 금액 불일치' });

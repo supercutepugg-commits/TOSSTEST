@@ -14,6 +14,7 @@ export default function Waste() {
   const [logs, setLogs] = useState([]);
   const [ingredients, setIngredients] = useState([]);
   const [modal, setModal] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     waste_date: new Date().toISOString().slice(0, 10),
     ingredient_id: '', ingredient_name: '', quantity: '', unit: 'g',
@@ -39,10 +40,18 @@ export default function Waste() {
   const handleSave = async () => {
     if (!form.ingredient_id) { toast('식자재를 선택해주세요', 'error'); return; }
     if (!form.quantity) { toast('수량을 입력해주세요', 'error'); return; }
-    await api.createWaste({ ...form, quantity: Number(form.quantity) });
-    setModal(false);
-    setForm({ waste_date: new Date().toISOString().slice(0, 10), ingredient_id: '', ingredient_name: '', quantity: '', unit: 'g', reason: REASONS[0], memo: '' });
-    load();
+    if (saving) return; // 연속 클릭 시 폐기 기록과 재고 차감이 중복으로 들어가는 것을 방지
+    setSaving(true);
+    try {
+      await api.createWaste({ ...form, quantity: Number(form.quantity) });
+      setModal(false);
+      setForm({ waste_date: new Date().toISOString().slice(0, 10), ingredient_id: '', ingredient_name: '', quantity: '', unit: 'g', reason: REASONS[0], memo: '' });
+      load();
+    } catch (e) {
+      toast(e.message || '폐기 등록에 실패했습니다', 'error');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const openModal = () => {
@@ -161,7 +170,7 @@ export default function Waste() {
 
             <div className="modal-footer">
               <button className="secondary" onClick={() => setModal(false)}>취소</button>
-              <button className="primary" onClick={handleSave}>저장</button>
+              <button className="primary" onClick={handleSave} disabled={saving}>{saving ? '저장 중...' : '저장'}</button>
             </div>
           </div>
         </div>

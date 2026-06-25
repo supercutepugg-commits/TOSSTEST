@@ -36,6 +36,7 @@ export default function StoreOrder() {
   const [editingOrderId, setEditingOrderId] = useState(null);
   const [editingOrderUpdatedAt, setEditingOrderUpdatedAt] = useState(null);
   const [detailOrder, setDetailOrder] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
 
   const loadOrders = () => api.getOrders().then(setOrders).catch(() => {});
 
@@ -104,6 +105,8 @@ export default function StoreOrder() {
 
   const submitOrder = async (draft) => {
     if (cart.length === 0) { toast('상품을 선택해주세요', 'error'); return; }
+    if (submitting) return; // 연속 클릭 시 같은 발주가 중복 생성되는 것을 방지
+    setSubmitting(true);
     const payload = {
       memo, submit: !draft,
       items: cart.map(i => ({
@@ -121,6 +124,8 @@ export default function StoreOrder() {
       if (!draft) setTab('history');
     } catch (e) {
       toast(e.message || '저장에 실패했습니다. 새로고침 후 다시 시도해주세요', 'error');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -214,8 +219,8 @@ export default function StoreOrder() {
                 placeholder="메모 (선택)" rows={3} />
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
-              <button className="secondary" onClick={() => submitOrder(true)} style={{ flex: 1 }}>임시저장</button>
-              <button className="primary" onClick={() => submitOrder(false)} style={{ flex: 1 }}>발주하기</button>
+              <button className="secondary" onClick={() => submitOrder(true)} disabled={submitting} style={{ flex: 1 }}>임시저장</button>
+              <button className="primary" onClick={() => submitOrder(false)} disabled={submitting} style={{ flex: 1 }}>{submitting ? '처리 중...' : '발주하기'}</button>
             </div>
           </div>
         </div>
