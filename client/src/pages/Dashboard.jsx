@@ -23,6 +23,57 @@ const QUICK_LINKS = [
 
 const won = (v) => `${Math.round(v || 0).toLocaleString()}원`;
 
+// 최근 7일 매출 흐름을 부드러운 곡선의 영역 차트로 보여준다 (3개짜리 막대 비교보다 추세를 보기 쉽고
+// 포인트가 늘어나도 그대로 확장되는 형태라 더 고급스러운 느낌을 줄 수 있음)
+function WeeklyTrendChart({ weekly }) {
+  if (!weekly || weekly.length === 0) return null;
+  const W = 700, H = 150, PAD_X = 16, PAD_TOP = 28, PAD_BOTTOM = 10;
+  const values = weekly.map(w => w.revenue || 0);
+  const max = Math.max(...values, 1);
+  const step = (W - PAD_X * 2) / (weekly.length - 1 || 1);
+  const points = values.map((v, i) => ({
+    x: PAD_X + step * i,
+    y: PAD_TOP + (H - PAD_TOP - PAD_BOTTOM) * (1 - v / max),
+    v,
+  }));
+  const peakIdx = values.indexOf(max);
+
+  const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ');
+  const areaPath = `${linePath} L ${points[points.length - 1].x.toFixed(1)} ${H - PAD_BOTTOM} L ${points[0].x.toFixed(1)} ${H - PAD_BOTTOM} Z`;
+
+  return (
+    <div className="dash-trend-chart">
+      <svg className="dash-trend-svg" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="dashTrendGradient" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="var(--purple)" stopOpacity="0.28" />
+            <stop offset="100%" stopColor="var(--purple)" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        <path className="dash-trend-area" d={areaPath} />
+        <path className="dash-trend-line" d={linePath} />
+        {points.map((p, i) => (
+          <g key={i}>
+            <text className="dash-trend-value" x={p.x} y={p.y - 12}>
+              {p.v > 0 ? Math.round(p.v).toLocaleString() : ''}
+            </text>
+            <circle className={'dash-trend-dot' + (i === peakIdx && max > 0 ? ' peak' : '')} cx={p.x} cy={p.y} r={i === peakIdx && max > 0 ? 5 : 3.5} />
+          </g>
+        ))}
+      </svg>
+      <div className="dash-trend-labels">
+        {weekly.map(w => (
+          <div key={w.date} className={
+            'dash-trend-label' + (w.weekday === '토' ? ' weekend-sat' : w.weekday === '일' ? ' weekend-sun' : '')
+          }>
+            {w.date.slice(5)} ({w.weekday})
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const { currentStore } = useStore();
   const { user } = useAuth();
@@ -46,7 +97,6 @@ export default function Dashboard() {
 
   const cmp = data.salesComparison || {};
   const weekly = data.weeklyStats || [];
-  const maxRevenue = Math.max(cmp.lastWeekSameDay?.revenue || 0, cmp.yesterday?.revenue || 0, cmp.today?.revenue || 0, 1);
 
   const statTiles = [
     { label: '재고부족', value: data.lowStock.length, warn: data.lowStock.length > 0 },
@@ -103,7 +153,7 @@ export default function Dashboard() {
         {/* 전주/전일 매출현황 */}
         <div className="card">
           <div className="dash-section-title">전주/전일 매출현황</div>
-          <table>
+          <table className="dash-table">
             <thead>
               <tr><th>항목</th><th>전주 동요일</th><th>전일</th><th>당일</th></tr>
             </thead>
@@ -159,31 +209,13 @@ export default function Dashboard() {
             </tbody>
           </table>
 
-          {/* 간단 막대 비교 */}
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 24, height: 140, marginTop: 20, paddingLeft: 8 }}>
-            {[
-              { label: '전주동요일', v: cmp.lastWeekSameDay?.revenue || 0, color: '#94a3b8' },
-              { label: '전일', v: cmp.yesterday?.revenue || 0, color: '#f59e0b' },
-              { label: '당일', v: cmp.today?.revenue || 0, color: 'var(--purple)' },
-            ].map(b => (
-              <div key={b.label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1 }}>
-                <div style={{ fontSize: 12, marginBottom: 4, color: 'var(--text-3)', fontWeight: 600 }}>{won(b.v)}</div>
-                <div style={{
-                  width: '60%', maxWidth: 60, height: Math.max((b.v / maxRevenue) * 100, 2),
-                  background: `linear-gradient(180deg, ${b.color}, ${b.color}cc)`,
-                  borderRadius: '6px 6px 2px 2px',
-                  boxShadow: `0 4px 10px ${b.color}33`,
-                }} />
-                <div style={{ fontSize: 12, marginTop: 8, color: 'var(--text-2)', fontWeight: 600 }}>{b.label}</div>
-              </div>
-            ))}
-          </div>
+          <WeeklyTrendChart weekly={weekly} />
         </div>
 
         {/* 1주일간 매출통계 */}
         <div className="card">
           <div className="dash-section-title">1주일간 매출통계</div>
-          <table>
+          <table className="dash-table">
             <thead>
               <tr><th>일자</th><th>요일</th><th>총매출액</th><th>순매출액</th><th>NET매출액</th><th>건수</th></tr>
             </thead>
@@ -208,7 +240,7 @@ export default function Dashboard() {
         {data.lowStock.length > 0 && (
           <div className="card" style={{ borderLeft: '4px solid #dc2626' }}>
             <div className="dash-section-title" style={{ color: '#dc2626' }}>재고 부족 재료</div>
-            <table>
+            <table className="dash-table">
               <thead>
                 <tr><th>재료명</th><th>현재 재고</th><th>알림 기준</th><th>상태</th></tr>
               </thead>
@@ -240,7 +272,7 @@ export default function Dashboard() {
               <div className="dash-section-title" style={{ color: '#ef4444', marginBottom: 0 }}>리스크 알림 (미처리)</div>
               <Link to="/risks" style={{ fontSize: 12.5 }}>전체 보기 &rarr;</Link>
             </div>
-            <table>
+            <table className="dash-table">
               <thead><tr><th>심각도</th><th>유형</th><th>가맹점</th><th>내용</th><th>발생일</th></tr></thead>
               <tbody>
                 {data.risks.map(r => (
@@ -262,7 +294,7 @@ export default function Dashboard() {
           {data.recentAlerts.length === 0 ? (
             <div className="empty">알림 내역 없음</div>
           ) : (
-            <table>
+            <table className="dash-table">
               <thead><tr><th>재료</th><th>발송 시점 재고</th><th>발송 시각</th></tr></thead>
               <tbody>
                 {data.recentAlerts.map(a => (
