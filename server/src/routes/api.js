@@ -104,6 +104,10 @@ router.post('/ingredients', requireAuth, requireRole(...LOGISTICS_ROLES), async 
   if ((stock !== undefined && Number(stock) < 0) || (threshold !== undefined && Number(threshold) < 0)) {
     return res.status(400).json({ error: '재고와 알림 기준은 0 이상이어야 합니다' });
   }
+  if (store_id) {
+    const store = await knex('stores').where({ id: store_id, brand_id: req.user.brand_id }).first();
+    if (!store) return res.status(400).json({ error: '존재하지 않는 가맹점입니다' });
+  }
   const [{ id }] = await knex('ingredients').insert({
     brand_id: req.user.brand_id,
     store_id: store_id || req.user.store_id,
@@ -144,7 +148,11 @@ router.delete('/ingredients/:id', requireAuth, requireRole(...LOGISTICS_ROLES), 
 
 router.post('/ingredients/:id/restock', requireAuth, requireRole(...LOGISTICS_ROLES), async (req, res) => {
   const { amount } = req.body;
-  await knex('ingredients').where({ id: req.params.id, brand_id: req.user.brand_id }).increment('stock', amount);
+  if (!Number.isFinite(Number(amount)) || Number(amount) <= 0) {
+    return res.status(400).json({ error: '입고량은 0보다 큰 값이어야 합니다' });
+  }
+  const updated = await knex('ingredients').where({ id: req.params.id, brand_id: req.user.brand_id }).increment('stock', amount);
+  if (!updated) return res.status(404).json({ error: '없음' });
   res.json({ ok: true });
 });
 
@@ -166,6 +174,10 @@ router.get('/menus', requireAuth, async (req, res) => {
 router.post('/menus', requireAuth, requireRole(...LOGISTICS_ROLES), async (req, res) => {
   const { name, toss_menu_id, store_id } = req.body;
   if (!name || !name.trim()) return res.status(400).json({ error: '메뉴명을 입력해주세요' });
+  if (store_id) {
+    const store = await knex('stores').where({ id: store_id, brand_id: req.user.brand_id }).first();
+    if (!store) return res.status(400).json({ error: '존재하지 않는 가맹점입니다' });
+  }
   const [{ id }] = await knex('menus').insert({
     brand_id: req.user.brand_id,
     store_id: store_id || req.user.store_id,
@@ -227,6 +239,9 @@ router.delete('/menus/:menuId/recipes/:ingredientId', requireAuth, requireRole(.
 });
 
 router.get('/menus/:menuId/recipe-history', requireAuth, async (req, res) => {
+  // menu_id는 브랜드 간 공유되지 않는 PK이므로, 다른 브랜드의 menuId를 넣으면 그 브랜드의 레시피 변경 이력(재료 사용량, 변경자 등)이 그대로 노출됨 — 소속 브랜드 메뉴인지 먼저 확인
+  const menu = await knex('menus').where({ id: req.params.menuId, brand_id: req.user.brand_id }).first();
+  if (!menu) return res.status(404).json({ error: '없음' });
   const rows = await knex('recipe_history as rh')
     .leftJoin('users as u', 'rh.changed_by', 'u.id')
     .select('rh.*', 'u.name as changed_by_name')
