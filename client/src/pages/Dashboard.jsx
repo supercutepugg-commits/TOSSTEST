@@ -25,20 +25,43 @@ const won = (v) => `${Math.round(v || 0).toLocaleString()}원`;
 
 // 최근 7일 매출 흐름을 부드러운 곡선의 영역 차트로 보여준다 (3개짜리 막대 비교보다 추세를 보기 쉽고
 // 포인트가 늘어나도 그대로 확장되는 형태라 더 고급스러운 느낌을 줄 수 있음)
-// 점들을 부드러운 베지어 곡선으로 잇는다 (직선 연결은 값 차이가 크면 뾰족한 삼각형처럼 보여 조잡해짐)
+// Catmull-Rom 곡선은 0→3000→0처럼 값 차이가 크면 점 사이에서 오버슈트(넘침)가 생겨
+// 봉우리 앞뒤가 출렁이는 것처럼 보임. 차트 라이브러리들이 쓰는 monotone cubic(Fritsch-Carlson)
+// 방식으로 바꿔서 점들 사이 구간을 넘어서는 굴곡 없이 매끄럽게만 잇도록 함
 function smoothPath(points) {
-  if (points.length < 2) return '';
+  const n = points.length;
+  if (n < 2) return '';
+  if (n === 2) return `M ${points[0].x} ${points[0].y} L ${points[1].x} ${points[1].y}`;
+
+  const dx = [], m = [];
+  for (let i = 0; i < n - 1; i++) {
+    dx[i] = points[i + 1].x - points[i].x;
+    m[i] = (points[i + 1].y - points[i].y) / dx[i];
+  }
+  const tan = [m[0]];
+  for (let i = 1; i < n - 1; i++) {
+    tan[i] = (m[i - 1] * m[i] <= 0) ? 0 : (m[i - 1] + m[i]) / 2;
+  }
+  tan[n - 1] = m[n - 2];
+  for (let i = 0; i < n - 1; i++) {
+    if (m[i] === 0) { tan[i] = 0; tan[i + 1] = 0; continue; }
+    const a = tan[i] / m[i], b = tan[i + 1] / m[i];
+    const s = a * a + b * b;
+    if (s > 9) {
+      const t = 3 / Math.sqrt(s);
+      tan[i] = t * a * m[i];
+      tan[i + 1] = t * b * m[i];
+    }
+  }
+
   let d = `M ${points[0].x.toFixed(1)} ${points[0].y.toFixed(1)}`;
-  for (let i = 0; i < points.length - 1; i++) {
-    const p0 = points[i === 0 ? i : i - 1];
-    const p1 = points[i];
-    const p2 = points[i + 1];
-    const p3 = points[i + 2 < points.length ? i + 2 : i + 1];
-    const cp1x = p1.x + (p2.x - p0.x) / 6;
-    const cp1y = p1.y + (p2.y - p0.y) / 6;
-    const cp2x = p2.x - (p3.x - p1.x) / 6;
-    const cp2y = p2.y - (p3.y - p1.y) / 6;
-    d += ` C ${cp1x.toFixed(1)} ${cp1y.toFixed(1)}, ${cp2x.toFixed(1)} ${cp2y.toFixed(1)}, ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}`;
+  for (let i = 0; i < n - 1; i++) {
+    const p0 = points[i], p1 = points[i + 1];
+    const cp1x = p0.x + dx[i] / 3;
+    const cp1y = p0.y + tan[i] * dx[i] / 3;
+    const cp2x = p1.x - dx[i] / 3;
+    const cp2y = p1.y - tan[i + 1] * dx[i] / 3;
+    d += ` C ${cp1x.toFixed(1)} ${cp1y.toFixed(1)}, ${cp2x.toFixed(1)} ${cp2y.toFixed(1)}, ${p1.x.toFixed(1)} ${p1.y.toFixed(1)}`;
   }
   return d;
 }
@@ -75,16 +98,21 @@ function WeeklyTrendChart({ weekly }) {
         ))}
         <path className="dash-trend-area" d={areaPath} />
         <path className="dash-trend-line" d={linePath} />
-        {points.map((p, i) => (
-          <g key={i}>
-            {p.v > 0 && (
-              <text className="dash-trend-value" x={p.x} y={p.y - 12}>
-                {Math.round(p.v).toLocaleString()}
-              </text>
-            )}
-            <circle className={'dash-trend-dot' + (i === peakIdx && max > 1 ? ' peak' : '')} cx={p.x} cy={p.y} r={i === peakIdx && max > 1 ? 5 : 3.5} />
-          </g>
-        ))}
+        {points.map((p, i) => {
+          const label = Math.round(p.v).toLocaleString();
+          const boxW = label.length * 6.5 + 14;
+          return (
+            <g key={i}>
+              {p.v > 0 && (
+                <g>
+                  <rect className="dash-trend-value-bg" x={p.x - boxW / 2} y={p.y - 30} width={boxW} height={18} rx={9} />
+                  <text className="dash-trend-value" x={p.x} y={p.y - 17}>{label}</text>
+                </g>
+              )}
+              <circle className={'dash-trend-dot' + (i === peakIdx && max > 1 ? ' peak' : '')} cx={p.x} cy={p.y} r={i === peakIdx && max > 1 ? 5 : 3.5} />
+            </g>
+          );
+        })}
       </svg>
       <div className="dash-trend-labels">
         {weekly.map(w => (
