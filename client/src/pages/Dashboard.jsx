@@ -68,7 +68,7 @@ function smoothPath(points) {
 
 function WeeklyTrendChart({ weekly }) {
   if (!weekly || weekly.length === 0) return null;
-  const W = 700, H = 160, PAD_X = 20, PAD_TOP = 30, PAD_BOTTOM = 14;
+  const W = 700, H = 170, PAD_X = 14, PAD_TOP = 38, PAD_BOTTOM = 10;
   const values = weekly.map(w => w.revenue || 0);
   const max = Math.max(...values, 1);
   const step = (W - PAD_X * 2) / (weekly.length - 1 || 1);
@@ -78,38 +78,49 @@ function WeeklyTrendChart({ weekly }) {
     v,
   }));
   const peakIdx = values.indexOf(max);
+  const lastIdx = points.length - 1;
 
   const linePath = smoothPath(points);
   const baseY = H - PAD_BOTTOM;
-  const areaPath = `${linePath} L ${points[points.length - 1].x.toFixed(1)} ${baseY} L ${points[0].x.toFixed(1)} ${baseY} Z`;
-  const gridYs = [0.25, 0.5, 0.75].map(r => PAD_TOP + (H - PAD_TOP - PAD_BOTTOM) * r);
+  const areaPath = `${linePath} L ${points[lastIdx].x.toFixed(1)} ${baseY} L ${points[0].x.toFixed(1)} ${baseY} Z`;
+
+  // 모든 점에 숫자를 박으면 빽빽해서 지저분해 보이므로, 가장 중요한 두 지점(최고 매출일·오늘)만 강조해서 보여준다
+  const highlightIdxs = new Set([peakIdx, lastIdx]);
 
   return (
     <div className="dash-trend-chart">
+      <div className="dash-trend-title">최근 7일 매출 추이</div>
       <svg className="dash-trend-svg" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none">
         <defs>
           <linearGradient id="dashTrendGradient" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="var(--purple)" stopOpacity="0.3" />
+            <stop offset="0%" stopColor="var(--purple)" stopOpacity="0.22" />
             <stop offset="100%" stopColor="var(--purple)" stopOpacity="0" />
           </linearGradient>
+          <linearGradient id="dashTrendStroke" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor="var(--purple-dark)" />
+            <stop offset="100%" stopColor="var(--purple)" />
+          </linearGradient>
         </defs>
-        {gridYs.map(y => (
-          <line key={y} className="dash-trend-grid" x1={PAD_X} y1={y} x2={W - PAD_X} y2={y} />
-        ))}
+        <line className="dash-trend-baseline" x1={PAD_X} y1={baseY} x2={W - PAD_X} y2={baseY} />
         <path className="dash-trend-area" d={areaPath} />
         <path className="dash-trend-line" d={linePath} />
         {points.map((p, i) => {
-          const label = Math.round(p.v).toLocaleString();
-          const boxW = label.length * 6.5 + 14;
+          const isHighlight = highlightIdxs.has(i) && p.v > 0;
           return (
             <g key={i}>
-              {p.v > 0 && (
-                <g>
-                  <rect className="dash-trend-value-bg" x={p.x - boxW / 2} y={p.y - 30} width={boxW} height={18} rx={9} />
-                  <text className="dash-trend-value" x={p.x} y={p.y - 17}>{label}</text>
-                </g>
+              {isHighlight && (
+                <text
+                  className={'dash-trend-value' + (i === peakIdx ? ' peak' : '')}
+                  x={Math.min(Math.max(p.x, 30), W - 30)}
+                  y={Math.max(p.y - 14, 14)}
+                >
+                  {Math.round(p.v).toLocaleString()}원
+                </text>
               )}
-              <circle className={'dash-trend-dot' + (i === peakIdx && max > 1 ? ' peak' : '')} cx={p.x} cy={p.y} r={i === peakIdx && max > 1 ? 5 : 3.5} />
+              {p.v > 0 && (
+                <circle className={'dash-trend-dot' + (i === peakIdx ? ' peak' : i === lastIdx ? ' current' : '')}
+                  cx={p.x} cy={p.y} r={isHighlight ? 5 : 3} />
+              )}
             </g>
           );
         })}
@@ -119,7 +130,7 @@ function WeeklyTrendChart({ weekly }) {
           <div key={w.date} className={
             'dash-trend-label' + (w.weekday === '토' ? ' weekend-sat' : w.weekday === '일' ? ' weekend-sun' : '')
           }>
-            {w.date.slice(5)} ({w.weekday})
+            {w.date.slice(5)}<span className="dash-trend-weekday">{w.weekday}</span>
           </div>
         ))}
       </div>
