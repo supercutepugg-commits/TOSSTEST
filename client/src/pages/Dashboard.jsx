@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import { useStore } from '../StoreContext';
@@ -67,8 +67,27 @@ function smoothPath(points) {
 }
 
 function WeeklyTrendChart({ weekly }) {
+  const containerRef = useRef(null);
+  const [width, setWidth] = useState(700);
+
+  // svg에 preserveAspectRatio="none"을 쓰면 viewBox 비율과 실제 렌더링 박스 비율이 달라질 때
+  // 내부 좌표계 전체가 가로/세로로 다르게 늘어나면서 숫자 글씨까지 일그러져 보였음(가로로 찌그러짐).
+  // 실제 렌더링 너비를 그대로 viewBox 너비로 써서 1px = 1단위로 맞추면 늘어남 자체가 없어짐
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const el = containerRef.current;
+    const ro = new ResizeObserver(entries => {
+      const w = entries[0]?.contentRect?.width;
+      if (w > 0) setWidth(w);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   if (!weekly || weekly.length === 0) return null;
-  const W = 700, H = 170, PAD_X = 14, PAD_TOP = 38, PAD_BOTTOM = 10;
+  // H는 .dash-trend-svg의 css height(190px)와 반드시 같아야 한다 — 다르면 세로 방향으로도
+  // 똑같이 늘어남이 생겨서 글씨가 일그러짐
+  const W = width, H = 190, PAD_X = 14, PAD_TOP = 38, PAD_BOTTOM = 10;
   const values = weekly.map(w => w.revenue || 0);
   const max = Math.max(...values, 1);
   const step = (W - PAD_X * 2) / (weekly.length - 1 || 1);
@@ -88,9 +107,9 @@ function WeeklyTrendChart({ weekly }) {
   const highlightIdxs = new Set([peakIdx, lastIdx]);
 
   return (
-    <div className="dash-trend-chart">
+    <div className="dash-trend-chart" ref={containerRef}>
       <div className="dash-section-title" style={{ marginBottom: 4, paddingBottom: 0, borderBottom: 'none' }}>최근 7일 매출 추이</div>
-      <svg className="dash-trend-svg" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none">
+      <svg className="dash-trend-svg" viewBox={`0 0 ${W} ${H}`}>
         <defs>
           <linearGradient id="dashTrendGradient" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="var(--purple)" stopOpacity="0.22" />
