@@ -25,9 +25,27 @@ const won = (v) => `${Math.round(v || 0).toLocaleString()}원`;
 
 // 최근 7일 매출 흐름을 부드러운 곡선의 영역 차트로 보여준다 (3개짜리 막대 비교보다 추세를 보기 쉽고
 // 포인트가 늘어나도 그대로 확장되는 형태라 더 고급스러운 느낌을 줄 수 있음)
+// 점들을 부드러운 베지어 곡선으로 잇는다 (직선 연결은 값 차이가 크면 뾰족한 삼각형처럼 보여 조잡해짐)
+function smoothPath(points) {
+  if (points.length < 2) return '';
+  let d = `M ${points[0].x.toFixed(1)} ${points[0].y.toFixed(1)}`;
+  for (let i = 0; i < points.length - 1; i++) {
+    const p0 = points[i === 0 ? i : i - 1];
+    const p1 = points[i];
+    const p2 = points[i + 1];
+    const p3 = points[i + 2 < points.length ? i + 2 : i + 1];
+    const cp1x = p1.x + (p2.x - p0.x) / 6;
+    const cp1y = p1.y + (p2.y - p0.y) / 6;
+    const cp2x = p2.x - (p3.x - p1.x) / 6;
+    const cp2y = p2.y - (p3.y - p1.y) / 6;
+    d += ` C ${cp1x.toFixed(1)} ${cp1y.toFixed(1)}, ${cp2x.toFixed(1)} ${cp2y.toFixed(1)}, ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}`;
+  }
+  return d;
+}
+
 function WeeklyTrendChart({ weekly }) {
   if (!weekly || weekly.length === 0) return null;
-  const W = 700, H = 150, PAD_X = 16, PAD_TOP = 28, PAD_BOTTOM = 10;
+  const W = 700, H = 160, PAD_X = 20, PAD_TOP = 30, PAD_BOTTOM = 14;
   const values = weekly.map(w => w.revenue || 0);
   const max = Math.max(...values, 1);
   const step = (W - PAD_X * 2) / (weekly.length - 1 || 1);
@@ -38,26 +56,33 @@ function WeeklyTrendChart({ weekly }) {
   }));
   const peakIdx = values.indexOf(max);
 
-  const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ');
-  const areaPath = `${linePath} L ${points[points.length - 1].x.toFixed(1)} ${H - PAD_BOTTOM} L ${points[0].x.toFixed(1)} ${H - PAD_BOTTOM} Z`;
+  const linePath = smoothPath(points);
+  const baseY = H - PAD_BOTTOM;
+  const areaPath = `${linePath} L ${points[points.length - 1].x.toFixed(1)} ${baseY} L ${points[0].x.toFixed(1)} ${baseY} Z`;
+  const gridYs = [0.25, 0.5, 0.75].map(r => PAD_TOP + (H - PAD_TOP - PAD_BOTTOM) * r);
 
   return (
     <div className="dash-trend-chart">
       <svg className="dash-trend-svg" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none">
         <defs>
           <linearGradient id="dashTrendGradient" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="var(--purple)" stopOpacity="0.28" />
+            <stop offset="0%" stopColor="var(--purple)" stopOpacity="0.3" />
             <stop offset="100%" stopColor="var(--purple)" stopOpacity="0" />
           </linearGradient>
         </defs>
+        {gridYs.map(y => (
+          <line key={y} className="dash-trend-grid" x1={PAD_X} y1={y} x2={W - PAD_X} y2={y} />
+        ))}
         <path className="dash-trend-area" d={areaPath} />
         <path className="dash-trend-line" d={linePath} />
         {points.map((p, i) => (
           <g key={i}>
-            <text className="dash-trend-value" x={p.x} y={p.y - 12}>
-              {p.v > 0 ? Math.round(p.v).toLocaleString() : ''}
-            </text>
-            <circle className={'dash-trend-dot' + (i === peakIdx && max > 0 ? ' peak' : '')} cx={p.x} cy={p.y} r={i === peakIdx && max > 0 ? 5 : 3.5} />
+            {p.v > 0 && (
+              <text className="dash-trend-value" x={p.x} y={p.y - 12}>
+                {Math.round(p.v).toLocaleString()}
+              </text>
+            )}
+            <circle className={'dash-trend-dot' + (i === peakIdx && max > 1 ? ' peak' : '')} cx={p.x} cy={p.y} r={i === peakIdx && max > 1 ? 5 : 3.5} />
           </g>
         ))}
       </svg>
