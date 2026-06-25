@@ -89,7 +89,7 @@ function WeeklyTrendChart({ weekly }) {
 
   return (
     <div className="dash-trend-chart">
-      <div className="dash-trend-title">최근 7일 매출 추이</div>
+      <div className="dash-section-title" style={{ marginBottom: 4, paddingBottom: 0, borderBottom: 'none' }}>최근 7일 매출 추이</div>
       <svg className="dash-trend-svg" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none">
         <defs>
           <linearGradient id="dashTrendGradient" x1="0" y1="0" x2="0" y2="1">
@@ -182,6 +182,7 @@ export default function Dashboard() {
       {/* 좌측 패널 */}
       <div className="dash-side">
         <div className="dash-info-card">
+          <div className="dash-info-avatar">{currentStore.name?.slice(0, 1)}</div>
           <div className="dash-date">{new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
           <div className="dash-store-name">{currentStore.name}</div>
           <div className="dash-user-name">{user?.name} 님</div>
@@ -190,17 +191,17 @@ export default function Dashboard() {
         <div className="dash-stat-tiles">
           {statTiles.map(t => (
             <div key={t.label} className={'dash-stat-tile' + (t.warn ? ' warn' : '')}>
-              <span className="dash-stat-value" style={{ color: t.warn ? '#dc2626' : 'var(--text)' }}>{t.value}</span>
+              <span className="dash-stat-value">{t.value}</span>
               <span className="dash-stat-label">{t.label}</span>
             </div>
           ))}
         </div>
 
         <div className="dash-revenue-card">
-          <div className="dash-section-title" style={{ marginBottom: 10 }}>오늘 매출</div>
-          <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--purple)', letterSpacing: '-0.3px' }}>{won(data.todayRevenue)}</div>
+          <div className="dash-revenue-label">오늘 매출</div>
+          <div className="dash-revenue-amount">{won(data.todayRevenue)}</div>
           {todayVsYesterday !== null && (
-            <div style={{ marginTop: 8, fontSize: 12.5, fontWeight: 700, color: todayVsYesterday >= 0 ? '#16a34a' : '#dc2626' }}>
+            <div className={'dash-revenue-trend' + (todayVsYesterday >= 0 ? ' up' : ' down')}>
               {todayVsYesterday >= 0 ? '▲' : '▼'} 전일 대비 {Math.abs(todayVsYesterday)}%
             </div>
           )}
@@ -319,7 +320,7 @@ export default function Dashboard() {
         {data.risks.length > 0 && (
           <div className="card" style={{ borderLeft: '4px solid #ef4444' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <div className="dash-section-title" style={{ color: '#ef4444', marginBottom: 0 }}>리스크 알림 (미처리)</div>
+              <div className="dash-section-title" style={{ color: '#ef4444', marginBottom: 0, paddingBottom: 0, borderBottom: 'none' }}>리스크 알림 (미처리)</div>
               <Link to="/risks" style={{ fontSize: 12.5 }}>전체 보기 &rarr;</Link>
             </div>
             <table className="dash-table">
