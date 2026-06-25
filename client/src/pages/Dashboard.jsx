@@ -218,22 +218,10 @@ export default function Dashboard() {
                 <td><b>{won(cmp.today?.revenue)}</b></td>
               </tr>
               <tr>
-                <td>할인총액</td>
-                <td>{won(cmp.lastWeekSameDay?.discountAmount)}</td>
-                <td>{won(cmp.yesterday?.discountAmount)}</td>
-                <td><b>{won(cmp.today?.discountAmount)}</b></td>
-              </tr>
-              <tr>
                 <td>순매출액</td>
                 <td>{won(cmp.lastWeekSameDay?.netAmount)}</td>
                 <td>{won(cmp.yesterday?.netAmount)}</td>
                 <td><b>{won(cmp.today?.netAmount)}</b></td>
-              </tr>
-              <tr>
-                <td>NET매출액</td>
-                <td>{won(cmp.lastWeekSameDay?.supplyAmount)}</td>
-                <td>{won(cmp.yesterday?.supplyAmount)}</td>
-                <td><b>{won(cmp.today?.supplyAmount)}</b></td>
               </tr>
               <tr>
                 <td>현금금액</td>
@@ -246,12 +234,6 @@ export default function Dashboard() {
                 <td>{won(cmp.lastWeekSameDay?.cardAmount)}</td>
                 <td>{won(cmp.yesterday?.cardAmount)}</td>
                 <td><b>{won(cmp.today?.cardAmount)}</b></td>
-              </tr>
-              <tr>
-                <td>기타금액</td>
-                <td>{won(cmp.lastWeekSameDay?.otherAmount)}</td>
-                <td>{won(cmp.yesterday?.otherAmount)}</td>
-                <td><b>{won(cmp.today?.otherAmount)}</b></td>
               </tr>
               <tr>
                 <td>주문건수</td>
