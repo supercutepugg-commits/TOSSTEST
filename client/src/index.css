@@ -102,13 +102,16 @@ body {
   gap: 6px;
   padding: 8px 17px;
   margin: 0 1px;
+  border: none;
   border-radius: 9px;
+  background: transparent;
   color: rgba(255,255,255,0.72);
   text-decoration: none;
   font-size: 13px;
   font-weight: 600;
   letter-spacing: -0.1px;
   white-space: nowrap;
+  cursor: pointer;
   transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease;
 }
 .topnav-tab-icon { font-size: 15px; line-height: 1; }
@@ -209,47 +212,18 @@ body {
 
 .side-menu-group { padding: 5px 8px; }
 
-.side-menu-group-title {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 10px 12px;
-  font-size: 12.5px;
+.side-menu-section-title {
+  padding: 10px 12px 8px;
+  font-size: 11.5px;
   font-weight: 700;
-  letter-spacing: -0.1px;
-  color: var(--text-2);
-  background: var(--bg-elevated);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  cursor: pointer;
-  text-align: left;
-  transition: color 0.15s, background 0.15s, border-color 0.15s, box-shadow 0.15s;
-}
-.side-menu-group-title::after {
-  content: '';
-  width: 6px;
-  height: 6px;
-  border-right: 1.6px solid currentColor;
-  border-bottom: 1.6px solid currentColor;
-  opacity: 0.55;
-  transform: rotate(-45deg);
-  transition: transform 0.15s;
-  flex-shrink: 0;
-}
-.side-menu-group.open .side-menu-group-title::after { transform: rotate(45deg); }
-.side-menu-group-title:hover { background: var(--border); }
-.side-menu-group.open .side-menu-group-title {
-  color: #fff;
-  background: var(--purple);
-  border-color: var(--purple);
-  box-shadow: 0 2px 6px rgba(124, 58, 237, 0.28);
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  color: var(--purple);
 }
 
 .side-menu-group-items {
   position: relative;
-  margin: 6px 2px 2px 2px;
+  margin: 2px 2px 2px 2px;
   padding-left: 10px;
   border-left: 2px solid var(--border);
   display: flex;
