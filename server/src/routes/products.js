@@ -115,6 +115,14 @@ router.put('/:id', requireAuth, requireRole(...LOGISTICS_ROLES), async (req, res
   await knex('products').where({ id: req.params.id, brand_id: req.user.brand_id }).update(next);
   if (next.price !== existing.price) {
     await logAudit(req.user.brand_id, req.user.id, 'PRODUCT', existing.id, 'UPDATE', { price: existing.price }, { price: next.price });
+    // 단가가 바로 모든 신규 발주에 적용되는데 가맹점에 사전 공지 없이 조용히 바뀌던 문제 —
+    // 공지사항(브랜드 전체)에 자동으로 변경 내역을 올려서 가맹점이 다음 발주 전에 알 수 있게 함
+    await knex('notices').insert({
+      brand_id: req.user.brand_id, store_id: null,
+      title: `[단가변경] ${next.name}`,
+      content: `${next.name}의 발주 단가가 ${existing.price.toLocaleString()}원에서 ${next.price.toLocaleString()}원으로 변경되었습니다.`,
+      created_by: req.user.id,
+    });
   }
   res.json({ ok: true });
 });

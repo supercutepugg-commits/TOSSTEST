@@ -189,6 +189,11 @@ async function initDb() {
   // 본사가 수량조정/품절처리/수정요청 등 가맹점이 알아야 할 변경을 했을 때 띄워주는 알림용 플래그
   await addColumnIfMissing('purchase_orders', 'needs_attention', t => t.boolean('needs_attention').defaultTo(false));
   await addColumnIfMissing('purchase_orders', 'attention_note', t => t.text('attention_note').nullable());
+  // 가맹점 수령확인(검수) — 본사가 "납품완료" 처리해도 실제로 가맹점이 받은 게 맞는지 확인하는 절차가
+  // 없어서, 선결제인데 파손/누락이 있어도 본사에 전화로만 알릴 수밖에 없던 사각지대를 없애기 위함
+  await addColumnIfMissing('purchase_orders', 'receipt_confirmed_at', t => t.datetime('receipt_confirmed_at').nullable());
+  await addColumnIfMissing('purchase_orders', 'receipt_issue_note', t => t.text('receipt_issue_note').nullable());
+  await addColumnIfMissing('purchase_orders', 'receipt_issue_resolved_at', t => t.datetime('receipt_issue_resolved_at').nullable());
 
   // ── 발주 상품 목록 ────────────────────────────────────
   await createIfMissing('purchase_order_items', t => {

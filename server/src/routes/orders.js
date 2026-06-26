@@ -143,6 +143,18 @@ router.post('/:id/ack', requireAuth, async (req, res) => {
   res.json({ ok: true });
 });
 
+// 가맹점이 신고했지만 본사가 아직 처리 안 한 검수 이상 목록
+router.get('/receipt-issues', requireAuth, requireRole(...LOGISTICS_ROLES), async (req, res) => {
+  const rows = await knex('purchase_orders as po')
+    .join('stores as s', 'po.store_id', 's.id')
+    .select('po.id', 'po.store_id', 's.name as store_name', 'po.receipt_issue_note', 'po.updated_at')
+    .where('po.brand_id', req.user.brand_id)
+    .whereNotNull('po.receipt_issue_note')
+    .whereNull('po.receipt_issue_resolved_at')
+    .orderBy('po.updated_at', 'desc');
+  res.json(rows);
+});
+
 // ── 발주서 상세 ───────────────────────────────────────
 router.get('/:id', requireAuth, async (req, res) => {
   const order = await knex('purchase_orders as po')
@@ -306,6 +318,41 @@ router.post('/:id/status', requireAuth, requireRole(...LOGISTICS_ROLES), async (
     });
   }
 
+  res.json({ ok: true });
+});
+
+// ── 가맹점 수령확인(검수) ─────────────────────────────
+// 본사가 "납품완료"로 바꿔도 실제로 가맹점이 받은 물량이 맞는지는 별개 — 가맹점이 직접 확인하고,
+// 문제가 있으면(파손/누락 등) 전화 대신 시스템으로 신고할 수 있게 함
+router.post('/:id/receipt-confirm', requireAuth, async (req, res) => {
+  const order = await knex('purchase_orders').where({ id: req.params.id, brand_id: req.user.brand_id }).first();
+  if (!order) return res.status(404).json({ error: '없음' });
+  if (!isStoreRole(req.user.role) || order.store_id !== req.user.store_id) {
+    return res.status(403).json({ error: '가맹점만 수령확인할 수 있습니다' });
+  }
+  if (order.status !== 'DELIVERED') return res.status(400).json({ error: '납품완료 상태가 아닙니다' });
+  if (order.receipt_confirmed_at || order.receipt_issue_note) {
+    return res.status(400).json({ error: '이미 수령확인 또는 이상신고가 처리된 발주서입니다' });
+  }
+
+  const { ok, note } = req.body;
+  if (ok) {
+    await knex('purchase_orders').where({ id: order.id }).update({ receipt_confirmed_at: new Date().toISOString() });
+    await logHistory(order.id, 'RECEIPT_CONFIRMED', null, null, null, req.user.id);
+  } else {
+    if (!note || !note.trim()) return res.status(400).json({ error: '이상 신고 내용을 입력해주세요' });
+    await knex('purchase_orders').where({ id: order.id }).update({ receipt_issue_note: note.trim() });
+    await logHistory(order.id, 'RECEIPT_ISSUE', null, null, note.trim(), req.user.id);
+  }
+  res.json({ ok: true });
+});
+
+router.post('/:id/receipt-issue/resolve', requireAuth, requireRole(...LOGISTICS_ROLES), async (req, res) => {
+  const order = await knex('purchase_orders').where({ id: req.params.id, brand_id: req.user.brand_id }).first();
+  if (!order) return res.status(404).json({ error: '없음' });
+  if (!order.receipt_issue_note) return res.status(400).json({ error: '접수된 이상신고가 없습니다' });
+  await knex('purchase_orders').where({ id: order.id }).update({ receipt_issue_resolved_at: new Date().toISOString() });
+  await logHistory(order.id, 'RECEIPT_ISSUE_RESOLVED', null, null, null, req.user.id);
   res.json({ ok: true });
 });
 

@@ -192,6 +192,26 @@ export default function StoreOrder() {
     loadTemplates();
   };
 
+  // 본사가 "납품완료"로 바꿔도 실제로 받은 게 맞는지는 가맹점만 알 수 있어서, 확인 또는 이상신고를 받는다
+  const confirmReceipt = async (ok) => {
+    let note;
+    if (!ok) {
+      note = prompt('수령 시 어떤 문제가 있었나요? (예: 2개 누락, 박스 파손 등)');
+      if (!note || !note.trim()) return;
+    } else if (!confirm('받은 물량이 발주 내용과 모두 일치합니까?')) {
+      return;
+    }
+    try {
+      await api.confirmReceipt(detailOrder.id, ok, note);
+      toast(ok ? '수령확인 처리되었습니다' : '이상신고가 접수되었습니다', 'success');
+      const d = await api.getOrder(detailOrder.id);
+      setDetailOrder(d);
+      loadOrders();
+    } catch (e) {
+      toast(e.message || '처리에 실패했습니다', 'error');
+    }
+  };
+
   // 카탈로그가 커지면 한눈에 찾기 어려워지므로 카테고리(상품관리에서 설정)와 이름 검색으로 좁힐 수 있게 함
   const categories = ['전체', ...new Set(products.map(p => p.category).filter(Boolean))];
   const visibleProducts = products.filter(p => {
@@ -361,7 +381,12 @@ export default function StoreOrder() {
                     <tr key={o.id} style={{ cursor: 'pointer', background: detailOrder?.id === o.id ? 'var(--bg-elevated)' : '' }}
                       onClick={async () => { const d = await api.getOrder(o.id); setDetailOrder(d); }}>
                       <td>{new Date(o.created_at).toLocaleDateString('ko-KR')}</td>
-                      <td><StatusBadge status={o.status} /></td>
+                      <td>
+                        <StatusBadge status={o.status} />
+                        {o.status === 'DELIVERED' && !o.receipt_confirmed_at && !o.receipt_issue_note && (
+                          <span className="badge yellow" style={{ marginLeft: 6 }}>수령확인 필요</span>
+                        )}
+                      </td>
                       <td>{(o.confirmed_amount ?? o.total_amount).toLocaleString()}원</td>
                       <td className="text-muted" style={{ fontSize: 13 }}>{o.memo || '-'}</td>
                       <td>
@@ -409,7 +434,22 @@ export default function StoreOrder() {
                     발주 취소
                   </button>
                 )}
+                {detailOrder.status === 'DELIVERED' && !detailOrder.receipt_confirmed_at && !detailOrder.receipt_issue_note && (
+                  <>
+                    <button className="primary small" onClick={() => confirmReceipt(true)}>수령확인</button>
+                    <button className="danger small" onClick={() => confirmReceipt(false)}>이상신고</button>
+                  </>
+                )}
+                {detailOrder.receipt_confirmed_at && <span className="badge green">수령확인 완료</span>}
+                {detailOrder.receipt_issue_note && (
+                  <span className="badge red">{detailOrder.receipt_issue_resolved_at ? '이상신고 처리완료' : '이상신고 접수됨'}</span>
+                )}
               </div>
+              {detailOrder.receipt_issue_note && (
+                <div className="elevated-card" style={{ padding: 10, fontSize: 13, marginBottom: 12, borderLeft: '3px solid #ef4444' }}>
+                  신고 내용: {detailOrder.receipt_issue_note}
+                </div>
+              )}
               <table style={{ marginBottom: 12 }}>
                 <thead><tr><th>상품</th><th>수량</th><th>금액</th></tr></thead>
                 <tbody>

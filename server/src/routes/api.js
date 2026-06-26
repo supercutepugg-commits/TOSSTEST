@@ -168,12 +168,16 @@ router.get('/my-tasks', requireAuth, requireRole(...HQ_ROLES), async (req, res) 
     });
   const risks = await knex('risk_alerts')
     .where({ brand_id: req.user.brand_id, status: 'OPEN' }).whereIn('store_id', storeIds);
+  const receiptIssues = await knex('purchase_orders')
+    .where('brand_id', req.user.brand_id).whereIn('store_id', storeIds)
+    .whereNotNull('receipt_issue_note').whereNull('receipt_issue_resolved_at');
 
   const result = myStores.map(s => ({
     store_id: s.id, store_name: s.name,
     pendingReview: orders.filter(o => o.store_id === s.id && ['ORDERED', 'REVIEWING'].includes(o.status)).length,
     needsAttention: orders.filter(o => o.store_id === s.id && o.needs_attention).length,
     openRisks: risks.filter(r => r.store_id === s.id).length,
+    receiptIssues: receiptIssues.filter(r => r.store_id === s.id).length,
   }));
   res.json({ stores: result });
 });

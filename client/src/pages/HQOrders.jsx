@@ -211,6 +211,9 @@ export default function HQOrders() {
                       {o.status === 'PAYMENT_PENDING' && o.updated_at && (Date.now() - new Date(o.updated_at).getTime() > 24 * 3600000) && (
                         <span className="badge red" style={{ marginLeft: 6 }} title="결제대기 24시간 이상 경과">방치</span>
                       )}
+                      {o.receipt_issue_note && !o.receipt_issue_resolved_at && (
+                        <span className="badge red" style={{ marginLeft: 6 }} title="가맹점이 수령 이상을 신고함">검수이상</span>
+                      )}
                     </td>
                     <td>{(o.confirmed_amount ?? o.total_amount).toLocaleString()}원</td>
                     {tab === 'active' && canEdit && (
@@ -265,12 +268,30 @@ export default function HQOrders() {
             {detail.refunded_amount > 0 && (
               <span className="badge yellow">환불 {detail.refunded_amount.toLocaleString()}원</span>
             )}
+            {detail.receipt_confirmed_at && <span className="badge green">수령확인 완료</span>}
             {canEdit && ['PAID', 'PREPARING_SHIPMENT', 'SHIPPED', 'DELIVERED'].includes(detail.status) && (
               <button className="secondary small" onClick={() => refund(detail)}>
                 {detail.refunded_amount > 0 ? '추가 금액 환불' : '금액 환불'}
               </button>
             )}
           </div>
+          {detail.receipt_issue_note && (
+            <div className="elevated-card" style={{ padding: 10, fontSize: 13, marginBottom: 16, borderLeft: '3px solid #ef4444' }}>
+              <div style={{ fontWeight: 700, color: '#ef4444', marginBottom: 4 }}>가맹점 검수 이상신고</div>
+              {detail.receipt_issue_note}
+              {!detail.receipt_issue_resolved_at && canEdit && (
+                <div style={{ marginTop: 8 }}>
+                  <button className="secondary small" onClick={async () => {
+                    await api.resolveReceiptIssue(detail.id);
+                    toast('처리완료로 표시되었습니다', 'success');
+                    loadDetail(detail.id);
+                    load();
+                  }}>처리완료로 표시</button>
+                </div>
+              )}
+              {detail.receipt_issue_resolved_at && <div className="text-sub" style={{ marginTop: 6 }}>처리완료됨</div>}
+            </div>
+          )}
           {canEdit && ['PAID', 'PREPARING_SHIPMENT', 'SHIPPED', 'DELIVERED'].includes(detail.status) && (
             <div className="text-muted" style={{ fontSize: 12, marginBottom: 8 }}>
               아래 표에서 반품된 품목의 수량을 입력하면 해당 품목만 환불(재고도 함께 차감)됩니다.

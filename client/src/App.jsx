@@ -158,6 +158,7 @@ function HQLayout() {
   const isHqAdmin = ['SUPER_ADMIN', 'HQ_ADMIN'].includes(user?.role);
   const [collapsed, setCollapsed] = useState(false);
   const [openRiskCount, setOpenRiskCount] = useState(0);
+  const [myTaskCount, setMyTaskCount] = useState(0);
   const navigate = useNavigate();
 
   // 미확인 리스크 개수를 메뉴에 배지로 표시 — 1분마다 갱신
@@ -168,7 +169,18 @@ function HQLayout() {
     return () => clearInterval(interval);
   }, []);
 
-  const badgeCounts = { '/risks': openRiskCount };
+  // 담당 가맹점의 처리할 일 개수도 리스크와 같은 방식으로 배지 표시 — 안 들어가보면 일이 있는지조차 몰랐던 문제
+  useEffect(() => {
+    const load = () => api.getMyTasks().then(data => {
+      const total = (data.stores || []).reduce((s, st) => s + st.pendingReview + st.needsAttention + st.openRisks + (st.receiptIssues || 0), 0);
+      setMyTaskCount(total);
+    }).catch(() => {});
+    load();
+    const interval = setInterval(load, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const badgeCounts = { '/risks': openRiskCount, '/my-tasks': myTaskCount };
 
   // 가맹점 선택 여부에 따라 상단 탭도 좌측 메뉴와 동일한 기준으로 보여줄 메뉴를 가른다
   const visibleTabs = SIDE_MENU_GROUPS

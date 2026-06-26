@@ -97,6 +97,9 @@ export const api = {
   getRefundReasons: (params) => a(`/orders/refund-reasons${qs(params)}`),
   getAttentionOrders: () => a('/orders/attention'),
   ackOrder: (id) => a(`/orders/${id}/ack`, { method: 'POST' }),
+  confirmReceipt: (id, ok, note) => a(`/orders/${id}/receipt-confirm`, { method: 'POST', body: JSON.stringify({ ok, note }) }),
+  getReceiptIssues: () => a('/orders/receipt-issues'),
+  resolveReceiptIssue: (id) => a(`/orders/${id}/receipt-issue/resolve`, { method: 'POST' }),
 
   // 정기 발주 템플릿
   getOrderTemplates: () => a('/order-templates'),
