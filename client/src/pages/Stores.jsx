@@ -336,9 +336,11 @@ export default function Stores() {
   const [bulkSyncOpen, setBulkSyncOpen] = useState(false);
   const [detailStore, setDetailStore] = useState(null);
   const [orderStatus, setOrderStatus] = useState([]);
+  const [auditStatus, setAuditStatus] = useState([]);
 
   useEffect(() => {
     api.getStoreOrderStatus().then(setOrderStatus).catch(() => {});
+    api.getStoreAuditStatus().then(setAuditStatus).catch(() => {});
   }, []);
 
   const [nameQuery, setNameQuery] = useState('');
@@ -405,6 +407,18 @@ export default function Stores() {
               <span style={{ fontWeight: 700 }}>
                 {s.diffMin <= 0 ? `마감 ${Math.abs(s.diffMin)}분 경과 (미발주)` : `마감 ${s.diffMin}분 전 (미발주)`}
               </span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {auditStatus.length > 0 && (
+        <div className="card" style={{ borderLeft: '4px solid #f59e0b', marginBottom: 16, background: '#fffbeb' }}>
+          <div style={{ fontWeight: 700, color: '#f59e0b', marginBottom: 6 }}>재고 실사 지연 가맹점 {auditStatus.length}건 (30일 이상)</div>
+          {auditStatus.map(s => (
+            <div key={s.store_id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 4 }}>
+              <span>{s.store_name}</span>
+              <span className="text-sub">{s.lastAuditAt ? `마지막 실사: ${new Date(s.lastAuditAt).toLocaleDateString('ko-KR')} (${s.daysSince}일 전)` : '실사 기록 없음'}</span>
             </div>
           ))}
         </div>

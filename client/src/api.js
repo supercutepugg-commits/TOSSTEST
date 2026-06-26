@@ -52,6 +52,7 @@ export const api = {
   getStores: () => a('/stores'),
   getMyStore: () => a('/stores/me'),
   getStoreOrderStatus: () => a('/stores/order-status'),
+  getStoreAuditStatus: () => a('/stores/audit-status'),
   getMyTasks: () => a('/my-tasks'),
   createStore: (data) => a('/stores', { method: 'POST', body: JSON.stringify(data) }),
   updateStore: (id, data) => a(`/stores/${id}`, { method: 'PUT', body: JSON.stringify(data) }),

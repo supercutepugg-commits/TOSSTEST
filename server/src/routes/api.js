@@ -132,6 +132,28 @@ router.get('/stores/order-status', requireAuth, requireRole(...HQ_ROLES), async 
   res.json(result);
 });
 
+// 재고 실사(StockAdjustment) 주기를 강제하는 게 없어서 "마지막 실사가 언제였는지"가 안 보이던 문제
+// → 30일 넘게 실사 기록이 없는(또는 한 번도 없는) 가맹점을 가맹점조회 화면에서 바로 알 수 있게 함
+router.get('/stores/audit-status', requireAuth, requireRole(...HQ_ROLES), async (req, res) => {
+  const stores = await knex('stores').where({ brand_id: req.user.brand_id, is_open: true });
+  if (stores.length === 0) return res.json([]);
+
+  const lastAudits = await knex('stock_adjustments')
+    .where('brand_id', req.user.brand_id)
+    .whereIn('store_id', stores.map(s => s.id))
+    .groupBy('store_id')
+    .select('store_id').max('created_at as last_audit_at');
+  const lastAuditByStore = new Map(lastAudits.map(r => [r.store_id, r.last_audit_at]));
+
+  const result = stores.map(s => {
+    const lastAuditAt = lastAuditByStore.get(s.id) || null;
+    const daysSince = lastAuditAt ? Math.floor((Date.now() - new Date(lastAuditAt).getTime()) / 86400000) : null;
+    return { store_id: s.id, store_name: s.name, lastAuditAt, daysSince };
+  }).filter(r => r.daysSince === null || r.daysSince >= 30);
+  result.sort((a, b) => (b.daysSince ?? Infinity) - (a.daysSince ?? Infinity));
+  res.json(result);
+});
+
 // 본사 직원이 담당하는 가맹점 중 처리해야 할 일(미확인 변경알림, 검토대기 발주, 미처리 리스크)을
 // 모아서 보여줌 — 브랜드 전체 화면만 있어서 "내가 담당하는 것만" 빠르게 훑어볼 방법이 없었음
 router.get('/my-tasks', requireAuth, requireRole(...HQ_ROLES), async (req, res) => {
@@ -765,9 +787,10 @@ router.get('/store-rankings', requireAuth, async (req, res) => {
   const toISO = (to ? new Date(to) : new Date()).toISOString();
   const fromISO = (from ? new Date(from) : new Date(Date.now() - 30 * 86400000)).toISOString();
 
+  // 폐점 가맹점은 더 이상 운영 중이 아니므로 순위/발주율 통계에 계속 끼어들지 않도록 제외
   const salesRows = await knex('sales_items as si')
     .join('stores as s', 'si.store_id', 's.id')
-    .where('si.brand_id', brand_id)
+    .where('si.brand_id', brand_id).where('s.is_open', true)
     .where('si.sold_at', '>=', fromISO).where('si.sold_at', '<=', toISO)
     .groupBy('si.store_id', 's.name')
     .select('si.store_id', 's.name as store_name')
@@ -777,7 +800,7 @@ router.get('/store-rankings', requireAuth, async (req, res) => {
 
   const orderRows = await knex('purchase_orders as po')
     .join('stores as s', 'po.store_id', 's.id')
-    .where('po.brand_id', brand_id)
+    .where('po.brand_id', brand_id).where('s.is_open', true)
     .whereNotIn('po.status', ['DRAFT', 'CANCELED'])
     .where('po.created_at', '>=', fromISO).where('po.created_at', '<=', toISO)
     .groupBy('po.store_id', 's.name')
