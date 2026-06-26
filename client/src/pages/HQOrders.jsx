@@ -206,7 +206,12 @@ export default function HQOrders() {
                     onClick={() => loadDetail(o.id)}>
                     <td><b>{o.store_name}</b></td>
                     <td className="text-sub" style={{ fontSize: 13 }}>{new Date(o.created_at).toLocaleDateString('ko-KR')}</td>
-                    <td><StatusBadge status={o.status} /></td>
+                    <td>
+                      <StatusBadge status={o.status} />
+                      {o.status === 'PAYMENT_PENDING' && o.updated_at && (Date.now() - new Date(o.updated_at).getTime() > 24 * 3600000) && (
+                        <span className="badge red" style={{ marginLeft: 6 }} title="결제대기 24시간 이상 경과">방치</span>
+                      )}
+                    </td>
                     <td>{(o.confirmed_amount ?? o.total_amount).toLocaleString()}원</td>
                     {tab === 'active' && canEdit && (
                       <td onClick={e => e.stopPropagation()}>

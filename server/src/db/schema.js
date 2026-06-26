@@ -279,6 +279,17 @@ async function initDb() {
     t.datetime('created_at').defaultTo(knex.fn.now());
   });
 
+  // ── 정기 발주 템플릿 ───────────────────────────────────
+  // 가맹점이 매번 같은 품목을 새로 장바구니에 담는 비효율을 없애기 위해 구성을 저장해두고 재사용
+  await createIfMissing('order_templates', t => {
+    t.increments('id');
+    t.integer('brand_id').references('brands.id').onDelete('CASCADE');
+    t.integer('store_id').references('stores.id').onDelete('CASCADE');
+    t.string('name').notNullable();
+    t.text('items').notNullable(); // JSON: [{product_id, product_name, unit, unit_price, quantity}]
+    t.datetime('created_at').defaultTo(knex.fn.now());
+  });
+
   // ── 리스크 알림 ───────────────────────────────────────
   await createIfMissing('risk_alerts', t => {
     t.increments('id');

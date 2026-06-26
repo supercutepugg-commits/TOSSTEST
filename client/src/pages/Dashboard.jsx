@@ -153,6 +153,7 @@ export default function Dashboard() {
     { label: '재고부족', value: data.lowStock.length, warn: data.lowStock.length > 0 },
     { label: '검토대기발주', value: data.pendingOrders, warn: data.pendingOrders > 0 },
     { label: '결제대기발주', value: data.paymentPending, warn: data.paymentPending > 0 },
+    { label: '결제방치(24h+)', value: (data.paymentOverdue || []).length, warn: (data.paymentOverdue || []).length > 0 },
     { label: '미처리리스크', value: data.risks.length, warn: data.risks.length > 0 },
   ];
 

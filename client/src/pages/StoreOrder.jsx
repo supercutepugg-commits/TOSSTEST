@@ -40,13 +40,18 @@ export default function StoreOrder() {
   const [recommendations, setRecommendations] = useState({}); // product_id -> 추천 발주량
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState('전체');
+  const [templates, setTemplates] = useState([]);
+  const [myStore, setMyStore] = useState(null);
 
   const loadOrders = () => api.getOrders().then(setOrders).catch(() => {});
+  const loadTemplates = () => api.getOrderTemplates().then(setTemplates).catch(() => {});
 
   useEffect(() => {
     api.getProducts().then(setProducts).catch(() => {});
     // 최근 7일 판매량 기준 예상 소진량 대비 추천 발주량 — 참고용이라 실패해도 화면엔 영향 없음
     api.getProductRecommendations().then(setRecommendations).catch(() => {});
+    api.getMyStore().then(setMyStore).catch(() => {});
+    loadTemplates();
     loadOrders();
   }, []);
 
@@ -135,6 +140,57 @@ export default function StoreOrder() {
   };
 
   const pendingOrders = orders.filter(o => ['DRAFT', 'REVISION_REQUESTED'].includes(o.status));
+  const draftOrders = orders.filter(o => o.status === 'DRAFT');
+
+  // 발주 마감시간 임박 리마인더 — 마감은 강제되지만 미리 알려주는 게 없어 임시저장 발주를 놓치는
+  // 경우가 생길 수 있어서, 마감 1시간 이내이고 아직 제출 안 한 임시저장 발주가 있으면 알려준다
+  const deadlineWarning = (() => {
+    if (!myStore?.order_deadline || draftOrders.length === 0) return null;
+    const [h, m] = myStore.order_deadline.split(':').map(Number);
+    if (Number.isNaN(h)) return null;
+    const deadline = new Date();
+    deadline.setHours(h, m || 0, 0, 0);
+    const diffMin = (deadline.getTime() - Date.now()) / 60000;
+    if (diffMin <= 0 || diffMin > 60) return null;
+    return Math.ceil(diffMin);
+  })();
+
+  const saveAsTemplate = async () => {
+    if (cart.length === 0) { toast('템플릿으로 저장할 상품이 없습니다', 'error'); return; }
+    const name = prompt('템플릿 이름을 입력하세요', '정기 발주');
+    if (!name) return;
+    try {
+      await api.createOrderTemplate({
+        name,
+        items: cart.map(i => ({ product_id: i.product.id, product_name: i.product.name, unit: i.product.unit, unit_price: i.product.price, quantity: i.quantity })),
+      });
+      toast('템플릿으로 저장되었습니다', 'success');
+      loadTemplates();
+    } catch (e) {
+      toast(e.message || '저장에 실패했습니다', 'error');
+    }
+  };
+
+  const loadTemplateToCart = (tpl) => {
+    const skipped = [];
+    const newCart = [];
+    for (const item of tpl.items) {
+      const product = products.find(p => p.id === item.product_id);
+      if (!product) { skipped.push(item.product_name); continue; }
+      newCart.push({ product, quantity: item.quantity });
+    }
+    if (newCart.length === 0) { toast('현재 판매 중인 상품이 없어 담을 수 없습니다', 'error'); return; }
+    setCart(newCart);
+    setTab('new');
+    if (skipped.length > 0) toast(`${skipped.join(', ')}은 현재 판매 중인 상품이 아니라 제외되었습니다`, 'info');
+    else toast('템플릿을 장바구니에 담았습니다', 'success');
+  };
+
+  const deleteTemplate = async (id) => {
+    if (!confirm('이 템플릿을 삭제하시겠습니까?')) return;
+    await api.deleteOrderTemplate(id);
+    loadTemplates();
+  };
 
   // 카탈로그가 커지면 한눈에 찾기 어려워지므로 카테고리(상품관리에서 설정)와 이름 검색으로 좁힐 수 있게 함
   const categories = ['전체', ...new Set(products.map(p => p.category).filter(Boolean))];
@@ -147,6 +203,14 @@ export default function StoreOrder() {
   return (
     <div>
       <h2>발주하기</h2>
+
+      {deadlineWarning !== null && (
+        <div className="card" style={{ borderLeft: '4px solid #ef4444', marginBottom: 16, background: '#fef2f2' }}>
+          <div style={{ fontWeight: 700, color: '#ef4444' }}>
+            발주 마감 {deadlineWarning}분 전입니다 — 임시저장된 발주 {draftOrders.length}건을 마감 전에 제출해주세요
+          </div>
+        </div>
+      )}
 
       {pendingOrders.length > 0 && tab !== 'new' && (
         <div className="card" style={{ borderLeft: '4px solid #f59e0b', marginBottom: 16 }}>
@@ -253,9 +317,26 @@ export default function StoreOrder() {
                   <div style={{ borderTop: '1px solid var(--border)', marginTop: 12, paddingTop: 12, fontWeight: 700, textAlign: 'right' }}>
                     합계: {total.toLocaleString()}원
                   </div>
+                  <button className="secondary small" onClick={saveAsTemplate} style={{ marginTop: 10, width: '100%' }}>+ 정기 발주 템플릿으로 저장</button>
                 </>
               }
             </div>
+
+            {templates.length > 0 && (
+              <div className="card" style={{ marginBottom: 12 }}>
+                <div style={{ fontWeight: 700, marginBottom: 10 }}>정기 발주 템플릿</div>
+                {templates.map(tpl => (
+                  <div key={tpl.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <span style={{ fontSize: 13 }}>{tpl.name} <span className="text-sub">({tpl.items.length}개 품목)</span></span>
+                    <div style={{ display: 'flex', gap: 4 }}>
+                      <button className="primary small" onClick={() => loadTemplateToCart(tpl)}>불러오기</button>
+                      <button className="danger small" onClick={() => deleteTemplate(tpl.id)}>삭제</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
             <div className="form-group" style={{ marginBottom: 12 }}>
               <textarea value={memo} onChange={e => setMemo(e.target.value)}
                 placeholder="메모 (선택)" rows={3} />

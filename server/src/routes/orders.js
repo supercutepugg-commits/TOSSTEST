@@ -434,7 +434,9 @@ router.post('/:id/payment/prepare', requireAuth, async (req, res) => {
   const amount = Math.round(order.confirmed_amount ?? order.total_amount);
   const orderCode = order.toss_order_code || `po-${order.id}-${crypto.randomBytes(6).toString('hex')}`;
 
-  await knex('purchase_orders').where({ id: order.id }).update({ toss_order_code: orderCode, status: 'PAYMENT_PENDING' });
+  // updated_at을 명시적으로 갱신 — 결제대기 방치 감지(결제대기 후 N시간 경과)가 이 시각을 기준으로 계산되므로
+  // status만 바꾸고 updated_at을 안 갱신하면 "방치 시간"이 실제보다 더 길게(주문 생성 시점부터) 잡힘
+  await knex('purchase_orders').where({ id: order.id }).update({ toss_order_code: orderCode, status: 'PAYMENT_PENDING', updated_at: new Date().toISOString() });
   await logHistory(order.id, 'STATUS_CHANGE', { status: order.status }, { status: 'PAYMENT_PENDING' }, '결제 시작', req.user.id);
 
   res.json({

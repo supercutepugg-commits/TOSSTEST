@@ -30,6 +30,7 @@ app.use('/api/waste', require('./routes/waste'));
 app.use('/api/risks', require('./routes/risks').router);
 app.use('/api/notices', require('./routes/notices'));
 app.use('/api/stock', require('./routes/stock'));
+app.use('/api/order-templates', require('./routes/orderTemplates'));
 app.use('/webhook', require('./routes/webhook'));
 app.use('/sse', require('./routes/sse').router);
 

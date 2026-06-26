@@ -50,6 +50,7 @@ export const api = {
 
   // 가맹점
   getStores: () => a('/stores'),
+  getMyStore: () => a('/stores/me'),
   createStore: (data) => a('/stores', { method: 'POST', body: JSON.stringify(data) }),
   updateStore: (id, data) => a(`/stores/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteStore: (id) => a(`/stores/${id}`, { method: 'DELETE' }),
@@ -93,6 +94,11 @@ export const api = {
   getRefundReasons: (params) => a(`/orders/refund-reasons${qs(params)}`),
   getAttentionOrders: () => a('/orders/attention'),
   ackOrder: (id) => a(`/orders/${id}/ack`, { method: 'POST' }),
+
+  // 정기 발주 템플릿
+  getOrderTemplates: () => a('/order-templates'),
+  createOrderTemplate: (data) => a('/order-templates', { method: 'POST', body: JSON.stringify(data) }),
+  deleteOrderTemplate: (id) => a(`/order-templates/${id}`, { method: 'DELETE' }),
 
   // 폐기
   getWaste: (params) => a(`/waste${qs(params)}`),

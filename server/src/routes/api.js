@@ -32,6 +32,19 @@ router.get('/stores', requireAuth, requireRole(...HQ_ROLES), async (req, res) =>
   }));
 });
 
+// 가맹점 계정이 본인 매장의 발주 마감시간/납품요일 등을 확인할 수 있게 함 — /stores 전체 목록은
+// HQ 전용이라 가맹점 로그인 화면(발주하기 등)에서 자기 매장 정보를 조회할 길이 없었음
+router.get('/stores/me', requireAuth, async (req, res) => {
+  if (!['STORE_OWNER', 'STORE_STAFF'].includes(req.user.role) || !req.user.store_id) {
+    return res.status(403).json({ error: '가맹점 계정만 조회할 수 있습니다' });
+  }
+  const store = await knex('stores')
+    .where({ id: req.user.store_id, brand_id: req.user.brand_id })
+    .select('id', 'name', 'order_deadline', 'delivery_days')
+    .first();
+  res.json(store || null);
+});
+
 async function validAssignedUser(brand_id, assigned_user_id) {
   if (!assigned_user_id) return true;
   const user = await knex('users').where({ id: assigned_user_id, brand_id }).whereIn('role', HQ_ROLES).first();
@@ -308,6 +321,17 @@ router.get('/dashboard', requireAuth, async (req, res) => {
   const paymentPending = await knex('purchase_orders')
     .where({ brand_id, status: 'PAYMENT_PENDING' }).count('id as cnt').first();
 
+  // 결제대기 방치 — 발주는 확정됐지만 가맹점이 결제를 안 해서 출고 자체가 묶여있는 건을 본사가
+  // 알아서 찾아봐야 했던 문제 → 24시간 넘게 결제대기 상태인 건을 경고로 집계
+  const overdueQ = knex('purchase_orders as po')
+    .join('stores as s', 'po.store_id', 's.id')
+    .select('po.id', 'po.store_id', 's.name as store_name', 'po.updated_at', 'po.total_amount', 'po.confirmed_amount')
+    .where({ 'po.brand_id': brand_id, 'po.status': 'PAYMENT_PENDING' })
+    .where('po.updated_at', '<', new Date(Date.now() - 24 * 3600000).toISOString())
+    .orderBy('po.updated_at');
+  if (sid) overdueQ.where('po.store_id', sid);
+  const paymentOverdue = await overdueQ;
+
   // 일자별 매출/주문건수 집계 헬퍼 (특정 하루치)
   // 매출액/주문건수는 기존처럼 sales_items(메뉴별 판매)에서, 할인·순매출·NET매출·결제수단별 금액은
   // 주문 단위 chargePrice/payments를 정규화해 저장해둔 orders의 새 컬럼에서 집계 (결제완료 주문만)
@@ -372,7 +396,7 @@ router.get('/dashboard', requireAuth, async (req, res) => {
   }
 
   res.json({
-    lowStock, recentAlerts, recentOrders, risks, stockValue,
+    lowStock, recentAlerts, recentOrders, risks, stockValue, paymentOverdue,
     pendingOrders: pendingOrders.cnt, paymentPending: paymentPending.cnt, todayRevenue: todayStats.revenue,
     salesComparison: { today: todayStats, yesterday: yesterdayStats, lastWeekSameDay: lastWeekStats },
     weeklyStats,
