@@ -99,7 +99,7 @@ const SIDE_MENU_GROUPS = [
   ] },
 ];
 
-function SideMenu({ collapsed, onToggle, items, badgeCounts }) {
+function SideMenu({ collapsed, onToggle, groups, badgeCounts }) {
   return (
     <aside className={'side-menu' + (collapsed ? ' collapsed' : '')}>
       <button className="side-menu-collapse" onClick={onToggle} title={collapsed ? '펼치기' : '접기'}>
@@ -107,14 +107,19 @@ function SideMenu({ collapsed, onToggle, items, badgeCounts }) {
       </button>
       {!collapsed && (
         <div className="side-menu-list">
-          {items.map(item => (
-            <NavLink key={item.to} to={item.to} end={item.end}
-              className={({ isActive }) => 'side-menu-item' + (isActive ? ' active' : '')}>
-              <span>{item.label}</span>
-              {badgeCounts?.[item.to] > 0 && (
-                <span className="nav-badge">{badgeCounts[item.to] > 99 ? '99+' : badgeCounts[item.to]}</span>
-              )}
-            </NavLink>
+          {groups.map((group, gi) => (
+            <div key={gi} className="side-menu-group">
+              <div className="side-menu-group-title">{group.title}</div>
+              {group.items.map(item => (
+                <NavLink key={item.to} to={item.to} end={item.end}
+                  className={({ isActive }) => 'side-menu-item' + (isActive ? ' active' : '')}>
+                  <span>{item.label}</span>
+                  {badgeCounts?.[item.to] > 0 && (
+                    <span className="nav-badge">{badgeCounts[item.to] > 99 ? '99+' : badgeCounts[item.to]}</span>
+                  )}
+                </NavLink>
+              ))}
+            </div>
           ))}
         </div>
       )}
@@ -154,9 +159,9 @@ function HQLayout() {
   const badgeCounts = { '/risks': openRiskCount, '/my-tasks': myTaskCount };
 
   // 가맹점 선택 여부에 따라 상단 탭/좌측 메뉴 둘 다 같은 기준으로 전체 항목을 평면화해서 보여준다
-  const visibleItems = SIDE_MENU_GROUPS
-    .filter(g => (!g.hqAdminOnly || isHqAdmin) && g.storeRequired === storeSelected)
-    .flatMap(g => g.items);
+  const visibleGroups = SIDE_MENU_GROUPS
+    .filter(g => (!g.hqAdminOnly || isHqAdmin) && g.storeRequired === storeSelected);
+  const visibleItems = visibleGroups.flatMap(g => g.items);
 
   const backToAdmin = () => { clearStore(); navigate('/'); };
 
@@ -172,7 +177,7 @@ function HQLayout() {
       </header>
       <TopBar name={user?.name} currentStore={currentStore} onBackToAdmin={storeSelected ? backToAdmin : null} />
       <div className="kicc-body">
-        <SideMenu collapsed={collapsed} onToggle={() => setCollapsed(c => !c)} items={visibleItems} badgeCounts={badgeCounts} />
+        <SideMenu collapsed={collapsed} onToggle={() => setCollapsed(c => !c)} groups={visibleGroups} badgeCounts={badgeCounts} />
         <main className="kicc-main">
           <div className="kicc-main-inner">
             <Routes>
