@@ -58,9 +58,11 @@ async function handleWebhook(req, res, store) {
     const rawBody = Buffer.isBuffer(req.body) ? req.body.toString() : JSON.stringify(req.body);
     const payload = Buffer.isBuffer(req.body) ? JSON.parse(rawBody) : req.body;
 
-    // 시크릿키 검증: 가맹점별 값 대신 환경변수 TOSS_WEBHOOK_SECRET 하나로 고정해서 모든 가맹점에 동일하게 적용
-    // 토스플레이스 웹훅 서명 규칙: HMAC-SHA256("<x-toss-timestamp>.<rawBody>") → hex → "v1=" 접두사
-    const secret = process.env.TOSS_WEBHOOK_SECRET;
+    // 시크릿키 검증: 가맹점별로 등록한 webhook_secret을 우선 사용 (가맹점관리 화면에서 설정하는 값이
+    // 실제로는 전혀 안 쓰이고 환경변수 하나로만 검증하던 문제 — store_id만 알면(URL에 그대로 노출됨)
+    // 누구나 서명 없이 가짜 주문/취소 이벤트를 보내 재고·매출을 조작할 수 있었음). 과거 호환을 위해
+    // 가맹점에 시크릿이 없으면 전역 환경변수로 폴백
+    const secret = store.webhook_secret || process.env.TOSS_WEBHOOK_SECRET;
     if (secret) {
       const signature = req.headers['x-toss-signature'] || '';
       const timestamp = req.headers['x-toss-timestamp'] || '';
@@ -190,13 +192,6 @@ router.post('/:storeId', express.raw({ type: 'application/json' }), async (req, 
     .where({ id: isNaN(param) ? 0 : param })
     .orWhere({ name: param })
     .first();
-  if (!store) return res.sendStatus(404);
-  await handleWebhook(req, res, store);
-});
-
-// 기본 웹훅: /webhook (하위 호환)
-router.post('/', express.raw({ type: 'application/json' }), async (req, res) => {
-  const store = await knex('stores').first();
   if (!store) return res.sendStatus(404);
   await handleWebhook(req, res, store);
 });
