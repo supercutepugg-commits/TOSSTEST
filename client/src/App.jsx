@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, NavLink, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, NavLink, Navigate, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './AuthContext';
 import { StoreProvider, useStore } from './StoreContext';
 import { ThemeProvider, useTheme } from './ThemeContext';
@@ -64,8 +64,8 @@ function NavTab({ to, end, label, count }) {
 // 관리자 페이지 메뉴 — 가맹점 선택 없이도 쓸 수 있는 그룹과, 특정 가맹점을 선택해야 의미가 있는 그룹으로 구분
 // storeRequired: false = 가맹점 선택과 무관하게 전체 브랜드 단위로 보는 메뉴 (선택 전 화면에 노출)
 // storeRequired: true = 특정 가맹점 데이터를 보는 메뉴 (가맹점 선택 후 화면에 노출)
-// 그룹(title)이 상단 탭의 대분류가 되고, 그 안의 items가 좌측 메뉴의 세부 항목이 된다 —
-// 예전에는 상단/좌측에 같은 항목이 그대로 중복 노출돼서 둘이 다른 역할을 하지 못했음
+// title은 storeRequired/hqAdminOnly 필터링 용도로만 쓰고, 대분류 탭으로는 노출하지 않음 —
+// 상단 탭과 좌측 메뉴 모두 평면화된 전체 항목 목록을 그대로 보여준다
 const SIDE_MENU_GROUPS = [
   { title: '가맹점', storeRequired: false, items: [
     { to: '/', end: true, label: '가맹점 목록' },
@@ -99,32 +99,23 @@ const SIDE_MENU_GROUPS = [
   ] },
 ];
 
-// 현재 경로가 해당 그룹에 속하는지 — 정확히 일치하거나, 그 하위 경로(/orders/5/invoice 같은)인 경우도 포함
-function pathInGroup(pathname, group) {
-  return group.items.some(item => pathname === item.to || (item.to !== '/' && pathname.startsWith(item.to + '/')));
-}
-
-function SideMenu({ collapsed, onToggle, activeGroup, badgeCounts }) {
-  if (!activeGroup) return null;
+function SideMenu({ collapsed, onToggle, items, badgeCounts }) {
   return (
     <aside className={'side-menu' + (collapsed ? ' collapsed' : '')}>
       <button className="side-menu-collapse" onClick={onToggle} title={collapsed ? '펼치기' : '접기'}>
         {collapsed ? '»' : '«'}
       </button>
       {!collapsed && (
-        <div className="side-menu-group open">
-          <div className="side-menu-section-title">{activeGroup.title}</div>
-          <div className="side-menu-group-items">
-            {activeGroup.items.map(item => (
-              <NavLink key={item.to} to={item.to} end={item.end}
-                className={({ isActive }) => 'side-menu-item' + (isActive ? ' active' : '')}>
-                <span>{item.label}</span>
-                {badgeCounts?.[item.to] > 0 && (
-                  <span className="nav-badge">{badgeCounts[item.to] > 99 ? '99+' : badgeCounts[item.to]}</span>
-                )}
-              </NavLink>
-            ))}
-          </div>
+        <div className="side-menu-list">
+          {items.map(item => (
+            <NavLink key={item.to} to={item.to} end={item.end}
+              className={({ isActive }) => 'side-menu-item' + (isActive ? ' active' : '')}>
+              <span>{item.label}</span>
+              {badgeCounts?.[item.to] > 0 && (
+                <span className="nav-badge">{badgeCounts[item.to] > 99 ? '99+' : badgeCounts[item.to]}</span>
+              )}
+            </NavLink>
+          ))}
         </div>
       )}
     </aside>
@@ -140,7 +131,6 @@ function HQLayout() {
   const [openRiskCount, setOpenRiskCount] = useState(0);
   const [myTaskCount, setMyTaskCount] = useState(0);
   const navigate = useNavigate();
-  const location = useLocation();
 
   // 미확인 리스크 개수를 메뉴에 배지로 표시 — 1분마다 갱신
   useEffect(() => {
@@ -163,10 +153,10 @@ function HQLayout() {
 
   const badgeCounts = { '/risks': openRiskCount, '/my-tasks': myTaskCount };
 
-  // 가맹점 선택 여부에 따라 상단 탭도 좌측 메뉴와 동일한 기준으로 보여줄 그룹을 가른다.
-  // 상단 탭은 대분류(그룹)만, 좌측 메뉴는 그 안의 세부 항목만 보여줘서 같은 메뉴가 두 번 나오지 않게 한다
-  const visibleGroups = SIDE_MENU_GROUPS.filter(g => (!g.hqAdminOnly || isHqAdmin) && g.storeRequired === storeSelected);
-  const activeGroup = visibleGroups.find(g => pathInGroup(location.pathname, g)) || visibleGroups[0];
+  // 가맹점 선택 여부에 따라 상단 탭/좌측 메뉴 둘 다 같은 기준으로 전체 항목을 평면화해서 보여준다
+  const visibleItems = SIDE_MENU_GROUPS
+    .filter(g => (!g.hqAdminOnly || isHqAdmin) && g.storeRequired === storeSelected)
+    .flatMap(g => g.items);
 
   const backToAdmin = () => { clearStore(); navigate('/'); };
 
@@ -175,22 +165,14 @@ function HQLayout() {
       <header className="topnav">
         <div className="topnav-brand">포스모스</div>
         <nav className="topnav-menu">
-          {visibleGroups.map(group => {
-            const groupBadge = group.items.reduce((s, i) => s + (badgeCounts[i.to] || 0), 0);
-            return (
-              <button key={group.title}
-                className={'topnav-tab' + (group === activeGroup ? ' active' : '')}
-                onClick={() => navigate(group.items[0].to)}>
-                <span className="topnav-tab-label">{group.title}</span>
-                {groupBadge > 0 && <span className="nav-badge">{groupBadge > 99 ? '99+' : groupBadge}</span>}
-              </button>
-            );
-          })}
+          {visibleItems.map(item => (
+            <NavTab key={item.to} to={item.to} end={item.end} label={item.label} count={badgeCounts[item.to]} />
+          ))}
         </nav>
       </header>
       <TopBar name={user?.name} currentStore={currentStore} onBackToAdmin={storeSelected ? backToAdmin : null} />
       <div className="kicc-body">
-        <SideMenu collapsed={collapsed} onToggle={() => setCollapsed(c => !c)} activeGroup={activeGroup} badgeCounts={badgeCounts} />
+        <SideMenu collapsed={collapsed} onToggle={() => setCollapsed(c => !c)} items={visibleItems} badgeCounts={badgeCounts} />
         <main className="kicc-main">
           <div className="kicc-main-inner">
             <Routes>
