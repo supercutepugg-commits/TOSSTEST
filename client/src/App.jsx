@@ -25,6 +25,7 @@ import Settlement from './pages/Settlement';
 import PurchaseAnomalies from './pages/PurchaseAnomalies';
 import AuditLog from './pages/AuditLog';
 import OrderInvoice from './pages/OrderInvoice';
+import MyTasks from './pages/MyTasks';
 import Login from './pages/Login';
 import StockAlert from './components/StockAlert';
 import NoticeBanner from './components/NoticeBanner';
@@ -76,6 +77,7 @@ const SIDE_MENU_GROUPS = [
     { to: '/products', end: true, label: '발주 상품' },
   ] },
   { title: '리스크 · 사용자 (전체)', storeRequired: false, items: [
+    { to: '/my-tasks', end: true, label: '내 업무' },
     { to: '/risks', end: true, label: '리스크 알림' },
     { to: '/notices', end: true, label: '공지사항' },
     { to: '/users', end: true, label: '사용자 관리' },
@@ -199,6 +201,7 @@ function HQLayout() {
               <Route path="/orders" element={<HQOrders />} />
               <Route path="/orders/:id/invoice" element={<OrderInvoice />} />
               <Route path="/risks" element={<Risks />} />
+              <Route path="/my-tasks" element={<MyTasks />} />
               <Route path="/notices" element={<Notices />} />
               <Route path="/ingredients" element={<Ingredients />} />
               <Route path="/menus" element={<Menus />} />

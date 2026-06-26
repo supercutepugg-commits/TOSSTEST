@@ -104,6 +104,58 @@ router.delete('/stores/:id', requireAuth, requireRole(...ADMIN_ROLES), async (re
   res.json({ ok: true });
 });
 
+// 발주 마감시간이 다가오는데(또는 지났는데) 오늘 아직 발주를 제출하지 않은 가맹점 — 본사가 가맹점
+// 하나하나 들어가보지 않아도 누락을 미리 잡을 수 있게 가맹점조회 화면에서 한눈에 보여주기 위함
+router.get('/stores/order-status', requireAuth, requireRole(...HQ_ROLES), async (req, res) => {
+  const stores = await knex('stores')
+    .where({ brand_id: req.user.brand_id, is_open: true })
+    .whereNotNull('order_deadline');
+  if (stores.length === 0) return res.json([]);
+
+  const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+  const submittedToday = await knex('purchase_orders')
+    .where('brand_id', req.user.brand_id)
+    .whereNotIn('status', ['DRAFT', 'CANCELED'])
+    .where('created_at', '>=', todayStart.toISOString())
+    .whereIn('store_id', stores.map(s => s.id))
+    .select('store_id');
+  const submittedStoreIds = new Set(submittedToday.map(o => o.store_id));
+
+  const now = new Date();
+  const result = stores.filter(s => !submittedStoreIds.has(s.id)).map(s => {
+    const [h, m] = s.order_deadline.split(':').map(Number);
+    const deadline = new Date(); deadline.setHours(h, m || 0, 0, 0);
+    const diffMin = (deadline.getTime() - now.getTime()) / 60000;
+    return { store_id: s.id, store_name: s.name, order_deadline: s.order_deadline, diffMin: Math.round(diffMin) };
+  }).filter(r => r.diffMin <= 120); // 마감 2시간 이내거나 이미 지난 경우만 노출
+  result.sort((a, b) => a.diffMin - b.diffMin);
+  res.json(result);
+});
+
+// 본사 직원이 담당하는 가맹점 중 처리해야 할 일(미확인 변경알림, 검토대기 발주, 미처리 리스크)을
+// 모아서 보여줌 — 브랜드 전체 화면만 있어서 "내가 담당하는 것만" 빠르게 훑어볼 방법이 없었음
+router.get('/my-tasks', requireAuth, requireRole(...HQ_ROLES), async (req, res) => {
+  const myStores = await knex('stores').where({ brand_id: req.user.brand_id, assigned_user_id: req.user.id });
+  if (myStores.length === 0) return res.json({ stores: [] });
+  const storeIds = myStores.map(s => s.id);
+
+  const orders = await knex('purchase_orders')
+    .where('brand_id', req.user.brand_id).whereIn('store_id', storeIds)
+    .where(function () {
+      this.whereIn('status', ['ORDERED', 'REVIEWING']).orWhere('needs_attention', true);
+    });
+  const risks = await knex('risk_alerts')
+    .where({ brand_id: req.user.brand_id, status: 'OPEN' }).whereIn('store_id', storeIds);
+
+  const result = myStores.map(s => ({
+    store_id: s.id, store_name: s.name,
+    pendingReview: orders.filter(o => o.store_id === s.id && ['ORDERED', 'REVIEWING'].includes(o.status)).length,
+    needsAttention: orders.filter(o => o.store_id === s.id && o.needs_attention).length,
+    openRisks: risks.filter(r => r.store_id === s.id).length,
+  }));
+  res.json({ stores: result });
+});
+
 // ─── 재료 ───────────────────────────────────────────
 router.get('/ingredients', requireAuth, async (req, res) => {
   const { store_id } = req.query;

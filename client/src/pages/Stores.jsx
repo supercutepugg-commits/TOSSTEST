@@ -92,14 +92,26 @@ const won = (v) => `${Math.round(v || 0).toLocaleString()}원`;
 function StoreDetailPanel({ store, onClose }) {
   const [dashboard, setDashboard] = useState(null);
   const [orders, setOrders] = useState([]);
+  const [ratioTrend, setRatioTrend] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     setLoading(true);
+    const now = new Date();
+    const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
     Promise.all([
       api.getDashboard(store.id),
       api.getOrders({ store_id: store.id }),
-    ]).then(([d, o]) => { setDashboard(d); setOrders(o); }).finally(() => setLoading(false));
+      api.getStoreRankings({ from: thisMonthStart.toISOString(), to: now.toISOString() }),
+      api.getStoreRankings({ from: lastMonthStart.toISOString(), to: lastMonthEnd.toISOString() }),
+    ]).then(([d, o, thisMonth, lastMonth]) => {
+      setDashboard(d); setOrders(o);
+      const thisRatio = thisMonth.efficiencyRanking.find(r => r.store_id === store.id)?.ratio ?? null;
+      const lastRatio = lastMonth.efficiencyRanking.find(r => r.store_id === store.id)?.ratio ?? null;
+      setRatioTrend({ thisRatio, lastRatio });
+    }).finally(() => setLoading(false));
   }, [store.id]);
 
   const attentionCount = orders.filter(o => o.needs_attention).length;
@@ -115,7 +127,7 @@ function StoreDetailPanel({ store, onClose }) {
 
       {loading ? <div className="empty">불러오는 중...</div> : (
         <>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 20 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10, marginBottom: 20 }}>
             <div className="elevated-card" style={{ padding: 12 }}>
               <div className="text-sub" style={{ fontSize: 12 }}>오늘 매출</div>
               <div style={{ fontWeight: 700, fontSize: 16, marginTop: 4 }}>{won(dashboard?.todayRevenue)}</div>
@@ -131,6 +143,17 @@ function StoreDetailPanel({ store, onClose }) {
             <div className="elevated-card" style={{ padding: 12 }}>
               <div className="text-sub" style={{ fontSize: 12 }}>미확인 변경알림</div>
               <div style={{ fontWeight: 700, fontSize: 16, marginTop: 4, color: attentionCount > 0 ? '#f59e0b' : 'var(--text)' }}>{attentionCount}건</div>
+            </div>
+            <div className="elevated-card" style={{ padding: 12 }}>
+              <div className="text-sub" style={{ fontSize: 12 }}>이번달 발주율 (전월대비)</div>
+              <div style={{ fontWeight: 700, fontSize: 16, marginTop: 4 }}>
+                {ratioTrend?.thisRatio ?? '-'}{ratioTrend?.thisRatio !== null && ratioTrend?.thisRatio !== undefined ? '%' : ''}
+                {ratioTrend?.thisRatio != null && ratioTrend?.lastRatio != null && (
+                  <span style={{ fontSize: 12, marginLeft: 6, color: ratioTrend.thisRatio > ratioTrend.lastRatio ? '#dc2626' : '#16a34a' }}>
+                    {ratioTrend.thisRatio > ratioTrend.lastRatio ? '▲' : '▼'} {Math.abs(Math.round((ratioTrend.thisRatio - ratioTrend.lastRatio) * 10) / 10)}%p
+                  </span>
+                )}
+              </div>
             </div>
           </div>
 
@@ -312,6 +335,11 @@ export default function Stores() {
   const [modal, setModal] = useState(null);
   const [bulkSyncOpen, setBulkSyncOpen] = useState(false);
   const [detailStore, setDetailStore] = useState(null);
+  const [orderStatus, setOrderStatus] = useState([]);
+
+  useEffect(() => {
+    api.getStoreOrderStatus().then(setOrderStatus).catch(() => {});
+  }, []);
 
   const [nameQuery, setNameQuery] = useState('');
   const [bizQuery, setBizQuery] = useState('');
@@ -367,6 +395,20 @@ export default function Stores() {
           {canEdit && <button className="primary" onClick={() => setModal('add')}>+ 가맹점 추가</button>}
         </div>
       </div>
+
+      {orderStatus.length > 0 && (
+        <div className="card" style={{ borderLeft: '4px solid #ef4444', marginBottom: 16, background: '#fef2f2' }}>
+          <div style={{ fontWeight: 700, color: '#ef4444', marginBottom: 6 }}>발주 마감 임박/누락 가맹점 {orderStatus.length}건</div>
+          {orderStatus.map(s => (
+            <div key={s.store_id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 4 }}>
+              <span>{s.store_name} — 마감 {s.order_deadline}</span>
+              <span style={{ fontWeight: 700 }}>
+                {s.diffMin <= 0 ? `마감 ${Math.abs(s.diffMin)}분 경과 (미발주)` : `마감 ${s.diffMin}분 전 (미발주)`}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* 검색 필터 패널 */}
       <div className="card kicc-search-panel">

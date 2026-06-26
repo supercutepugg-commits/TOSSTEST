@@ -51,6 +51,8 @@ export const api = {
   // 가맹점
   getStores: () => a('/stores'),
   getMyStore: () => a('/stores/me'),
+  getStoreOrderStatus: () => a('/stores/order-status'),
+  getMyTasks: () => a('/my-tasks'),
   createStore: (data) => a('/stores', { method: 'POST', body: JSON.stringify(data) }),
   updateStore: (id, data) => a(`/stores/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteStore: (id) => a(`/stores/${id}`, { method: 'DELETE' }),
