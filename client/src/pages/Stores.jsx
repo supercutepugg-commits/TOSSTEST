@@ -82,6 +82,101 @@ function BulkSyncModal({ stores, onClose }) {
   );
 }
 
+const ACTIVE_ORDER_STATUSES = ['ORDERED', 'REVIEWING', 'REVISION_REQUESTED', 'CONFIRMED', 'PAYMENT_PENDING', 'PAID', 'PREPARING_SHIPMENT', 'SHIPPED'];
+
+const won = (v) => `${Math.round(v || 0).toLocaleString()}원`;
+
+// 가맹점명을 클릭했을 때 뜨는 운영 미니 대시보드 — 기본정보(전화번호/주소 등)는 거의 입력이 안 되고
+// 잘 쓰이지도 않아서, 본사가 실제로 알고싶어하는 "이 가맹점 요즘 어때?"에 답이 되는 매출/발주/리스크
+// 신호를 모아서 보여준다. 기존 대시보드/주문목록 API를 그대로 재사용한다.
+function StoreDetailPanel({ store, onClose }) {
+  const [dashboard, setDashboard] = useState(null);
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    Promise.all([
+      api.getDashboard(store.id),
+      api.getOrders({ store_id: store.id }),
+    ]).then(([d, o]) => { setDashboard(d); setOrders(o); }).finally(() => setLoading(false));
+  }, [store.id]);
+
+  const attentionCount = orders.filter(o => o.needs_attention).length;
+  const activeCount = orders.filter(o => ACTIVE_ORDER_STATUSES.includes(o.status)).length;
+  const maxRevenue = Math.max(1, ...(dashboard?.weeklyStats || []).map(d => d.revenue));
+
+  return (
+    <div className="card" style={{ position: 'sticky', top: 0, maxHeight: '90vh', overflowY: 'auto' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
+        <div style={{ fontWeight: 700, fontSize: 16 }}>{store.name}</div>
+        <button className="secondary small" onClick={onClose}>닫기</button>
+      </div>
+
+      {loading ? <div className="empty">불러오는 중...</div> : (
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
+            <div className="elevated-card" style={{ padding: 12 }}>
+              <div className="text-sub" style={{ fontSize: 12 }}>오늘 매출</div>
+              <div style={{ fontWeight: 700, fontSize: 16, marginTop: 4 }}>{won(dashboard?.todayRevenue)}</div>
+            </div>
+            <div className="elevated-card" style={{ padding: 12 }}>
+              <div className="text-sub" style={{ fontSize: 12 }}>재고 자산가치</div>
+              <div style={{ fontWeight: 700, fontSize: 16, marginTop: 4 }}>{won(dashboard?.stockValue)}</div>
+            </div>
+            <div className="elevated-card" style={{ padding: 12 }}>
+              <div className="text-sub" style={{ fontSize: 12 }}>처리중 발주</div>
+              <div style={{ fontWeight: 700, fontSize: 16, marginTop: 4 }}>{activeCount}건</div>
+            </div>
+            <div className="elevated-card" style={{ padding: 12 }}>
+              <div className="text-sub" style={{ fontSize: 12 }}>미확인 변경알림</div>
+              <div style={{ fontWeight: 700, fontSize: 16, marginTop: 4, color: attentionCount > 0 ? '#f59e0b' : 'var(--text)' }}>{attentionCount}건</div>
+            </div>
+          </div>
+
+          <div style={{ fontWeight: 700, marginBottom: 8, fontSize: 13 }}>최근 7일 매출</div>
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, height: 80, marginBottom: 16 }}>
+            {(dashboard?.weeklyStats || []).map(d => (
+              <div key={d.date} style={{ flex: 1, textAlign: 'center' }}>
+                <div style={{
+                  background: 'var(--purple)', borderRadius: 3, margin: '0 auto',
+                  height: Math.max(2, (d.revenue / maxRevenue) * 60), width: '70%',
+                }} title={won(d.revenue)} />
+                <div className="text-sub" style={{ fontSize: 11, marginTop: 4 }}>{d.weekday}</div>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ fontWeight: 700, marginBottom: 8, fontSize: 13 }}>미확인 리스크 ({dashboard?.risks?.length || 0})</div>
+          {(!dashboard?.risks || dashboard.risks.length === 0) ? (
+            <div className="empty" style={{ padding: 12, marginBottom: 16 }}>없음</div>
+          ) : (
+            <div style={{ marginBottom: 16 }}>
+              {dashboard.risks.slice(0, 5).map(r => (
+                <div key={r.id} className="text-muted" style={{ fontSize: 12.5, marginBottom: 4 }}>
+                  {new Date(r.created_at).toLocaleDateString('ko-KR')} — {r.description || r.type}
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div style={{ fontWeight: 700, marginBottom: 8, fontSize: 13 }}>최근 발주</div>
+          {orders.length === 0 ? (
+            <div className="empty" style={{ padding: 12 }}>발주 내역 없음</div>
+          ) : (
+            orders.slice(0, 5).map(o => (
+              <div key={o.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, marginBottom: 4 }}>
+                <span className="text-muted">{new Date(o.created_at).toLocaleDateString('ko-KR')} — 발주서 #{o.id}</span>
+                <span>{won(o.confirmed_amount ?? o.total_amount)}</span>
+              </div>
+            ))
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
 const DAY_LABELS = ['일', '월', '화', '수', '목', '금', '토'];
 
 const FRANCHISE_TYPES = ['가맹점', '직영점'];
@@ -210,6 +305,7 @@ export default function Stores() {
   const { stores, currentStore, reloadStores } = useStore();
   const [modal, setModal] = useState(null);
   const [bulkSyncOpen, setBulkSyncOpen] = useState(false);
+  const [detailStore, setDetailStore] = useState(null);
 
   const [nameQuery, setNameQuery] = useState('');
   const [bizQuery, setBizQuery] = useState('');
@@ -296,6 +392,7 @@ export default function Stores() {
         </div>
       </div>
 
+      <div className="split-layout" style={{ display: 'grid', gridTemplateColumns: detailStore ? '1fr 380px' : '1fr', gap: 20 }}>
       <div className="card">
         {stores.length === 0 ? (
           <div className="empty">가맹점을 추가해주세요</div>
@@ -328,7 +425,7 @@ export default function Stores() {
                 <tr key={s.id} style={{ background: s.id === currentStore?.id ? 'rgba(0,100,255,0.06)' : '' }}>
                   <td className="text-sub" style={{ fontSize: 13 }}>{i + 1}</td>
                   <td>
-                    <b>{s.name}</b>
+                    <b style={{ cursor: 'pointer', color: 'var(--purple)' }} onClick={() => setDetailStore(s)}>{s.name}</b>
                     {s.id === currentStore?.id && <span className="badge green" style={{ marginLeft: 8 }}>선택됨</span>}
                   </td>
                   <td className="text-sub" style={{ fontSize: 13 }}>{s.owner_name || '-'}</td>
@@ -358,6 +455,8 @@ export default function Stores() {
             </tbody>
           </table>
         )}
+      </div>
+      {detailStore && <StoreDetailPanel store={detailStore} onClose={() => setDetailStore(null)} />}
       </div>
 
       <div className="elevated-card" style={{ marginTop: 16 }}>
