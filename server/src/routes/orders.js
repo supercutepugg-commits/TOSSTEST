@@ -46,6 +46,15 @@ async function checkSalesDownOrderUp(brand_id, store_id) {
   }
 }
 
+// 가맹점의 발주 마감시간(HH:MM, 한국시간 기준)이 지났는지 확인 — 임시저장(submit=false)에는 적용 안 함
+function isPastOrderDeadline(deadline) {
+  if (!deadline) return false;
+  const kstNow = new Date(Date.now() + 9 * 3600000);
+  const hh = String(kstNow.getUTCHours()).padStart(2, '0');
+  const mm = String(kstNow.getUTCMinutes()).padStart(2, '0');
+  return `${hh}:${mm}` > deadline;
+}
+
 // 클라이언트가 보낸 unit_price를 신뢰하지 않고, product_id가 있으면 서버에 저장된 단가로 덮어쓴다
 async function resolveItemPrices(brand_id, items) {
   const productIds = items.filter(i => i.product_id).map(i => i.product_id);
@@ -138,11 +147,18 @@ router.post('/', requireAuth, async (req, res) => {
   const store_id = req.user.store_id;
   if (!store_id) return res.status(400).json({ error: '가맹점 정보 없음' });
 
+  const { memo, submit } = req.body;
+  if (submit) {
+    const store = await knex('stores').where({ id: store_id }).first();
+    if (isPastOrderDeadline(store?.order_deadline)) {
+      return res.status(400).json({ error: `발주 마감시간(${store.order_deadline})이 지났습니다. 임시저장만 가능합니다` });
+    }
+  }
+
   const itemError = validateOrderItems(req.body.items);
   if (itemError) return res.status(400).json({ error: itemError });
 
   const items = await resolveItemPrices(req.user.brand_id, req.body.items);
-  const { memo, submit } = req.body;
   const total = items.reduce((s, i) => s + (i.unit_price * i.quantity), 0);
   const status = submit ? 'ORDERED' : 'DRAFT';
 
@@ -191,6 +207,12 @@ router.put('/:id', requireAuth, async (req, res) => {
   if (req.body.updated_at && order.updated_at &&
       new Date(req.body.updated_at).getTime() !== new Date(order.updated_at).getTime()) {
     return res.status(409).json({ error: '다른 직원이 먼저 이 발주서를 수정했습니다. 새로고침 후 다시 시도해주세요' });
+  }
+  if (req.body.submit) {
+    const store = await knex('stores').where({ id: order.store_id }).first();
+    if (isPastOrderDeadline(store?.order_deadline)) {
+      return res.status(400).json({ error: `발주 마감시간(${store.order_deadline})이 지났습니다. 임시저장만 가능합니다` });
+    }
   }
 
   const itemError = validateOrderItems(req.body.items);

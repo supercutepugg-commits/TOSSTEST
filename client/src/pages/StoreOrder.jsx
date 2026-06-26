@@ -37,11 +37,14 @@ export default function StoreOrder() {
   const [editingOrderUpdatedAt, setEditingOrderUpdatedAt] = useState(null);
   const [detailOrder, setDetailOrder] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [recommendations, setRecommendations] = useState({}); // product_id -> 추천 발주량
 
   const loadOrders = () => api.getOrders().then(setOrders).catch(() => {});
 
   useEffect(() => {
     api.getProducts().then(setProducts).catch(() => {});
+    // 최근 7일 판매량 기준 예상 소진량 대비 추천 발주량 — 참고용이라 실패해도 화면엔 영향 없음
+    api.getProductRecommendations().then(setRecommendations).catch(() => {});
     loadOrders();
   }, []);
 
@@ -167,6 +170,7 @@ export default function StoreOrder() {
               : <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 10 }}>
                 {products.map(p => {
                   const inCart = cart.find(i => i.product.id === p.id);
+                  const recommendedQty = recommendations[p.id];
                   return (
                     <div key={p.id} onClick={() => addToCart(p)}
                       className="elevated-card"
@@ -184,6 +188,15 @@ export default function StoreOrder() {
                       <div style={{ fontSize: 13, color: 'var(--purple)', fontWeight: 700, marginTop: 6 }}>
                         {p.price > 0 ? `${p.price.toLocaleString()}원` : '단가 미설정'}
                       </div>
+                      {recommendedQty > 0 && (
+                        <div
+                          onClick={e => { e.stopPropagation(); if (!inCart) addToCart(p); updateQty(p.id, recommendedQty); }}
+                          style={{ marginTop: 8, fontSize: 11.5, fontWeight: 700, color: '#16a34a', background: '#dcfce7', borderRadius: 6, padding: '3px 8px', display: 'inline-block' }}
+                          title="최근 7일 판매 추세 기준 추천 발주량 — 클릭하면 이 수량으로 담깁니다"
+                        >
+                          추천 {recommendedQty}{p.unit}
+                        </div>
+                      )}
                     </div>
                   );
                 })}

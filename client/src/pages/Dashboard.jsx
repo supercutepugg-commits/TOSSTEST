@@ -190,6 +190,12 @@ export default function Dashboard() {
           )}
         </div>
 
+        <div className="dash-revenue-card">
+          <div className="dash-revenue-label">재고 자산가치</div>
+          <div className="dash-revenue-amount" style={{ fontSize: 22 }}>{won(data.stockValue)}</div>
+          <div className="text-muted" style={{ fontSize: 11.5, marginTop: 8 }}>현재 재고 × 발주 단가 기준 추정값</div>
+        </div>
+
         <div className="dash-quicklinks">
           {QUICK_LINKS.map(l => (
             <Link key={l.to} to={l.to} className="dash-quicklink">

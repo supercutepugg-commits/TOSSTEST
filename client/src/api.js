@@ -73,6 +73,7 @@ export const api = {
 
   // 발주 상품
   getProducts: () => a('/products'),
+  getProductRecommendations: (store_id) => a(`/products/recommendations${qs({ store_id })}`),
   createProduct: (data) => a('/products', { method: 'POST', body: JSON.stringify(data) }),
   updateProduct: (id, data) => a(`/products/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteProduct: (id) => a(`/products/${id}`, { method: 'DELETE' }),

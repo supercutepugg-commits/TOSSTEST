@@ -3,12 +3,51 @@ const router = createAsyncRouter();
 const { knex } = require('../db/schema');
 const { requireAuth, requireRole, HQ_ROLES, LOGISTICS_ROLES, ADMIN_ROLES } = require('../middleware/auth');
 const { logAudit } = require('../auditLog');
+const { getIngredientComparison } = require('./api');
+
+function isStoreRole(role) {
+  return ['STORE_OWNER', 'STORE_STAFF'].includes(role);
+}
 
 router.get('/', requireAuth, async (req, res) => {
   const products = await knex('products')
     .where({ brand_id: req.user.brand_id, is_active: true })
     .orderBy('name');
   res.json(products);
+});
+
+// 추천 발주량: 최근 7일 판매량 × 레시피 사용량으로 예상 소진량을 구하고, 현재 재고와 비교해서
+// "한 발주 주기 동안 더 필요할 것으로 보이는 양"을 상품(발주단위) 기준으로 환산해 보여준다.
+// 사입이상모니터링에서 쓰는 것과 같은 추정 로직(getIngredientComparison)을 재사용한다.
+router.get('/recommendations', requireAuth, async (req, res) => {
+  const store_id = isStoreRole(req.user.role) ? req.user.store_id : Number(req.query.store_id);
+  if (!store_id) return res.json({});
+
+  const toISO = new Date().toISOString();
+  const fromISO = new Date(Date.now() - 7 * 86400000).toISOString();
+  const comparison = await getIngredientComparison(req.user.brand_id, store_id, fromISO, toISO);
+  const estimatedByName = Object.fromEntries(comparison.map(c => [c.name, c.estimated]));
+
+  const products = await knex('products').where({ brand_id: req.user.brand_id, is_active: true });
+  const baseIngredients = await knex('ingredients')
+    .whereIn('id', products.map(p => p.ingredient_id).filter(Boolean));
+  const baseNameById = Object.fromEntries(baseIngredients.map(i => [i.id, i.name]));
+
+  const storeIngredients = await knex('ingredients').where({ brand_id: req.user.brand_id, store_id });
+  const stockByName = Object.fromEntries(storeIngredients.map(i => [i.name, i.stock || 0]));
+
+  const result = {};
+  for (const p of products) {
+    const ingName = p.ingredient_id ? baseNameById[p.ingredient_id] : p.name;
+    if (!ingName) continue;
+    const estimated = estimatedByName[ingName];
+    if (estimated === undefined) continue; // 최근 7일간 판매 실적이 없는 메뉴 재료는 추천하지 않음
+    const currentStock = stockByName[ingName] || 0;
+    const neededBase = Math.max(0, estimated - currentStock);
+    const recommendedQty = Math.ceil(neededBase / (p.unit_conversion || 1));
+    if (recommendedQty > 0) result[p.id] = recommendedQty;
+  }
+  res.json(result);
 });
 
 router.post('/', requireAuth, requireRole(...LOGISTICS_ROLES), async (req, res) => {

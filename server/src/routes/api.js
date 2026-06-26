@@ -353,8 +353,26 @@ router.get('/dashboard', requireAuth, async (req, res) => {
     weeklyStats.push({ date: d.toISOString().split('T')[0], weekday: WEEKDAY_LABEL[d.getDay()], ...stats });
   }
 
+  // 재고 자산가치 — 현재 재고(가맹점) × 발주 단가로, 이 가맹점에 자금이 재고로 얼마나 묶여있는지 추정
+  // (재료 단가는 그 재료에 연결된 발주상품의 price를 기본단위 기준으로 환산해서 사용)
+  let stockValue = 0;
+  if (sid) {
+    const storeIngredients = await knex('ingredients').where({ brand_id, store_id: sid });
+    const products = await knex('products').where({ brand_id, is_active: true });
+    const baseIds = products.map(p => p.ingredient_id).filter(Boolean);
+    const baseIngredients = baseIds.length ? await knex('ingredients').whereIn('id', baseIds) : [];
+    const baseNameById = Object.fromEntries(baseIngredients.map(i => [i.id, i.name]));
+    const unitCostByName = {};
+    for (const p of products) {
+      const name = p.ingredient_id ? baseNameById[p.ingredient_id] : p.name;
+      if (!name) continue;
+      unitCostByName[name] = (p.price || 0) / (p.unit_conversion || 1);
+    }
+    stockValue = storeIngredients.reduce((sum, ing) => sum + (ing.stock || 0) * (unitCostByName[ing.name] || 0), 0);
+  }
+
   res.json({
-    lowStock, recentAlerts, recentOrders, risks,
+    lowStock, recentAlerts, recentOrders, risks, stockValue,
     pendingOrders: pendingOrders.cnt, paymentPending: paymentPending.cnt, todayRevenue: todayStats.revenue,
     salesComparison: { today: todayStats, yesterday: yesterdayStats, lastWeekSameDay: lastWeekStats },
     weeklyStats,
@@ -814,3 +832,4 @@ router.get('/audit-log', requireAuth, requireRole('SUPER_ADMIN', 'HQ_ADMIN'), as
 
 module.exports = router;
 module.exports.syncStoreSales = syncStoreSales;
+module.exports.getIngredientComparison = getIngredientComparison;
