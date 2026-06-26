@@ -154,7 +154,7 @@ async function handleWebhook(req, res, store) {
         await knex('sales_items').insert({
           brand_id: store.brand_id, store_id: store.id,
           toss_order_id: orderId, menu_name: menuName, toss_menu_id: menuId,
-          quantity: qty, unit_price: unitPrice, amount: unitPrice * qty,
+          quantity: qty, unit_price: unitPrice, amount: Math.round(unitPrice * qty),
           sold_at: soldAt,
         }).onConflict(['toss_order_id', 'menu_name']).ignore();
       }

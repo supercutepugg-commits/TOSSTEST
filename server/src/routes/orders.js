@@ -185,7 +185,9 @@ router.post('/', requireAuth, async (req, res) => {
   if (itemError) return res.status(400).json({ error: itemError });
 
   const items = await resolveItemPrices(req.user.brand_id, req.body.items);
-  const total = items.reduce((s, i) => s + (i.unit_price * i.quantity), 0);
+  // 금액은 항상 정수(원) 단위로 반올림 — float 곱셈에서 생기는 소수점 오차가 환불/정산 계산까지
+  // 누적되는 것을 막기 위함
+  const total = Math.round(items.reduce((s, i) => s + (i.unit_price * i.quantity), 0));
   const status = submit ? 'ORDERED' : 'DRAFT';
 
   const [{ id }] = await knex('purchase_orders').insert({
@@ -205,7 +207,7 @@ router.post('/', requireAuth, async (req, res) => {
       unit: item.unit,
       unit_price: item.unit_price || 0,
       quantity: item.quantity,
-      amount: (item.unit_price || 0) * item.quantity,
+      amount: Math.round((item.unit_price || 0) * item.quantity),
     });
   }
 
@@ -246,7 +248,7 @@ router.put('/:id', requireAuth, async (req, res) => {
 
   const items = await resolveItemPrices(req.user.brand_id, req.body.items);
   const { memo, submit } = req.body;
-  const total = items.reduce((s, i) => s + (i.unit_price * i.quantity), 0);
+  const total = Math.round(items.reduce((s, i) => s + (i.unit_price * i.quantity), 0));
   const status = submit ? 'ORDERED' : order.status;
   const nowIso = new Date().toISOString();
 
@@ -265,7 +267,7 @@ router.put('/:id', requireAuth, async (req, res) => {
         unit: item.unit,
         unit_price: item.unit_price || 0,
         quantity: item.quantity,
-        amount: (item.unit_price || 0) * item.quantity,
+        amount: Math.round((item.unit_price || 0) * item.quantity),
       });
     }
   });
@@ -409,7 +411,9 @@ router.put('/:id/items/:itemId', requireAuth, requireRole(...LOGISTICS_ROLES), a
 
   // 확정금액 재계산
   const items = await knex('purchase_order_items').where({ order_id: req.params.id });
-  const total = items.reduce((s, i) => s + (i.unit_price * (i.confirmed_quantity ?? i.quantity)), 0);
+  // 원 미만 소수점이 누적되면 이후 환불 가능액 계산(remaining = total - refunded_amount) 등에서
+  // 미세한 오차가 쌓일 수 있어, 금액은 항상 정수(원) 단위로 반올림해 저장한다
+  const total = Math.round(items.reduce((s, i) => s + (i.unit_price * (i.confirmed_quantity ?? i.quantity)), 0));
   await knex('purchase_orders').where({ id: req.params.id }).update({ confirmed_amount: total });
 
   res.json({ ok: true });

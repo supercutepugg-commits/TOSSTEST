@@ -466,7 +466,7 @@ router.get('/dashboard', requireAuth, async (req, res) => {
       if (!name) continue;
       unitCostByName[name] = (p.price || 0) / (p.unit_conversion || 1);
     }
-    stockValue = storeIngredients.reduce((sum, ing) => sum + (ing.stock || 0) * (unitCostByName[ing.name] || 0), 0);
+    stockValue = Math.round(storeIngredients.reduce((sum, ing) => sum + (ing.stock || 0) * (unitCostByName[ing.name] || 0), 0));
   }
 
   res.json({
@@ -748,7 +748,7 @@ async function syncStoreSales(store, fromDate, toDate) {
         await knex('sales_items').insert({
           brand_id: store.brand_id, store_id: store.id,
           toss_order_id: String(orderId), menu_name: menuName, toss_menu_id: menuId,
-          quantity: qty, unit_price: unitPrice, amount: unitPrice * qty,
+          quantity: qty, unit_price: unitPrice, amount: Math.round(unitPrice * qty),
           sold_at: soldAt,
         }).onConflict(['toss_order_id', 'menu_name']).ignore();
         inserted++;

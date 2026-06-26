@@ -81,7 +81,7 @@ router.post('/', requireAuth, requireRole(...LOGISTICS_ROLES), async (req, res) 
   const [{ id }] = await knex('products').insert({
     brand_id: req.user.brand_id,
     name: name.trim(), unit, unit_conversion: unit_conversion || 1,
-    base_unit: base_unit || unit, price: price || 0,
+    base_unit: base_unit || unit, price: Math.round(price || 0),
     ingredient_id: ingredient_id || null,
     category: category ? category.trim() : null,
   }).returning('id');
@@ -107,7 +107,7 @@ router.put('/:id', requireAuth, requireRole(...LOGISTICS_ROLES), async (req, res
     unit: unit ?? existing.unit,
     unit_conversion: unit_conversion ?? existing.unit_conversion,
     base_unit: base_unit ?? existing.base_unit,
-    price: price ?? existing.price,
+    price: price !== undefined ? Math.round(price) : existing.price,
     ingredient_id: ingredient_id !== undefined ? ingredient_id : existing.ingredient_id,
     is_active: is_active !== undefined ? is_active : existing.is_active,
     category: category !== undefined ? (category ? category.trim() : null) : existing.category,
