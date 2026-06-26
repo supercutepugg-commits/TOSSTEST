@@ -158,6 +158,8 @@ async function initDb() {
     t.boolean('is_active').defaultTo(true);
     t.datetime('created_at').defaultTo(knex.fn.now());
   });
+  // 카탈로그가 커지면 가맹점이 발주 화면에서 한눈에 찾기 어려워지므로 카테고리로 묶어서 검색/필터 가능하게 함
+  await addColumnIfMissing('products', 'category', t => t.string('category').nullable());
 
   // ── 발주서 ────────────────────────────────────────────
   await createIfMissing('purchase_orders', t => {
@@ -184,6 +186,9 @@ async function initDb() {
   await addColumnIfMissing('purchase_orders', 'stock_reversed', t => t.boolean('stock_reversed').defaultTo(false));
   await addColumnIfMissing('purchase_orders', 'updated_at', t => t.datetime('updated_at').nullable());
   await addColumnIfMissing('purchase_orders', 'stock_applied', t => t.boolean('stock_applied').defaultTo(false));
+  // 본사가 수량조정/품절처리/수정요청 등 가맹점이 알아야 할 변경을 했을 때 띄워주는 알림용 플래그
+  await addColumnIfMissing('purchase_orders', 'needs_attention', t => t.boolean('needs_attention').defaultTo(false));
+  await addColumnIfMissing('purchase_orders', 'attention_note', t => t.text('attention_note').nullable());
 
   // ── 발주 상품 목록 ────────────────────────────────────
   await createIfMissing('purchase_order_items', t => {
@@ -228,6 +233,8 @@ async function initDb() {
     t.text('reason').nullable();
     t.datetime('created_at').defaultTo(knex.fn.now());
   });
+  // 환불/반품 사유를 코드로 분류해서 나중에 "어떤 사유가 잦은지" 통계를 낼 수 있게 함 (자유 텍스트만으로는 집계 불가)
+  await addColumnIfMissing('order_history', 'reason_code', t => t.string('reason_code').nullable());
 
   // ── 감사 로그 (가격/재료/사용자 등 민감 변경 기록) ──────
   await createIfMissing('audit_log', t => {

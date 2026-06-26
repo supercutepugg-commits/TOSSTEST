@@ -86,7 +86,7 @@ function validateOrderItems(items) {
   return null;
 }
 
-async function logHistory(order_id, action, before, after, reason, user_id, item_id = null) {
+async function logHistory(order_id, action, before, after, reason, user_id, item_id = null, reason_code = null) {
   await knex('order_history').insert({
     order_id, item_id,
     changed_by: user_id || null,
@@ -94,7 +94,14 @@ async function logHistory(order_id, action, before, after, reason, user_id, item
     before_value: before ? JSON.stringify(before) : null,
     after_value: after ? JSON.stringify(after) : null,
     reason: reason || null,
+    reason_code: reason_code || null,
   });
+}
+
+// 본사가 수량조정/품절처리/수정요청을 했을 때, 가맹점이 화면에 들어가야만 알 수 있던 문제를 없애기 위해
+// 다음에 가맹점이 들어오면 바로 보이도록 플래그를 세운다
+async function flagNeedsAttention(order_id, note) {
+  await knex('purchase_orders').where({ id: order_id }).update({ needs_attention: true, attention_note: note });
 }
 
 // ── 발주서 목록 ───────────────────────────────────────
@@ -115,6 +122,25 @@ router.get('/', requireAuth, async (req, res) => {
     q.where('po.store_id', req.user.store_id);
   }
   res.json(await q);
+});
+
+// 가맹점이 모르고 지나치면 안 되는, 본사가 손댄 발주서 목록 (수량조정/품절/대체/수정요청)
+router.get('/attention', requireAuth, async (req, res) => {
+  if (!isStoreRole(req.user.role) || !req.user.store_id) return res.json([]);
+  const rows = await knex('purchase_orders')
+    .where({ brand_id: req.user.brand_id, store_id: req.user.store_id, needs_attention: true })
+    .orderBy('updated_at', 'desc');
+  res.json(rows);
+});
+
+router.post('/:id/ack', requireAuth, async (req, res) => {
+  const order = await knex('purchase_orders').where({ id: req.params.id, brand_id: req.user.brand_id }).first();
+  if (!order) return res.status(404).json({ error: '없음' });
+  if (isStoreRole(req.user.role) && order.store_id !== req.user.store_id) {
+    return res.status(403).json({ error: '권한 없음' });
+  }
+  await knex('purchase_orders').where({ id: order.id }).update({ needs_attention: false });
+  res.json({ ok: true });
 });
 
 // ── 발주서 상세 ───────────────────────────────────────
@@ -260,6 +286,11 @@ router.post('/:id/status', requireAuth, requireRole(...LOGISTICS_ROLES), async (
   if (status === 'CONFIRMED') update.confirmed_at = new Date().toISOString();
   if (status === 'SHIPPED') update.shipped_at = new Date().toISOString();
   if (status === 'DELIVERED') update.delivered_at = new Date().toISOString();
+  // 수정요청은 가맹점이 다시 손봐야 하는 상태라 들어와야만 알 수 있으면 발주가 그대로 묵혀짐 — 알림 플래그를 같이 세운다
+  if (status === 'REVISION_REQUESTED') {
+    update.needs_attention = true;
+    update.attention_note = reason ? `수정요청: ${reason}` : '수정요청';
+  }
 
   await knex('purchase_orders').where({ id: order.id }).update(update);
   await logHistory(order.id, 'STATUS_CHANGE', { status: order.status }, { status }, reason, req.user.id);
@@ -368,6 +399,14 @@ router.put('/:id/items/:itemId', requireAuth, requireRole(...LOGISTICS_ROLES), a
   });
   await logHistory(req.params.id, 'QUANTITY_CHANGE', before, { confirmed_quantity, status, substitute_note }, reason, req.user.id, item.id);
 
+  // 수량이 줄거나 품절/대체 처리된 경우 가맹점이 모르고 지나치지 않도록 알림 플래그를 세운다
+  const quantityReduced = confirmed_quantity !== undefined && Number(confirmed_quantity) < before.quantity;
+  const markedOutOfStock = status === 'OUT_OF_STOCK' && before.status !== 'OUT_OF_STOCK';
+  if (quantityReduced || markedOutOfStock || substitute_note) {
+    const label = markedOutOfStock ? '품절 처리' : quantityReduced ? '수량 조정' : '대체상품 안내';
+    await flagNeedsAttention(req.params.id, `${item.product_name}: ${label}`);
+  }
+
   // 확정금액 재계산
   const items = await knex('purchase_order_items').where({ order_id: req.params.id });
   const total = items.reduce((s, i) => s + (i.unit_price * (i.confirmed_quantity ?? i.quantity)), 0);
@@ -451,7 +490,7 @@ router.post('/:id/refund', requireAuth, requireRole(...LOGISTICS_ROLES), async (
   if (!order.toss_payment_key) return res.status(400).json({ error: '결제 정보가 없습니다' });
   if (!TOSS_SECRET_KEY) return res.status(500).json({ error: '결제 설정 오류 (TOSS_SECRET_KEY 미설정)' });
 
-  const { reason, amount } = req.body;
+  const { reason, amount, reason_code } = req.body;
   if (!reason || !reason.trim()) return res.status(400).json({ error: '환불 사유를 입력해주세요' });
 
   const totalAmount = Math.round(order.confirmed_amount ?? order.total_amount);
@@ -493,7 +532,7 @@ router.post('/:id/refund', requireAuth, requireRole(...LOGISTICS_ROLES), async (
   });
 
   const label = isFull ? '전액 환불' : `부분 환불 (${refundAmount.toLocaleString()}원)`;
-  await logHistory(order.id, 'STATUS_CHANGE', { status: order.status }, { status: next.status || order.status }, `${label}: ${reason}`, req.user.id);
+  await logHistory(order.id, 'STATUS_CHANGE', { status: order.status }, { status: next.status || order.status }, `${label}: ${reason}`, req.user.id, null, reason_code);
   await logAudit(req.user.brand_id, req.user.id, 'PAYMENT', order.id, isFull ? 'REFUND_FULL' : 'REFUND_PARTIAL',
     { refunded_amount: alreadyRefunded }, { refunded_amount: newRefunded, reason });
 
@@ -510,7 +549,7 @@ router.post('/:id/refund-items', requireAuth, requireRole(...LOGISTICS_ROLES), a
   if (!order.toss_payment_key) return res.status(400).json({ error: '결제 정보가 없습니다' });
   if (!TOSS_SECRET_KEY) return res.status(500).json({ error: '결제 설정 오류 (TOSS_SECRET_KEY 미설정)' });
 
-  const { reason, items: requestedItems } = req.body;
+  const { reason, items: requestedItems, reason_code } = req.body;
   if (!reason || !reason.trim()) return res.status(400).json({ error: '환불 사유를 입력해주세요' });
   if (!Array.isArray(requestedItems) || requestedItems.length === 0) {
     return res.status(400).json({ error: '환불할 품목을 선택해주세요' });
@@ -572,7 +611,7 @@ router.post('/:id/refund-items', requireAuth, requireRole(...LOGISTICS_ROLES), a
   const itemSummary = toApply.map(({ item, qty }) => `${item.product_name} x${qty}`).join(', ');
   const label = isFull ? '전액 환불(품목단위)' : `부분 환불(품목단위, ${refundAmount.toLocaleString()}원)`;
   await logHistory(order.id, 'STATUS_CHANGE', { status: order.status }, { status: next.status || order.status },
-    `${label}: ${itemSummary} — ${reason}`, req.user.id);
+    `${label}: ${itemSummary} — ${reason}`, req.user.id, null, reason_code);
   await logAudit(req.user.brand_id, req.user.id, 'PAYMENT', order.id, isFull ? 'REFUND_FULL' : 'REFUND_PARTIAL',
     { refunded_amount: alreadyRefunded }, { refunded_amount: newRefunded, items: itemSummary, reason });
 

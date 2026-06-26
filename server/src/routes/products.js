@@ -51,7 +51,7 @@ router.get('/recommendations', requireAuth, async (req, res) => {
 });
 
 router.post('/', requireAuth, requireRole(...LOGISTICS_ROLES), async (req, res) => {
-  const { name, unit, unit_conversion, base_unit, price, ingredient_id } = req.body;
+  const { name, unit, unit_conversion, base_unit, price, ingredient_id, category } = req.body;
   if (!name || !name.trim()) return res.status(400).json({ error: '상품명을 입력해주세요' });
   if (price !== undefined && (Number(price) < 0 || !Number.isFinite(Number(price)))) {
     return res.status(400).json({ error: '가격은 0 이상의 값이어야 합니다' });
@@ -64,6 +64,7 @@ router.post('/', requireAuth, requireRole(...LOGISTICS_ROLES), async (req, res) 
     name: name.trim(), unit, unit_conversion: unit_conversion || 1,
     base_unit: base_unit || unit, price: price || 0,
     ingredient_id: ingredient_id || null,
+    category: category ? category.trim() : null,
   }).returning('id');
   await logAudit(req.user.brand_id, req.user.id, 'PRODUCT', id, 'CREATE', null, req.body);
   res.json({ id });
@@ -72,7 +73,7 @@ router.post('/', requireAuth, requireRole(...LOGISTICS_ROLES), async (req, res) 
 router.put('/:id', requireAuth, requireRole(...LOGISTICS_ROLES), async (req, res) => {
   const existing = await knex('products').where({ id: req.params.id, brand_id: req.user.brand_id }).first();
   if (!existing) return res.status(404).json({ error: '없음' });
-  const { name, unit, unit_conversion, base_unit, price, ingredient_id, is_active } = req.body;
+  const { name, unit, unit_conversion, base_unit, price, ingredient_id, is_active, category } = req.body;
   if (name !== undefined && !name.trim()) return res.status(400).json({ error: '상품명을 입력해주세요' });
   if (price !== undefined && (Number(price) < 0 || !Number.isFinite(Number(price)))) {
     return res.status(400).json({ error: '가격은 0 이상의 값이어야 합니다' });
@@ -90,6 +91,7 @@ router.put('/:id', requireAuth, requireRole(...LOGISTICS_ROLES), async (req, res
     price: price ?? existing.price,
     ingredient_id: ingredient_id !== undefined ? ingredient_id : existing.ingredient_id,
     is_active: is_active !== undefined ? is_active : existing.is_active,
+    category: category !== undefined ? (category ? category.trim() : null) : existing.category,
   };
   await knex('products').where({ id: req.params.id, brand_id: req.user.brand_id }).update(next);
   if (next.price !== existing.price) {

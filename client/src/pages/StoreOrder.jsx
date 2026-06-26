@@ -38,6 +38,8 @@ export default function StoreOrder() {
   const [detailOrder, setDetailOrder] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [recommendations, setRecommendations] = useState({}); // product_id -> 추천 발주량
+  const [search, setSearch] = useState('');
+  const [activeCategory, setActiveCategory] = useState('전체');
 
   const loadOrders = () => api.getOrders().then(setOrders).catch(() => {});
 
@@ -134,6 +136,14 @@ export default function StoreOrder() {
 
   const pendingOrders = orders.filter(o => ['DRAFT', 'REVISION_REQUESTED'].includes(o.status));
 
+  // 카탈로그가 커지면 한눈에 찾기 어려워지므로 카테고리(상품관리에서 설정)와 이름 검색으로 좁힐 수 있게 함
+  const categories = ['전체', ...new Set(products.map(p => p.category).filter(Boolean))];
+  const visibleProducts = products.filter(p => {
+    if (activeCategory !== '전체' && p.category !== activeCategory) return false;
+    if (search.trim() && !p.name.toLowerCase().includes(search.trim().toLowerCase())) return false;
+    return true;
+  });
+
   return (
     <div>
       <h2>발주하기</h2>
@@ -165,10 +175,29 @@ export default function StoreOrder() {
               상품 목록
               {editingOrderId && <span style={{ fontSize: 12, color: '#f59e0b', marginLeft: 10 }}>발주서 #{editingOrderId} 수정 중</span>}
             </div>
+            {products.length > 0 && (
+              <div style={{ marginBottom: 12 }}>
+                <input value={search} onChange={e => setSearch(e.target.value)}
+                  placeholder="상품명 검색" style={{ marginBottom: 8, width: '100%' }} />
+                {categories.length > 1 && (
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    {categories.map(c => (
+                      <button key={c} type="button"
+                        className={activeCategory === c ? 'primary small' : 'secondary small'}
+                        onClick={() => setActiveCategory(c)}>
+                        {c}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
             {products.length === 0
               ? <div className="empty">등록된 상품 없음</div>
+              : visibleProducts.length === 0
+              ? <div className="empty">검색 결과가 없습니다</div>
               : <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 10 }}>
-                {products.map(p => {
+                {visibleProducts.map(p => {
                   const inCart = cart.find(i => i.product.id === p.id);
                   const recommendedQty = recommendations[p.id];
                   return (
@@ -273,7 +302,10 @@ export default function StoreOrder() {
             <div className="card" style={{ position: 'sticky', top: 0, maxHeight: '90vh', overflowY: 'auto' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
                 <div style={{ fontWeight: 700 }}>발주서 #{detailOrder.id}</div>
-                <button className="secondary small" onClick={() => setDetailOrder(null)}>닫기</button>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button className="secondary small" onClick={() => window.open(`/store/orders/${detailOrder.id}/invoice`, '_blank')}>거래명세서</button>
+                  <button className="secondary small" onClick={() => setDetailOrder(null)}>닫기</button>
+                </div>
               </div>
               <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
                 <StatusBadge status={detailOrder.status} />

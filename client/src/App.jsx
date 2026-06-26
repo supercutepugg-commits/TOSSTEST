@@ -24,9 +24,11 @@ import StoreRankings from './pages/StoreRankings';
 import Settlement from './pages/Settlement';
 import PurchaseAnomalies from './pages/PurchaseAnomalies';
 import AuditLog from './pages/AuditLog';
+import OrderInvoice from './pages/OrderInvoice';
 import Login from './pages/Login';
 import StockAlert from './components/StockAlert';
 import NoticeBanner from './components/NoticeBanner';
+import OrderAttentionBanner from './components/OrderAttentionBanner';
 import ToastHost from './components/ToastHost';
 
 function TopBar({ name, currentStore, onBackToAdmin }) {
@@ -195,6 +197,7 @@ function HQLayout() {
               <Route path="/purchase-anomalies" element={<PurchaseAnomalies />} />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/orders" element={<HQOrders />} />
+              <Route path="/orders/:id/invoice" element={<OrderInvoice />} />
               <Route path="/risks" element={<Risks />} />
               <Route path="/notices" element={<Notices />} />
               <Route path="/ingredients" element={<Ingredients />} />
@@ -234,6 +237,7 @@ function StoreLayout() {
         <div className="kicc-main-inner">
           <Routes>
             <Route path="/store" element={<StoreOrder />} />
+            <Route path="/store/orders/:id/invoice" element={<OrderInvoice />} />
             <Route path="/store/payment/:id/result" element={<PaymentResult />} />
             <Route path="/store/stock" element={<StoreStock />} />
             <Route path="/store/waste" element={<Waste />} />
@@ -244,6 +248,7 @@ function StoreLayout() {
       </main>
       <StockAlert storeId={user?.store_id} storeName={user?.store_name} />
       <NoticeBanner storeId={user?.store_id} />
+      <OrderAttentionBanner storeId={user?.store_id} />
     </div>
   );
 }

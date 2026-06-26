@@ -88,8 +88,11 @@ export const api = {
   cancelOrder: (id) => a(`/orders/${id}`, { method: 'DELETE' }),
   preparePayment: (id) => a(`/orders/${id}/payment/prepare`, { method: 'POST' }),
   confirmPayment: (id, data) => a(`/orders/${id}/payment/confirm`, { method: 'POST', body: JSON.stringify(data) }),
-  refundOrder: (id, reason, amount) => a(`/orders/${id}/refund`, { method: 'POST', body: JSON.stringify({ reason, amount }) }),
-  refundOrderItems: (id, reason, items) => a(`/orders/${id}/refund-items`, { method: 'POST', body: JSON.stringify({ reason, items }) }),
+  refundOrder: (id, reason, amount, reason_code) => a(`/orders/${id}/refund`, { method: 'POST', body: JSON.stringify({ reason, amount, reason_code }) }),
+  refundOrderItems: (id, reason, items, reason_code) => a(`/orders/${id}/refund-items`, { method: 'POST', body: JSON.stringify({ reason, items, reason_code }) }),
+  getRefundReasons: (params) => a(`/orders/refund-reasons${qs(params)}`),
+  getAttentionOrders: () => a('/orders/attention'),
+  ackOrder: (id) => a(`/orders/${id}/ack`, { method: 'POST' }),
 
   // 폐기
   getWaste: (params) => a(`/waste${qs(params)}`),

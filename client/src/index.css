@@ -816,3 +816,10 @@ input[readonly], input:read-only {
   .topbar-info { padding: 0 12px; }
   .split-layout { grid-template-columns: 1fr !important; }
 }
+
+/* 거래명세서 인쇄 — 인쇄 시 네비/사이드메뉴를 숨기고 명세서 영역만 출력 */
+@media print {
+  .topnav, .topbar-info, .side-menu, .no-print { display: none !important; }
+  .kicc-main, .kicc-main-inner, .kicc-body { padding: 0 !important; margin: 0 !important; display: block !important; }
+  .print-invoice { box-shadow: none !important; border: none !important; }
+}

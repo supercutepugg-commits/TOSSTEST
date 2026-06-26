@@ -6,7 +6,7 @@ import { useAuth } from '../AuthContext';
 const LOGISTICS_ROLES = ['SUPER_ADMIN', 'HQ_ADMIN', 'HQ_LOGISTICS'];
 
 function ProductModal({ item, ingredients, onClose, onSave }) {
-  const [form, setForm] = useState(item || { name: '', unit: '박스', base_unit: 'g', unit_conversion: 1, price: 0, ingredient_id: '' });
+  const [form, setForm] = useState(item || { name: '', unit: '박스', base_unit: 'g', unit_conversion: 1, price: 0, ingredient_id: '', category: '' });
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
   return (
@@ -16,6 +16,10 @@ function ProductModal({ item, ingredients, onClose, onSave }) {
         <div className="form-group" style={{ marginBottom: 12 }}>
           <label>상품명</label>
           <input value={form.name} onChange={e => set('name', e.target.value)} placeholder="예: 김치 10kg 박스" />
+        </div>
+        <div className="form-group" style={{ marginBottom: 12 }}>
+          <label>카테고리 (선택 — 가맹점 발주 화면 검색/필터에 사용)</label>
+          <input value={form.category || ''} onChange={e => set('category', e.target.value)} placeholder="예: 채소류" />
         </div>
         <div className="form-row">
           <div className="form-group">
@@ -107,6 +111,7 @@ export default function Products() {
             <thead>
               <tr>
                 <th>상품명</th>
+                <th>카테고리</th>
                 <th>발주 단위</th>
                 <th>단위 환산</th>
                 <th>단가</th>
@@ -118,6 +123,7 @@ export default function Products() {
               {products.map(p => (
                 <tr key={p.id}>
                   <td><b>{p.name}</b></td>
+                  <td className="text-sub">{p.category || '-'}</td>
                   <td>{p.unit}</td>
                   <td style={{ fontSize: 13, color: '#94a3b8' }}>
                     1{p.unit} = {p.unit_conversion}{p.base_unit}

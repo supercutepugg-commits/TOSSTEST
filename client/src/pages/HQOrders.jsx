@@ -6,6 +6,24 @@ import { exportCsv } from '../exportCsv';
 
 const LOGISTICS_ROLES = ['SUPER_ADMIN', 'HQ_ADMIN', 'HQ_LOGISTICS'];
 
+// 환불 사유를 자유 텍스트로만 받으면 나중에 "어떤 사유가 잦은지" 통계를 낼 수 없어서
+// 코드를 같이 받는다 — 자유 텍스트(reason)는 그대로 두고, 분류용 코드만 추가로 선택받는다.
+const REFUND_REASON_CODES = [
+  { code: 'DAMAGED', label: '파손/불량' },
+  { code: 'WRONG_ITEM', label: '오배송' },
+  { code: 'OUT_OF_STOCK', label: '품절' },
+  { code: 'STORE_REQUEST', label: '가맹점 요청 취소' },
+  { code: 'OTHER', label: '기타' },
+];
+
+function promptReasonCode() {
+  const list = REFUND_REASON_CODES.map((r, i) => `${i + 1}. ${r.label}`).join('\n');
+  const input = prompt(`환불 사유 분류를 선택하세요\n${list}`, '1');
+  if (input === null) return undefined;
+  const idx = Number(input) - 1;
+  return REFUND_REASON_CODES[idx]?.code || 'OTHER';
+}
+
 const STATUS_LABEL = {
   DRAFT: '임시저장', ORDERED: '발주완료', REVIEWING: '검토중',
   REVISION_REQUESTED: '수정요청', CONFIRMED: '주문확정',
@@ -93,9 +111,11 @@ export default function HQOrders() {
     if (!amount || amount <= 0 || amount > remaining) { toast('환불 금액이 올바르지 않습니다', 'error'); return; }
     const reason = prompt('환불 사유를 입력하세요');
     if (!reason) return;
+    const reasonCode = promptReasonCode();
+    if (reasonCode === undefined) return;
     if (!confirm(`${amount.toLocaleString()}원이 환불됩니다. 실제 카드 결제가 취소됩니다. 진행하시겠습니까?`)) return;
     try {
-      await api.refundOrder(order.id, reason, amount);
+      await api.refundOrder(order.id, reason, amount, reasonCode);
       toast('환불이 완료되었습니다', 'success');
       loadDetail(order.id);
       load();
@@ -115,9 +135,11 @@ export default function HQOrders() {
     }, 0);
     const reason = prompt(`선택한 품목 환불 금액: ${total.toLocaleString()}원\n환불 사유를 입력하세요`);
     if (!reason) return;
+    const reasonCode = promptReasonCode();
+    if (reasonCode === undefined) return;
     if (!confirm(`${total.toLocaleString()}원이 환불됩니다. 실제 카드 결제가 취소됩니다. 진행하시겠습니까?`)) return;
     try {
-      await api.refundOrderItems(order.id, reason, items);
+      await api.refundOrderItems(order.id, reason, items, reasonCode);
       toast('환불이 완료되었습니다', 'success');
       loadDetail(order.id);
       load();
@@ -129,6 +151,17 @@ export default function HQOrders() {
   const visibleOrders = orders.filter(o =>
     tab === 'active' ? ACTIVE.includes(o.status) : DONE.includes(o.status)
   );
+
+  const [refundStats, setRefundStats] = useState(null);
+  const toggleRefundStats = async () => {
+    if (refundStats) { setRefundStats(null); return; }
+    try {
+      const rows = await api.getRefundReasons();
+      setRefundStats(rows);
+    } catch (e) {
+      toast(e.message || '환불 사유 통계를 불러오지 못했습니다', 'error');
+    }
+  };
 
   return (
     <div className="split-layout" style={{ display: 'grid', gridTemplateColumns: detail ? '1fr 480px' : '1fr', gap: 20 }}>
@@ -143,9 +176,23 @@ export default function HQOrders() {
               완료/취소
             </button>
             <div style={{ width: 1, height: 20, background: 'var(--border)', margin: '0 4px' }} />
+            <button className="secondary" onClick={toggleRefundStats}>환불 사유 통계</button>
             <button className="secondary" onClick={() => exportOrderList(visibleOrders)}>⬇ 엑셀 다운로드</button>
           </div>
         </div>
+        {refundStats && (
+          <div className="card" style={{ marginBottom: 16 }}>
+            <div style={{ fontWeight: 700, marginBottom: 8 }}>환불 사유 통계 (최근 30일)</div>
+            {refundStats.length === 0
+              ? <div className="empty">환불 사유 데이터가 없습니다</div>
+              : refundStats.map(r => (
+                <div key={r.reason_code} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 4 }}>
+                  <span>{REFUND_REASON_CODES.find(c => c.code === r.reason_code)?.label || r.reason_code}</span>
+                  <span style={{ fontWeight: 700 }}>{r.count}건</span>
+                </div>
+              ))}
+          </div>
+        )}
         <div className="card">
           {visibleOrders.length === 0
             ? <div className="empty">{tab === 'active' ? '처리할 주문 없음' : '완료된 주문 없음'}</div>
@@ -195,7 +242,10 @@ export default function HQOrders() {
         <div className="card" style={{ position: 'sticky', top: 0, maxHeight: '90vh', overflowY: 'auto' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
             <div style={{ fontWeight: 700, fontSize: 16 }}>발주서 #{detail.id} — {detail.store_name}</div>
-            <button className="secondary small" onClick={() => { setDetail(null); setSelected(null); }}>닫기</button>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button className="secondary small" onClick={() => window.open(`/orders/${detail.id}/invoice`, '_blank')}>거래명세서</button>
+              <button className="secondary small" onClick={() => { setDetail(null); setSelected(null); }}>닫기</button>
+            </div>
           </div>
           {(detail.created_by_name || detail.assigned_user_name) && (
             <div className="text-muted" style={{ fontSize: 12.5, marginBottom: 12 }}>
