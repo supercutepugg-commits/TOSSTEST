@@ -4,31 +4,43 @@ const router = express.Router();
 const { knex } = require('../db/schema');
 const { broadcast } = require('./sse');
 const { extractOrderFinance } = require('../orderFinance');
+const { logStockMovement } = require('../stockLedger');
 
-async function adjustStock(lineItems, multiplier, storeId) {
+// store: { id, brand_id }. orderId는 수불부에 어떤 판매 건이 이 변동을 일으켰는지 남기기 위함
+async function adjustStock(lineItems, multiplier, store, orderId) {
   const lowStockIngredients = [];
   for (const item of lineItems) {
     const menuName = (item.item && item.item.title) || item.name || item.menuName;
     const quantity = item.quantity || 1;
 
     const menu = await knex('menus')
-      .where({ store_id: storeId, name: menuName })
-      .orWhere({ store_id: storeId, toss_menu_id: item.menuId || '' })
+      .where({ store_id: store.id, name: menuName })
+      .orWhere({ store_id: store.id, toss_menu_id: item.menuId || '' })
       .first();
     if (!menu) continue;
 
     const recipes = await knex('recipes')
       .join('ingredients', 'recipes.ingredient_id', 'ingredients.id')
       .where({ menu_id: menu.id })
-      .select('recipes.ingredient_id', 'recipes.amount', 'ingredients.threshold');
+      .select('recipes.ingredient_id', 'recipes.amount', 'ingredients.threshold', 'ingredients.stock');
 
     for (const recipe of recipes) {
       const delta = recipe.amount * quantity * multiplier;
+      const beforeStock = recipe.stock || 0;
+      let afterStock;
       if (delta > 0) {
+        afterStock = beforeStock - delta;
         await knex('ingredients').where({ id: recipe.ingredient_id }).decrement('stock', delta);
       } else {
+        afterStock = beforeStock + Math.abs(delta);
         await knex('ingredients').where({ id: recipe.ingredient_id }).increment('stock', Math.abs(delta));
       }
+      await logStockMovement(null, {
+        brand_id: store.brand_id, store_id: store.id, ingredient_id: recipe.ingredient_id,
+        type: multiplier > 0 ? 'SALE' : 'SALE_CANCEL', delta: -delta,
+        before_stock: beforeStock, after_stock: afterStock,
+        ref_type: 'order', ref_id: null, memo: orderId ? `주문 ${orderId}` : null,
+      });
 
       if (multiplier > 0) {
         const updated = await knex('ingredients').where({ id: recipe.ingredient_id }).first();
@@ -86,7 +98,7 @@ async function handleWebhook(req, res, store) {
         || (originalPayload.data && originalPayload.data.lineItems)
         || [];
 
-      await adjustStock(lineItems, -1, store.id);
+      await adjustStock(lineItems, -1, store, cancelledOrderId);
       await knex('sales_items').where({ toss_order_id: cancelledOrderId, store_id: store.id }).delete();
       // orders 행도 취소 상태로 갱신해야 한다 — 대시보드 매출/건수가 sales_items가 아니라
       // orders.order_state === 'COMPLETED' 기준으로 집계되기 때문에, 여기서 안 갱신하면
@@ -145,7 +157,7 @@ async function handleWebhook(req, res, store) {
         }).onConflict(['toss_order_id', 'menu_name']).ignore();
       }
 
-      const lowStockIngredients = await adjustStock(lineItems, 1, store.id);
+      const lowStockIngredients = await adjustStock(lineItems, 1, store, orderId);
 
       if (lowStockIngredients.length > 0) {
         const oneHourAgo = new Date(Date.now() - 3600000).toISOString();

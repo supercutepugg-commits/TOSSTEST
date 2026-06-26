@@ -132,4 +132,9 @@ export const api = {
   deleteNotice: (id) => a(`/notices/${id}`, { method: 'DELETE' }),
   getMyNotices: (store_id) => a(`/notices/mine${qs({ store_id })}`),
   markNoticeRead: (id) => a(`/notices/${id}/read`, { method: 'POST' }),
+
+  // 실사 재고 조정 / 상품별 거래 수불
+  getStockAdjustments: (store_id) => a(`/stock/adjustments${qs({ store_id })}`),
+  createStockAdjustment: (data) => a('/stock/adjustments', { method: 'POST', body: JSON.stringify(data) }),
+  getStockLedger: (params) => a(`/stock/ledger${qs(params)}`),
 };

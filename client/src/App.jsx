@@ -16,6 +16,8 @@ import StoreStock from './pages/StoreStock';
 import Waste from './pages/Waste';
 import Risks from './pages/Risks';
 import Notices from './pages/Notices';
+import StockAdjustment from './pages/StockAdjustment';
+import StockLedger from './pages/StockLedger';
 import Products from './pages/Products';
 import Analytics from './pages/Analytics';
 import StoreRankings from './pages/StoreRankings';
@@ -86,6 +88,8 @@ const SIDE_MENU_GROUPS = [
     { to: '/ingredients', end: true, label: '재료 목록' },
     { to: '/menus', end: true, label: '메뉴 & 레시피' },
     { to: '/waste', end: true, label: '폐기 내역' },
+    { to: '/stock-adjustments', end: true, label: '실사 재고 조정' },
+    { to: '/stock-ledger', end: true, label: '상품별 거래 수불' },
   ] },
 ];
 
@@ -198,6 +202,8 @@ function HQLayout() {
               <Route path="/products" element={<Products />} />
               <Route path="/analytics" element={<Analytics />} />
               <Route path="/waste" element={<Waste />} />
+              <Route path="/stock-adjustments" element={<StockAdjustment />} />
+              <Route path="/stock-ledger" element={<StockLedger />} />
               <Route path="/users" element={<Users />} />
               {isHqAdmin && <Route path="/audit-log" element={<AuditLog />} />}
               <Route path="*" element={<Navigate to="/" />} />
@@ -220,6 +226,7 @@ function StoreLayout() {
           <NavTab to="/store" end label="발주하기" />
           <NavTab to="/store/stock" label="재고 확인" />
           <NavTab to="/store/waste" label="폐기 입력" />
+          <NavTab to="/store/stock-adjustments" label="실사 재고 조정" />
         </nav>
       </header>
       <TopBar name={user?.name} />
@@ -230,6 +237,7 @@ function StoreLayout() {
             <Route path="/store/payment/:id/result" element={<PaymentResult />} />
             <Route path="/store/stock" element={<StoreStock />} />
             <Route path="/store/waste" element={<Waste />} />
+            <Route path="/store/stock-adjustments" element={<StockAdjustment />} />
             <Route path="*" element={<Navigate to="/store" />} />
           </Routes>
         </div>

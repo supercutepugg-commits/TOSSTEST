@@ -3,6 +3,7 @@ const router = createAsyncRouter();
 const { knex } = require('../db/schema');
 const { requireAuth } = require('../middleware/auth');
 const { checkHighWaste } = require('./risks');
+const { logStockMovement } = require('../stockLedger');
 
 function isStoreRole(role) {
   return ['STORE_OWNER', 'STORE_STAFF'].includes(role);
@@ -53,6 +54,12 @@ router.post('/', requireAuth, async (req, res) => {
     // 재고 차감
     if (ingredient) {
       await trx('ingredients').where({ id: ingredient.id }).decrement('stock', qty);
+      await logStockMovement(trx, {
+        brand_id: req.user.brand_id, store_id, ingredient_id: ingredient.id,
+        type: 'WASTE', delta: -qty,
+        before_stock: ingredient.stock, after_stock: ingredient.stock - qty,
+        ref_type: 'waste_log', ref_id: insertedId, created_by: req.user.id,
+      });
     }
     return insertedId;
   });
@@ -73,7 +80,16 @@ router.delete('/:id', requireAuth, async (req, res) => {
     await trx('waste_logs').where({ id: log.id }).delete();
     // 폐기 기록 취소 시 차감했던 재고를 복원
     if (log.ingredient_id) {
-      await trx('ingredients').where({ id: log.ingredient_id }).increment('stock', log.quantity);
+      const ing = await trx('ingredients').where({ id: log.ingredient_id }).first();
+      if (ing) {
+        await trx('ingredients').where({ id: log.ingredient_id }).increment('stock', log.quantity);
+        await logStockMovement(trx, {
+          brand_id: req.user.brand_id, store_id: log.store_id, ingredient_id: log.ingredient_id,
+          type: 'WASTE_CANCEL', delta: log.quantity,
+          before_stock: ing.stock, after_stock: ing.stock + log.quantity,
+          ref_type: 'waste_log', ref_id: log.id, created_by: req.user.id,
+        });
+      }
     }
   });
   res.json({ ok: true });

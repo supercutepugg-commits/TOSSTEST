@@ -8,6 +8,7 @@ function isStoreRole(role) {
 }
 const { createRisk, getRiskSettings } = require('./risks');
 const { logAudit } = require('../auditLog');
+const { logStockMovement } = require('../stockLedger');
 const crypto = require('crypto');
 
 const TOSS_SECRET_KEY = process.env.TOSS_SECRET_KEY || '';
@@ -272,53 +273,44 @@ async function applyItemStock(order, item, qty, sign, trx = knex) {
   if (!product) return;
   const delta = sign * qty * (product.unit_conversion || 1);
 
+  // ingredient 연결 상품은 브랜드 공통 원본을 이름으로 매칭해서 가맹점별 ingredient를 찾고,
+  // 미연결 상품은 상품명 그대로 가맹점 재료를 찾는다 — 둘 다 없으면(환불 외 신규) 새로 만든다
+  let baseName, unit, threshold;
   if (product.ingredient_id) {
-    // 브랜드 공통(또는 다른 가맹점) ingredient 원본
     const base = await trx('ingredients').where({ id: product.ingredient_id }).first();
     if (!base) return;
-    const baseName = base.name || product.name;
-    if (!baseName) return; // 이름을 알 수 없으면 빈 이름 재료를 만들지 않고 건너뜀
-    // 해당 가맹점에 같은 이름의 ingredient가 이미 있는지 확인 (id는 매번 새로 생성되므로 이름으로 매칭)
-    let ing = await trx('ingredients')
-      .where({ brand_id: base.brand_id, store_id: order.store_id, name: baseName }).first();
-
-    if (!ing) {
-      if (sign < 0) return; // 환불 시 재료가 없으면 만들지 않음
-      const [{ id: newId }] = await trx('ingredients').insert({
-        brand_id: base.brand_id,
-        store_id: order.store_id,
-        name: baseName,
-        unit: base.unit,
-        stock: 0,
-        threshold: base.threshold || 0,
-      }).returning('id');
-      ing = { id: newId };
-    }
-    const next = sign < 0 ? Math.max(0, (ing.stock || 0) + delta) : null;
-    if (sign < 0) await trx('ingredients').where({ id: ing.id }).update({ stock: next });
-    else await trx('ingredients').where({ id: ing.id }).increment('stock', delta);
+    baseName = base.name || product.name;
+    unit = base.unit;
+    threshold = base.threshold || 0;
   } else {
-    // ingredient 미연결 — 상품명으로 가맹점 재료 자동 생성
-    const ingName = item.product_name || product.name;
-    if (!ingName) return; // 이름을 알 수 없으면 빈 이름 재료를 만들지 않고 건너뜀
-    let ing = await trx('ingredients')
-      .where({ brand_id: order.brand_id, store_id: order.store_id, name: ingName }).first();
-    if (!ing) {
-      if (sign < 0) return;
-      const [{ id: newId }] = await trx('ingredients').insert({
-        brand_id: order.brand_id,
-        store_id: order.store_id,
-        name: ingName,
-        unit: product.base_unit || product.unit || '개',
-        stock: 0,
-        threshold: 0,
-      }).returning('id');
-      ing = { id: newId };
-    }
-    const next = sign < 0 ? Math.max(0, (ing.stock || 0) + delta) : null;
-    if (sign < 0) await trx('ingredients').where({ id: ing.id }).update({ stock: next });
-    else await trx('ingredients').where({ id: ing.id }).increment('stock', delta);
+    baseName = item.product_name || product.name;
+    unit = product.base_unit || product.unit || '개';
+    threshold = 0;
   }
+  if (!baseName) return; // 이름을 알 수 없으면 빈 이름 재료를 만들지 않고 건너뜀
+
+  let ing = await trx('ingredients')
+    .where({ brand_id: order.brand_id, store_id: order.store_id, name: baseName }).first();
+  if (!ing) {
+    if (sign < 0) return; // 환불 시 재료가 없으면 만들지 않음
+    const [{ id: newId }] = await trx('ingredients').insert({
+      brand_id: order.brand_id, store_id: order.store_id,
+      name: baseName, unit, stock: 0, threshold,
+    }).returning('id');
+    ing = { id: newId, stock: 0 };
+  }
+
+  const beforeStock = ing.stock || 0;
+  const afterStock = Math.max(0, beforeStock + delta);
+  if (sign < 0) await trx('ingredients').where({ id: ing.id }).update({ stock: afterStock });
+  else await trx('ingredients').where({ id: ing.id }).increment('stock', delta);
+
+  await logStockMovement(trx, {
+    brand_id: order.brand_id, store_id: order.store_id, ingredient_id: ing.id,
+    type: sign > 0 ? 'DELIVERY' : 'REFUND', delta,
+    before_stock: beforeStock, after_stock: afterStock,
+    ref_type: 'purchase_order', ref_id: order.id,
+  });
 }
 
 // ── 본사 수량 수정 / 품절 / 대체상품 ─────────────────

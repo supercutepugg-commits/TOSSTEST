@@ -364,6 +364,37 @@ async function initDb() {
     t.datetime('read_at').defaultTo(knex.fn.now());
     t.unique(['notice_id', 'user_id']);
   });
+
+  // ── 재고 수불부 (재고가 바뀌는 모든 경로를 기록) ───────
+  await createIfMissing('stock_ledger', t => {
+    t.increments('id');
+    t.integer('brand_id').references('brands.id').onDelete('CASCADE');
+    t.integer('store_id').references('stores.id').onDelete('CASCADE');
+    t.integer('ingredient_id').references('ingredients.id').onDelete('CASCADE');
+    t.string('type').notNullable(); // DELIVERY, REFUND, SALE, SALE_CANCEL, WASTE, WASTE_CANCEL, ADJUSTMENT
+    t.float('quantity_delta').notNullable(); // +면 입고, -면 출고
+    t.float('before_stock').nullable();
+    t.float('after_stock').nullable();
+    t.text('memo').nullable();
+    t.string('ref_type').nullable();
+    t.integer('ref_id').nullable();
+    t.integer('created_by').references('users.id').onDelete('SET NULL').nullable();
+    t.datetime('created_at').defaultTo(knex.fn.now());
+  });
+
+  // ── 실사 재고 조정 ────────────────────────────────────
+  await createIfMissing('stock_adjustments', t => {
+    t.increments('id');
+    t.integer('brand_id').references('brands.id').onDelete('CASCADE');
+    t.integer('store_id').references('stores.id').onDelete('CASCADE');
+    t.integer('ingredient_id').references('ingredients.id').onDelete('CASCADE');
+    t.float('before_stock').notNullable();
+    t.float('counted_stock').notNullable(); // 실사로 직접 센 수량
+    t.float('diff').notNullable(); // counted_stock - before_stock
+    t.text('memo').nullable();
+    t.integer('created_by').references('users.id').onDelete('SET NULL').nullable();
+    t.datetime('created_at').defaultTo(knex.fn.now());
+  });
 }
 
 module.exports = { knex, initDb, isProduction };
