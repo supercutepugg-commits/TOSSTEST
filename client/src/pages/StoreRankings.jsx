@@ -16,6 +16,7 @@ export default function StoreRankings() {
   const [loading, setLoading] = useState(false);
   const [fromDate, setFromDate] = useState(() => new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0]);
   const [toDate, setToDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [nameQuery, setNameQuery] = useState('');
 
   const load = async () => {
     setLoading(true);
@@ -36,8 +37,15 @@ export default function StoreRankings() {
     setToDate(end.toISOString().split('T')[0]);
   };
 
-  const maxRevenue = Math.max(1, ...(data?.salesRanking || []).map(r => r.revenue));
-  const maxOrderAmt = Math.max(1, ...(data?.orderRanking || []).map(r => r.order_amount));
+  const filterByName = (rows) => nameQuery.trim()
+    ? rows.filter(r => r.store_name?.toLowerCase().includes(nameQuery.trim().toLowerCase()))
+    : rows;
+  const salesRanking = filterByName(data?.salesRanking || []);
+  const orderRanking = filterByName(data?.orderRanking || []);
+  const efficiencyRanking = filterByName(data?.efficiencyRanking || []);
+
+  const maxRevenue = Math.max(1, ...salesRanking.map(r => r.revenue));
+  const maxOrderAmt = Math.max(1, ...orderRanking.map(r => r.order_amount));
 
   const exportRankings = () => {
     if (!data) return;
@@ -69,6 +77,10 @@ export default function StoreRankings() {
       <div className="card kicc-search-panel">
         <div className="kicc-search-row">
           <div className="filter-field">
+            <label>가맹점명</label>
+            <input value={nameQuery} onChange={e => setNameQuery(e.target.value)} placeholder="가맹점명 검색" />
+          </div>
+          <div className="filter-field">
             <label>조회 기간</label>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} />
@@ -92,7 +104,7 @@ export default function StoreRankings() {
 
       <div className="card">
         <div style={{ fontWeight: 700, marginBottom: 12 }}>매출 순위</div>
-        {loading ? <Loading /> : !data || data.salesRanking.length === 0 ? (
+        {loading ? <Loading /> : !data || salesRanking.length === 0 ? (
           <div className="empty">데이터 없음</div>
         ) : (
           <table>
@@ -100,7 +112,7 @@ export default function StoreRankings() {
               <tr><th>순위</th><th>가맹점</th><th>매출</th><th>주문건수</th><th></th></tr>
             </thead>
             <tbody>
-              {data.salesRanking.map((r, i) => (
+              {salesRanking.map((r, i) => (
                 <tr key={r.store_id}>
                   <td><b>{i + 1}</b></td>
                   <td>{r.store_name}</td>
@@ -120,7 +132,7 @@ export default function StoreRankings() {
 
       <div className="card">
         <div style={{ fontWeight: 700, marginBottom: 12 }}>발주 순위</div>
-        {loading ? <Loading /> : !data || data.orderRanking.length === 0 ? (
+        {loading ? <Loading /> : !data || orderRanking.length === 0 ? (
           <div className="empty">데이터 없음</div>
         ) : (
           <table>
@@ -128,7 +140,7 @@ export default function StoreRankings() {
               <tr><th>순위</th><th>가맹점</th><th>발주금액</th><th>발주건수</th><th></th></tr>
             </thead>
             <tbody>
-              {data.orderRanking.map((r, i) => (
+              {orderRanking.map((r, i) => (
                 <tr key={r.store_id}>
                   <td><b>{i + 1}</b></td>
                   <td>{r.store_name}</td>
@@ -151,17 +163,16 @@ export default function StoreRankings() {
         <div className="text-muted" style={{ fontSize: 12, marginBottom: 12 }}>
           발주율 = 발주금액 ÷ 매출. 매출에 비해 발주(원가 지출)가 얼마나 큰지 보여줍니다 — 높을수록 마진이 줄어들거나 과다 발주일 가능성, 매출이 있는데 발주율이 너무 낮으면 재고 소진/품절 위험이 있을 수 있습니다.
         </div>
-        {loading ? <Loading /> : !data || data.efficiencyRanking.length === 0 ? (
+        {loading ? <Loading /> : !data || efficiencyRanking.length === 0 ? (
           <div className="empty">데이터 없음</div>
         ) : (
           <table>
             <thead>
-              <tr><th>순위</th><th>가맹점</th><th>매출</th><th>발주금액</th><th>발주율</th><th>평가</th></tr>
+              <tr><th>가맹점</th><th>매출</th><th>발주금액</th><th>발주율</th><th>평가</th></tr>
             </thead>
             <tbody>
-              {data.efficiencyRanking.map((r, i) => (
+              {efficiencyRanking.map(r => (
                 <tr key={r.store_id}>
-                  <td><b>{i + 1}</b></td>
                   <td>{r.store_name}</td>
                   <td>{won(r.revenue)}</td>
                   <td>{won(r.order_amount)}</td>
