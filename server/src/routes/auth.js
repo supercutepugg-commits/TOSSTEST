@@ -101,6 +101,12 @@ router.put('/users/:id', requireAuth, requireRole('SUPER_ADMIN', 'HQ_ADMIN'), as
   if (role === 'SUPER_ADMIN' && req.user.role !== 'SUPER_ADMIN') {
     return res.status(403).json({ error: '최고관리자만 최고관리자 권한을 부여할 수 있습니다' });
   }
+  // 위 체크는 "새로 SUPER_ADMIN 권한을 부여하는 것"만 막고 있었음 — 이미 SUPER_ADMIN인 계정을
+  // HQ_ADMIN이 강등/비활성화/비밀번호 변경하는 경로는 안 막혀있어서, 권한이 더 낮은 HQ_ADMIN이
+  // 최고관리자 계정을 무력화할 수 있는 권한 역전 문제가 있었음
+  if (existing.role === 'SUPER_ADMIN' && req.user.role !== 'SUPER_ADMIN') {
+    return res.status(403).json({ error: '최고관리자 계정은 최고관리자만 수정할 수 있습니다' });
+  }
   const nextRole = role ?? existing.role;
   const nextStoreId = store_id !== undefined ? (store_id || null) : existing.store_id;
   if (['STORE_OWNER', 'STORE_STAFF'].includes(nextRole) && !nextStoreId) {
@@ -122,6 +128,12 @@ router.put('/users/:id', requireAuth, requireRole('SUPER_ADMIN', 'HQ_ADMIN'), as
 
 // 사용자 삭제
 router.delete('/users/:id', requireAuth, requireRole('SUPER_ADMIN', 'HQ_ADMIN'), async (req, res) => {
+  const existing = await knex('users').where({ id: req.params.id, brand_id: req.user.brand_id }).first();
+  if (!existing) return res.status(404).json({ error: '없음' });
+  // PUT과 동일한 이유 — HQ_ADMIN이 SUPER_ADMIN 계정을 삭제할 수 있게 열려있던 권한 역전 문제
+  if (existing.role === 'SUPER_ADMIN' && req.user.role !== 'SUPER_ADMIN') {
+    return res.status(403).json({ error: '최고관리자 계정은 최고관리자만 삭제할 수 있습니다' });
+  }
   await knex('users').where({ id: req.params.id, brand_id: req.user.brand_id }).delete();
   await logAudit(req.user.brand_id, req.user.id, 'USER', Number(req.params.id), 'DELETE', null, null);
   res.json({ ok: true });
