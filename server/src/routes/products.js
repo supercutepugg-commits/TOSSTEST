@@ -36,6 +36,24 @@ router.get('/recommendations', requireAuth, async (req, res) => {
   const storeIngredients = await knex('ingredients').where({ brand_id: req.user.brand_id, store_id });
   const stockByName = Object.fromEntries(storeIngredients.map(i => [i.name, i.stock || 0]));
 
+  // 이미 발주했지만 아직 납품(재고 반영)되지 않은 물량은 현재 재고에 안 잡혀있다.
+  // 이걸 빼지 않으면 "어제 이미 발주한 재료를 오늘 또 추천"하는 과다추천 문제가 생긴다.
+  const pendingItems = await knex('purchase_order_items as poi')
+    .join('purchase_orders as po', 'poi.order_id', 'po.id')
+    .where('po.brand_id', req.user.brand_id).where('po.store_id', store_id)
+    .where('po.stock_applied', false)
+    .whereNotIn('po.status', ['DRAFT', 'CANCELED'])
+    .select('poi.product_id', 'poi.quantity', 'poi.confirmed_quantity');
+  const pendingBaseByName = {};
+  for (const item of pendingItems) {
+    const p = products.find(x => x.id === item.product_id);
+    if (!p) continue;
+    const ingName = p.ingredient_id ? baseNameById[p.ingredient_id] : p.name;
+    if (!ingName) continue;
+    const qty = item.confirmed_quantity ?? item.quantity;
+    pendingBaseByName[ingName] = (pendingBaseByName[ingName] || 0) + qty * (p.unit_conversion || 1);
+  }
+
   const result = {};
   for (const p of products) {
     const ingName = p.ingredient_id ? baseNameById[p.ingredient_id] : p.name;
@@ -43,7 +61,8 @@ router.get('/recommendations', requireAuth, async (req, res) => {
     const estimated = estimatedByName[ingName];
     if (estimated === undefined) continue; // 최근 7일간 판매 실적이 없는 메뉴 재료는 추천하지 않음
     const currentStock = stockByName[ingName] || 0;
-    const neededBase = Math.max(0, estimated - currentStock);
+    const pendingIncoming = pendingBaseByName[ingName] || 0;
+    const neededBase = Math.max(0, estimated - currentStock - pendingIncoming);
     const recommendedQty = Math.ceil(neededBase / (p.unit_conversion || 1));
     if (recommendedQty > 0) result[p.id] = recommendedQty;
   }
