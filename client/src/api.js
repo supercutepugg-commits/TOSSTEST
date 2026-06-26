@@ -124,4 +124,12 @@ export const api = {
 
   // 감사 로그
   getAuditLog: (params) => a(`/audit-log${qs(params)}`),
+
+  // 공지사항
+  getNotices: () => a('/notices'),
+  createNotice: (data) => a('/notices', { method: 'POST', body: JSON.stringify(data) }),
+  updateNotice: (id, data) => a(`/notices/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteNotice: (id) => a(`/notices/${id}`, { method: 'DELETE' }),
+  getMyNotices: (store_id) => a(`/notices/mine${qs({ store_id })}`),
+  markNoticeRead: (id) => a(`/notices/${id}/read`, { method: 'POST' }),
 };

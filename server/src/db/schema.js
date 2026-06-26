@@ -83,6 +83,8 @@ async function initDb() {
     const hash = await bcrypt.hash('admin1234', 10);
     await knex('users').insert({ brand_id: defaultBrandId, email: 'admin@posmos.com', password_hash: hash, name: '포스모스 관리자', role: 'SUPER_ADMIN' });
   }
+  // 이 가맹점을 담당하는 본사 직원(영업/배송 등) — users 테이블이 만들어진 뒤에 추가해야 FK 참조 가능
+  await addColumnIfMissing('stores', 'assigned_user_id', t => t.integer('assigned_user_id').references('users.id').onDelete('SET NULL').nullable());
 
   // ── 발주 단위 ─────────────────────────────────────────
   await createIfMissing('units', t => {
@@ -341,6 +343,27 @@ async function initDb() {
   await addColumnIfMissing('alert_log', 'store_id', t => t.integer('store_id').defaultTo(defaultStoreId));
   await knex('alert_log').whereNull('brand_id').update({ brand_id: defaultBrandId });
   await knex('alert_log').whereNull('store_id').update({ store_id: defaultStoreId });
+
+  // ── 공지사항 (본사 → 가맹점) ───────────────────────────
+  await createIfMissing('notices', t => {
+    t.increments('id');
+    t.integer('brand_id').references('brands.id').onDelete('CASCADE');
+    t.integer('store_id').references('stores.id').onDelete('CASCADE').nullable(); // null이면 전체 가맹점 대상
+    t.string('title').notNullable();
+    t.text('content').notNullable();
+    t.integer('created_by').references('users.id').onDelete('SET NULL').nullable();
+    t.boolean('is_active').defaultTo(true);
+    t.datetime('created_at').defaultTo(knex.fn.now());
+  });
+
+  await createIfMissing('notice_reads', t => {
+    t.increments('id');
+    t.integer('notice_id').references('notices.id').onDelete('CASCADE');
+    t.integer('user_id').references('users.id').onDelete('CASCADE');
+    t.integer('store_id').references('stores.id').onDelete('CASCADE').nullable();
+    t.datetime('read_at').defaultTo(knex.fn.now());
+    t.unique(['notice_id', 'user_id']);
+  });
 }
 
 module.exports = { knex, initDb, isProduction };

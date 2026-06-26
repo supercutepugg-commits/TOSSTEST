@@ -93,7 +93,8 @@ router.get('/', requireAuth, async (req, res) => {
   const q = knex('purchase_orders as po')
     .join('stores as s', 'po.store_id', 's.id')
     .leftJoin('users as u', 'po.created_by', 'u.id')
-    .select('po.*', 's.name as store_name', 'u.name as created_by_name')
+    .leftJoin('users as au', 's.assigned_user_id', 'au.id')
+    .select('po.*', 's.name as store_name', 'u.name as created_by_name', 'au.name as assigned_user_name')
     .where('po.brand_id', req.user.brand_id)
     .orderBy('po.created_at', 'desc');
 
@@ -111,7 +112,8 @@ router.get('/:id', requireAuth, async (req, res) => {
   const order = await knex('purchase_orders as po')
     .join('stores as s', 'po.store_id', 's.id')
     .leftJoin('users as u', 'po.created_by', 'u.id')
-    .select('po.*', 's.name as store_name', 'u.name as created_by_name')
+    .leftJoin('users as au', 's.assigned_user_id', 'au.id')
+    .select('po.*', 's.name as store_name', 'u.name as created_by_name', 'au.name as assigned_user_name')
     .where('po.id', req.params.id)
     .where('po.brand_id', req.user.brand_id)
     .first();

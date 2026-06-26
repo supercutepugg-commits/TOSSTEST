@@ -15,6 +15,7 @@ import PaymentResult from './pages/PaymentResult';
 import StoreStock from './pages/StoreStock';
 import Waste from './pages/Waste';
 import Risks from './pages/Risks';
+import Notices from './pages/Notices';
 import Products from './pages/Products';
 import Analytics from './pages/Analytics';
 import StoreRankings from './pages/StoreRankings';
@@ -23,6 +24,7 @@ import PurchaseAnomalies from './pages/PurchaseAnomalies';
 import AuditLog from './pages/AuditLog';
 import Login from './pages/Login';
 import StockAlert from './components/StockAlert';
+import NoticeBanner from './components/NoticeBanner';
 import ToastHost from './components/ToastHost';
 
 function TopBar({ name, currentStore, onBackToAdmin }) {
@@ -71,6 +73,7 @@ const SIDE_MENU_GROUPS = [
   ] },
   { title: '리스크 · 사용자 (전체)', storeRequired: false, items: [
     { to: '/risks', end: true, label: '리스크 알림' },
+    { to: '/notices', end: true, label: '공지사항' },
     { to: '/users', end: true, label: '사용자 관리' },
   ] },
   { title: '감사', storeRequired: false, hqAdminOnly: true, items: [
@@ -189,6 +192,7 @@ function HQLayout() {
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/orders" element={<HQOrders />} />
               <Route path="/risks" element={<Risks />} />
+              <Route path="/notices" element={<Notices />} />
               <Route path="/ingredients" element={<Ingredients />} />
               <Route path="/menus" element={<Menus />} />
               <Route path="/products" element={<Products />} />
@@ -231,6 +235,7 @@ function StoreLayout() {
         </div>
       </main>
       <StockAlert storeId={user?.store_id} storeName={user?.store_name} />
+      <NoticeBanner storeId={user?.store_id} />
     </div>
   );
 }

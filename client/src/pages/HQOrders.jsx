@@ -197,8 +197,12 @@ export default function HQOrders() {
             <div style={{ fontWeight: 700, fontSize: 16 }}>발주서 #{detail.id} — {detail.store_name}</div>
             <button className="secondary small" onClick={() => { setDetail(null); setSelected(null); }}>닫기</button>
           </div>
-          {detail.created_by_name && (
-            <div className="text-muted" style={{ fontSize: 12.5, marginBottom: 12 }}>작성자: {detail.created_by_name}</div>
+          {(detail.created_by_name || detail.assigned_user_name) && (
+            <div className="text-muted" style={{ fontSize: 12.5, marginBottom: 12 }}>
+              {detail.created_by_name && <>작성자: {detail.created_by_name}</>}
+              {detail.created_by_name && detail.assigned_user_name && ' · '}
+              {detail.assigned_user_name && <>담당자: {detail.assigned_user_name}</>}
+            </div>
           )}
 
           <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10 }}>

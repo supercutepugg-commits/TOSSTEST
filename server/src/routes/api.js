@@ -19,7 +19,10 @@ router.post('/brands', requireAuth, requireRole('SUPER_ADMIN'), async (req, res)
 
 // ─── 가맹점 ───────────────────────────────────────────
 router.get('/stores', requireAuth, requireRole(...HQ_ROLES), async (req, res) => {
-  const stores = await knex('stores').where({ brand_id: req.user.brand_id }).orderBy('created_at');
+  const stores = await knex('stores as st')
+    .leftJoin('users as u', 'st.assigned_user_id', 'u.id')
+    .select('st.*', 'u.name as assigned_user_name')
+    .where('st.brand_id', req.user.brand_id).orderBy('st.created_at');
   // 인증정보 평문은 SUPER_ADMIN/HQ_ADMIN에게만 노출, 나머지는 설정 여부만 전달
   const canSeeSecrets = ['SUPER_ADMIN', 'HQ_ADMIN'].includes(req.user.role);
   res.json(stores.map(s => {
@@ -29,9 +32,16 @@ router.get('/stores', requireAuth, requireRole(...HQ_ROLES), async (req, res) =>
   }));
 });
 
+async function validAssignedUser(brand_id, assigned_user_id) {
+  if (!assigned_user_id) return true;
+  const user = await knex('users').where({ id: assigned_user_id, brand_id }).whereIn('role', HQ_ROLES).first();
+  return !!user;
+}
+
 router.post('/stores', requireAuth, requireRole(...ADMIN_ROLES), async (req, res) => {
-  const { name, webhook_secret, toss_store_id, order_deadline, delivery_days, business_number, owner_name, phone, open_date, franchise_type, is_open, address } = req.body;
+  const { name, webhook_secret, toss_store_id, order_deadline, delivery_days, business_number, owner_name, phone, open_date, franchise_type, is_open, address, assigned_user_id } = req.body;
   if (!name || !name.trim()) return res.status(400).json({ error: '가맹점명을 입력해주세요' });
+  if (!(await validAssignedUser(req.user.brand_id, assigned_user_id))) return res.status(400).json({ error: '담당자를 찾을 수 없습니다' });
   const [{ id }] = await knex('stores').insert({
     brand_id: req.user.brand_id, name,
     webhook_secret: webhook_secret || '', toss_store_id: toss_store_id || '',
@@ -39,7 +49,7 @@ router.post('/stores', requireAuth, requireRole(...ADMIN_ROLES), async (req, res
     business_number: business_number || null, owner_name: owner_name || null,
     phone: phone || null, open_date: open_date || null,
     franchise_type: franchise_type || null, is_open: is_open ?? true,
-    address: address || null,
+    address: address || null, assigned_user_id: assigned_user_id || null,
   }).returning('id');
   res.json({ id });
 });
@@ -47,8 +57,11 @@ router.post('/stores', requireAuth, requireRole(...ADMIN_ROLES), async (req, res
 router.put('/stores/:id', requireAuth, requireRole(...ADMIN_ROLES), async (req, res) => {
   const existing = await knex('stores').where({ id: req.params.id, brand_id: req.user.brand_id }).first();
   if (!existing) return res.status(404).json({ error: '없음' });
-  const { name, webhook_secret, toss_store_id, order_deadline, delivery_days, toss_client_id, toss_client_secret, business_number, owner_name, phone, open_date, franchise_type, is_open, address } = req.body;
+  const { name, webhook_secret, toss_store_id, order_deadline, delivery_days, toss_client_id, toss_client_secret, business_number, owner_name, phone, open_date, franchise_type, is_open, address, assigned_user_id } = req.body;
   if (name !== undefined && !name.trim()) return res.status(400).json({ error: '가맹점명을 입력해주세요' });
+  if (assigned_user_id !== undefined && !(await validAssignedUser(req.user.brand_id, assigned_user_id))) {
+    return res.status(400).json({ error: '담당자를 찾을 수 없습니다' });
+  }
   const next = {
     name: name ?? existing.name,
     webhook_secret: webhook_secret ?? existing.webhook_secret,
@@ -64,6 +77,7 @@ router.put('/stores/:id', requireAuth, requireRole(...ADMIN_ROLES), async (req, 
     franchise_type: franchise_type ?? existing.franchise_type,
     is_open: is_open !== undefined ? is_open : existing.is_open,
     address: address ?? existing.address,
+    assigned_user_id: assigned_user_id !== undefined ? (assigned_user_id || null) : existing.assigned_user_id,
   };
   await knex('stores').where({ id: req.params.id, brand_id: req.user.brand_id }).update(next);
   await logAudit(req.user.brand_id, req.user.id, 'STORE', existing.id, 'UPDATE',

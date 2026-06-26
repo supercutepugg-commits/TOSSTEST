@@ -1,5 +1,5 @@
 import { toast } from '../toast';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { api } from '../api';
 import { useStore } from '../StoreContext';
 import { useAuth } from '../AuthContext';
@@ -86,11 +86,18 @@ const DAY_LABELS = ['일', '월', '화', '수', '목', '금', '토'];
 
 const FRANCHISE_TYPES = ['가맹점', '직영점'];
 
+const HQ_ROLES = ['SUPER_ADMIN', 'HQ_ADMIN', 'HQ_LOGISTICS', 'HQ_ACCOUNTING'];
+
 function StoreModal({ item, onClose, onSave }) {
   const [form, setForm] = useState(item || {
     name: '', webhook_secret: '', toss_store_id: '', order_deadline: '', delivery_days: '',
     business_number: '', owner_name: '', phone: '', open_date: '', franchise_type: '', is_open: true, address: '',
+    assigned_user_id: '',
   });
+  const [hqUsers, setHqUsers] = useState([]);
+  useEffect(() => {
+    api.getUsers().then(users => setHqUsers(users.filter(u => HQ_ROLES.includes(u.role)))).catch(() => {});
+  }, []);
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
   const toggleDay = (d) => {
@@ -148,6 +155,13 @@ function StoreModal({ item, onClose, onSave }) {
         <div className="form-group" style={{ marginBottom: 12 }}>
           <label>주소</label>
           <input value={form.address || ''} onChange={e => set('address', e.target.value)} placeholder="예: 서울 강남구 ..." />
+        </div>
+        <div className="form-group" style={{ marginBottom: 12 }}>
+          <label>담당자 (본사)</label>
+          <select value={form.assigned_user_id || ''} onChange={e => set('assigned_user_id', e.target.value)}>
+            <option value="">지정 안함</option>
+            {hqUsers.map(u => <option key={u.id} value={u.id}>{u.name} ({u.role})</option>)}
+          </select>
         </div>
         <div className="form-group" style={{ marginBottom: 12 }}>
           <label>웹훅 시크릿 키 (토스플레이스 발급)</label>
@@ -297,6 +311,7 @@ export default function Stores() {
                 <th>전화번호</th>
                 <th>사업자번호</th>
                 <th>가맹형태</th>
+                <th>담당자</th>
                 <th>오픈여부</th>
                 <th>개점일</th>
                 <th>주소</th>
@@ -320,6 +335,7 @@ export default function Stores() {
                   <td className="text-sub" style={{ fontSize: 13 }}>{s.phone || '-'}</td>
                   <td className="text-sub" style={{ fontSize: 13 }}>{s.business_number || '-'}</td>
                   <td className="text-sub" style={{ fontSize: 13 }}>{s.franchise_type || '-'}</td>
+                  <td className="text-sub" style={{ fontSize: 13 }}>{s.assigned_user_name || '-'}</td>
                   <td>
                     <span className={`badge ${s.is_open === false ? 'red' : 'green'}`}>{s.is_open === false ? '폐점' : '오픈'}</span>
                   </td>
