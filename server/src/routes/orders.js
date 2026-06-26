@@ -322,10 +322,20 @@ async function applyItemStock(order, item, qty, sign, trx = knex) {
     ing = { id: newId, stock: 0 };
   }
 
+  // sign<0(환불)일 때 stock을 읽어서 계산한 값으로 그대로 SET하면, 그 사이 다른 판매/입고 트랜잭션이
+  // 같은 재료의 stock을 바꿔도 무시되고 덮어써지는 lost-update가 생길 수 있다 (특히 결제 직후
+  // 토스 웹훅으로 들어오는 판매 차감과 본사 환불처리가 동시에 들어오는 경우 실제로 발생 가능).
+  // 0 미만으로 못 내려가게 하는 CASE문을 포함해 단일 원자적 UPDATE로 처리해 이 문제를 없앤다.
   const beforeStock = ing.stock || 0;
-  const afterStock = Math.max(0, beforeStock + delta);
-  if (sign < 0) await trx('ingredients').where({ id: ing.id }).update({ stock: afterStock });
-  else await trx('ingredients').where({ id: ing.id }).increment('stock', delta);
+  if (sign < 0) {
+    await trx('ingredients').where({ id: ing.id }).update({
+      stock: trx.raw('CASE WHEN stock + ? < 0 THEN 0 ELSE stock + ? END', [delta, delta]),
+    });
+  } else {
+    await trx('ingredients').where({ id: ing.id }).increment('stock', delta);
+  }
+  const updatedIng = await trx('ingredients').where({ id: ing.id }).first();
+  const afterStock = updatedIng.stock;
 
   await logStockMovement(trx, {
     brand_id: order.brand_id, store_id: order.store_id, ingredient_id: ing.id,
