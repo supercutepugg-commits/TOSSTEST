@@ -337,8 +337,10 @@ router.post('/:id/receipt-confirm', requireAuth, async (req, res) => {
 
   const { ok, note } = req.body;
   if (ok) {
-    await knex('purchase_orders').where({ id: order.id }).update({ receipt_confirmed_at: new Date().toISOString() });
-    await logHistory(order.id, 'RECEIPT_CONFIRMED', null, null, null, req.user.id);
+    // 수령확인까지 끝나면 더 손댈 일이 없는 완전 종료 상태(CLOSED)로 — "배송은 끝났지만 확인 대기 중"인
+    // DELIVERED와 구분해서, 환불/품절처리 등 후속 액션이 필요한 발주서만 진짜로 남아있게 한다
+    await knex('purchase_orders').where({ id: order.id }).update({ receipt_confirmed_at: new Date().toISOString(), status: 'CLOSED' });
+    await logHistory(order.id, 'RECEIPT_CONFIRMED', { status: order.status }, { status: 'CLOSED' }, null, req.user.id);
   } else {
     if (!note || !note.trim()) return res.status(400).json({ error: '이상 신고 내용을 입력해주세요' });
     await knex('purchase_orders').where({ id: order.id }).update({ receipt_issue_note: note.trim() });
@@ -351,8 +353,9 @@ router.post('/:id/receipt-issue/resolve', requireAuth, requireRole(...LOGISTICS_
   const order = await knex('purchase_orders').where({ id: req.params.id, brand_id: req.user.brand_id }).first();
   if (!order) return res.status(404).json({ error: '없음' });
   if (!order.receipt_issue_note) return res.status(400).json({ error: '접수된 이상신고가 없습니다' });
-  await knex('purchase_orders').where({ id: order.id }).update({ receipt_issue_resolved_at: new Date().toISOString() });
-  await logHistory(order.id, 'RECEIPT_ISSUE_RESOLVED', null, null, null, req.user.id);
+  // 이상신고까지 처리되면 이 발주서에 더 남은 액션이 없으므로 CLOSED로 종료
+  await knex('purchase_orders').where({ id: order.id }).update({ receipt_issue_resolved_at: new Date().toISOString(), status: 'CLOSED' });
+  await logHistory(order.id, 'RECEIPT_ISSUE_RESOLVED', { status: order.status }, { status: 'CLOSED' }, null, req.user.id);
   res.json({ ok: true });
 });
 
@@ -537,7 +540,8 @@ router.post('/:id/payment/confirm', requireAuth, async (req, res) => {
 router.post('/:id/refund', requireAuth, requireRole(...LOGISTICS_ROLES), async (req, res) => {
   const order = await knex('purchase_orders').where({ id: req.params.id, brand_id: req.user.brand_id }).first();
   if (!order) return res.status(404).json({ error: '없음' });
-  if (!['PAID', 'PREPARING_SHIPMENT', 'SHIPPED', 'DELIVERED'].includes(order.status)) {
+  // CLOSED(수령확인/이상신고 처리까지 끝난 상태)도 결제 완료 이후 상태이므로 환불은 계속 가능해야 함
+  if (!['PAID', 'PREPARING_SHIPMENT', 'SHIPPED', 'DELIVERED', 'CLOSED'].includes(order.status)) {
     return res.status(400).json({ error: '결제 완료 이후 상태에서만 환불할 수 있습니다' });
   }
   if (!order.toss_payment_key) return res.status(400).json({ error: '결제 정보가 없습니다' });
@@ -577,7 +581,9 @@ router.post('/:id/refund', requireAuth, requireRole(...LOGISTICS_ROLES), async (
   if (isFull) next.status = 'CANCELED';
 
   await knex.transaction(async (trx) => {
-    if (isFull && order.status === 'DELIVERED' && !order.stock_reversed) {
+    // status==='DELIVERED' 문자열로 체크하면 CLOSED로 종료된 주문은 재고 반영분이 있어도 안 걸려서
+    // 전액환불 시 재고가 안 빠지는 누락이 생긴다 — 실제로 재고가 반영됐는지를 뜻하는 stock_applied로 판단
+    if (isFull && order.stock_applied && !order.stock_reversed) {
       const claimed = await trx('purchase_orders').where({ id: order.id, stock_reversed: false }).update({ stock_reversed: true });
       if (claimed) await applyDeliveryStock(order, -1, trx);
     }
@@ -596,7 +602,7 @@ router.post('/:id/refund', requireAuth, requireRole(...LOGISTICS_ROLES), async (
 router.post('/:id/refund-items', requireAuth, requireRole(...LOGISTICS_ROLES), async (req, res) => {
   const order = await knex('purchase_orders').where({ id: req.params.id, brand_id: req.user.brand_id }).first();
   if (!order) return res.status(404).json({ error: '없음' });
-  if (!['PAID', 'PREPARING_SHIPMENT', 'SHIPPED', 'DELIVERED'].includes(order.status)) {
+  if (!['PAID', 'PREPARING_SHIPMENT', 'SHIPPED', 'DELIVERED', 'CLOSED'].includes(order.status)) {
     return res.status(400).json({ error: '결제 완료 이후 상태에서만 환불할 수 있습니다' });
   }
   if (!order.toss_payment_key) return res.status(400).json({ error: '결제 정보가 없습니다' });
@@ -651,8 +657,9 @@ router.post('/:id/refund-items', requireAuth, requireRole(...LOGISTICS_ROLES), a
 
   // 재고 반영 + 환불수량 누적 + 주문 갱신을 한 트랜잭션으로 묶어 중간에 실패해도 일부만 반영되는 불일치를 막음
   await knex.transaction(async (trx) => {
-    // 납품완료된 발주서만 실제로 입고된 재고가 있으므로, 환불된 품목만큼만 재고를 되돌림
-    if (order.status === 'DELIVERED') {
+    // 실제로 재고가 반영된 발주서(stock_applied)만 되돌릴 게 있음 — CLOSED로 종료된 주문도 포함되도록
+    // status==='DELIVERED' 대신 stock_applied로 판단
+    if (order.stock_applied) {
       for (const { item, qty } of toApply) await applyItemStock(order, item, qty, -1, trx);
     }
     for (const { item, qty } of toApply) {
@@ -718,7 +725,7 @@ router.post('/toss-webhook', async (req, res) => {
     const next = { refunded_amount: refundedAmount };
     if (isFull) next.status = 'CANCELED';
     await knex.transaction(async (trx) => {
-      if (isFull && order.status === 'DELIVERED' && !order.stock_reversed) {
+      if (isFull && order.stock_applied && !order.stock_reversed) {
         const claimed = await trx('purchase_orders').where({ id: order.id, stock_reversed: false }).update({ stock_reversed: true });
         if (claimed) await applyDeliveryStock(order, -1, trx);
       }

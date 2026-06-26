@@ -122,12 +122,19 @@ router.get('/stores/order-status', requireAuth, requireRole(...HQ_ROLES), async 
   const submittedStoreIds = new Set(submittedToday.map(o => o.store_id));
 
   const now = new Date();
-  const result = stores.filter(s => !submittedStoreIds.has(s.id)).map(s => {
-    const [h, m] = s.order_deadline.split(':').map(Number);
-    const deadline = new Date(); deadline.setHours(h, m || 0, 0, 0);
-    const diffMin = (deadline.getTime() - now.getTime()) / 60000;
-    return { store_id: s.id, store_name: s.name, order_deadline: s.order_deadline, diffMin: Math.round(diffMin) };
-  }).filter(r => r.diffMin <= 120); // 마감 2시간 이내거나 이미 지난 경우만 노출
+  const todayDow = String(now.getDay());
+  const result = stores
+    .filter(s => !submittedStoreIds.has(s.id))
+    // delivery_days가 설정된 가맹점은 오늘이 납품 가능 요일일 때만 노출 — 안 그러면 납품 안 하는
+    // 요일에도 매일 "미발주"로 잘못 떠서 거짓 경보가 반복되고, 결국 진짜 누락도 무시하게 됨
+    .filter(s => !s.delivery_days || s.delivery_days.split(',').filter(Boolean).includes(todayDow))
+    .map(s => {
+      const [h, m] = s.order_deadline.split(':').map(Number);
+      const deadline = new Date(); deadline.setHours(h, m || 0, 0, 0);
+      const diffMin = (deadline.getTime() - now.getTime()) / 60000;
+      return { store_id: s.id, store_name: s.name, order_deadline: s.order_deadline, diffMin: Math.round(diffMin) };
+    })
+    .filter(r => r.diffMin <= 120); // 마감 2시간 이내거나 이미 지난 경우만 노출
   result.sort((a, b) => a.diffMin - b.diffMin);
   res.json(result);
 });

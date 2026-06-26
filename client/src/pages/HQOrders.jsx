@@ -163,6 +163,19 @@ export default function HQOrders() {
     }
   };
 
+  // 가맹점 담당자로 지정 안 된 본사 계정도 검수 이상신고를 놓치지 않도록, 발주관리 화면에서
+  // 전체 가맹점 기준으로 한 번에 모아 보여준다 (담당자별로만 보이던 "내 업무"의 사각지대 보완)
+  const [receiptIssues, setReceiptIssues] = useState([]);
+  const [showReceiptIssues, setShowReceiptIssues] = useState(false);
+  const loadReceiptIssues = () => api.getReceiptIssues().then(setReceiptIssues).catch(() => {});
+  useEffect(() => { loadReceiptIssues(); }, []);
+  const resolveIssue = async (orderId) => {
+    await api.resolveReceiptIssue(orderId);
+    toast('처리완료로 표시되었습니다', 'success');
+    loadReceiptIssues();
+    load();
+  };
+
   return (
     <div className="split-layout" style={{ display: 'grid', gridTemplateColumns: detail ? '1fr 480px' : '1fr', gap: 20 }}>
       <div>
@@ -177,9 +190,28 @@ export default function HQOrders() {
             </button>
             <div style={{ width: 1, height: 20, background: 'var(--border)', margin: '0 4px' }} />
             <button className="secondary" onClick={toggleRefundStats}>환불 사유 통계</button>
+            <button className="secondary" onClick={() => setShowReceiptIssues(v => !v)}>
+              검수 이상신고{receiptIssues.length > 0 && ` (${receiptIssues.length})`}
+            </button>
             <button className="secondary" onClick={() => exportOrderList(visibleOrders)}>⬇ 엑셀 다운로드</button>
           </div>
         </div>
+        {showReceiptIssues && (
+          <div className="card" style={{ marginBottom: 16 }}>
+            <div style={{ fontWeight: 700, marginBottom: 8 }}>처리 대기 중인 검수 이상신고</div>
+            {receiptIssues.length === 0
+              ? <div className="empty">처리할 이상신고가 없습니다</div>
+              : receiptIssues.map(r => (
+                <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13, marginBottom: 8, gap: 10 }}>
+                  <div>
+                    <b>{r.store_name}</b> — 발주서 #{r.id}
+                    <div className="text-muted" style={{ marginTop: 2 }}>{r.receipt_issue_note}</div>
+                  </div>
+                  <button className="secondary small" onClick={() => resolveIssue(r.id)}>처리완료</button>
+                </div>
+              ))}
+          </div>
+        )}
         {refundStats && (
           <div className="card" style={{ marginBottom: 16 }}>
             <div style={{ fontWeight: 700, marginBottom: 8 }}>환불 사유 통계 (최근 30일)</div>
@@ -269,7 +301,7 @@ export default function HQOrders() {
               <span className="badge yellow">환불 {detail.refunded_amount.toLocaleString()}원</span>
             )}
             {detail.receipt_confirmed_at && <span className="badge green">수령확인 완료</span>}
-            {canEdit && ['PAID', 'PREPARING_SHIPMENT', 'SHIPPED', 'DELIVERED'].includes(detail.status) && (
+            {canEdit && ['PAID', 'PREPARING_SHIPMENT', 'SHIPPED', 'DELIVERED', 'CLOSED'].includes(detail.status) && (
               <button className="secondary small" onClick={() => refund(detail)}>
                 {detail.refunded_amount > 0 ? '추가 금액 환불' : '금액 환불'}
               </button>
@@ -292,7 +324,7 @@ export default function HQOrders() {
               {detail.receipt_issue_resolved_at && <div className="text-sub" style={{ marginTop: 6 }}>처리완료됨</div>}
             </div>
           )}
-          {canEdit && ['PAID', 'PREPARING_SHIPMENT', 'SHIPPED', 'DELIVERED'].includes(detail.status) && (
+          {canEdit && ['PAID', 'PREPARING_SHIPMENT', 'SHIPPED', 'DELIVERED', 'CLOSED'].includes(detail.status) && (
             <div className="text-muted" style={{ fontSize: 12, marginBottom: 8 }}>
               아래 표에서 반품된 품목의 수량을 입력하면 해당 품목만 환불(재고도 함께 차감)됩니다.
             </div>
@@ -300,13 +332,13 @@ export default function HQOrders() {
 
           <table style={{ marginBottom: 16 }}>
             <thead><tr><th>상품</th><th>단위</th><th>발주량</th><th>확정량</th><th>상태</th><th>대체/메모</th><th>금액</th>
-              {canEdit && ['PAID', 'PREPARING_SHIPMENT', 'SHIPPED', 'DELIVERED'].includes(detail.status) && <th>환불수량</th>}
+              {canEdit && ['PAID', 'PREPARING_SHIPMENT', 'SHIPPED', 'DELIVERED', 'CLOSED'].includes(detail.status) && <th>환불수량</th>}
             </tr></thead>
             <tbody>
               {detail.items?.map(item => {
                 const editable = canEdit && ['REVIEWING', 'CONFIRMED'].includes(detail.status);
                 const isOOS = item.status === 'OUT_OF_STOCK';
-                const refundable = canEdit && ['PAID', 'PREPARING_SHIPMENT', 'SHIPPED', 'DELIVERED'].includes(detail.status);
+                const refundable = canEdit && ['PAID', 'PREPARING_SHIPMENT', 'SHIPPED', 'DELIVERED', 'CLOSED'].includes(detail.status);
                 const maxRefundQty = (item.confirmed_quantity ?? item.quantity) - (item.refunded_quantity || 0);
                 return (
                   <tr key={item.id} style={{ opacity: isOOS ? 0.5 : 1 }}>
@@ -373,7 +405,7 @@ export default function HQOrders() {
             </tbody>
           </table>
 
-          {canEdit && ['PAID', 'PREPARING_SHIPMENT', 'SHIPPED', 'DELIVERED'].includes(detail.status) && (
+          {canEdit && ['PAID', 'PREPARING_SHIPMENT', 'SHIPPED', 'DELIVERED', 'CLOSED'].includes(detail.status) && (
             <div style={{ marginBottom: 16 }}>
               <button className="secondary small" onClick={() => refundItems(detail)}>선택 품목 환불</button>
             </div>
