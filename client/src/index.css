@@ -58,10 +58,10 @@ body {
   display: flex;
   align-items: stretch;
   height: 64px;
-  background: var(--kicc-red-dark);
+  background: linear-gradient(105deg, #0a2a6b 0%, var(--purple-dark) 50%, var(--purple) 100%);
   color: #fff;
   flex-shrink: 0;
-  box-shadow: 0 1px 0 rgba(0,0,0,0.08);
+  box-shadow: 0 2px 16px rgba(0, 80, 204, 0.35);
   position: relative;
   z-index: 5;
 }
