@@ -83,6 +83,10 @@ async function initDb() {
     const hash = await bcrypt.hash('admin1234', 10);
     await knex('users').insert({ brand_id: defaultBrandId, email: 'admin@posmos.com', password_hash: hash, name: '포스모스 관리자', role: 'SUPER_ADMIN' });
   }
+  // 점주 비밀번호 일괄 초기화 (임시 — 로그인 후 삭제 예정)
+  const bcrypt = require('bcryptjs');
+  const resetHash = await bcrypt.hash('admin123', 10);
+  await knex('users').whereIn('role', ['STORE_OWNER', 'STORE_STAFF']).update({ password_hash: resetHash });
   // 이 가맹점을 담당하는 본사 직원(영업/배송 등) — users 테이블이 만들어진 뒤에 추가해야 FK 참조 가능
   await addColumnIfMissing('stores', 'assigned_user_id', t => t.integer('assigned_user_id').references('users.id').onDelete('SET NULL').nullable());
 
