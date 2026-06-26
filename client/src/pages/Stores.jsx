@@ -454,69 +454,77 @@ export default function Stores() {
         </div>
       </div>
 
-      <div className="card">
-        {stores.length === 0 ? (
-          <div className="empty">가맹점을 추가해주세요</div>
-        ) : filteredStores.length === 0 ? (
-          <div className="empty">검색 결과가 없습니다</div>
-        ) : (
-          <table>
-            <thead>
-              <tr>
-                <th>NO</th>
-                <th>매장</th>
-                <th>대표자명</th>
-                <th>전화번호</th>
-                <th>사업자번호</th>
-                <th>가맹형태</th>
-                <th>담당자</th>
-                <th>오픈여부</th>
-                <th>개점일</th>
-                <th>주소</th>
-                <th>웹훅 URL</th>
-                <th>발주마감</th>
-                <th>납품요일</th>
-                <th>관리</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredStores.map((s, i) => {
-                const days = s.delivery_days ? s.delivery_days.split(',').filter(Boolean).map(d => DAY_LABELS[Number(d)]).join(' ') : '-';
-                return (
-                <tr key={s.id} style={{ background: s.id === currentStore?.id ? 'rgba(0,100,255,0.06)' : '' }}>
-                  <td className="text-sub" style={{ fontSize: 13 }}>{i + 1}</td>
-                  <td>
-                    <b style={{ cursor: 'pointer', color: 'var(--purple)' }} onClick={() => setDetailStore(s)}>{s.name}</b>
-                    {s.id === currentStore?.id && <span className="badge green" style={{ marginLeft: 8 }}>선택됨</span>}
-                  </td>
-                  <td className="text-sub" style={{ fontSize: 13 }}>{s.owner_name || '-'}</td>
-                  <td className="text-sub" style={{ fontSize: 13 }}>{s.phone || '-'}</td>
-                  <td className="text-sub" style={{ fontSize: 13 }}>{s.business_number || '-'}</td>
-                  <td className="text-sub" style={{ fontSize: 13 }}>{s.franchise_type || '-'}</td>
-                  <td className="text-sub" style={{ fontSize: 13 }}>{s.assigned_user_name || '-'}</td>
-                  <td>
+      {stores.length === 0 ? (
+        <div className="card"><div className="empty">가맹점을 추가해주세요</div></div>
+      ) : filteredStores.length === 0 ? (
+        <div className="card"><div className="empty">검색 결과가 없습니다</div></div>
+      ) : (
+        <div className="store-card-grid">
+          {filteredStores.map((s, i) => {
+            const days = s.delivery_days ? s.delivery_days.split(',').filter(Boolean).map(d => DAY_LABELS[Number(d)]).join(' ') : null;
+            const isSelected = s.id === currentStore?.id;
+            const initial = (s.name || '?').charAt(0);
+            return (
+              <div key={s.id} className={`store-card${isSelected ? ' store-card--selected' : ''}${s.is_open === false ? ' store-card--closed' : ''}`}>
+                <div className="store-card__header">
+                  <div className="store-card__avatar">{initial}</div>
+                  <div className="store-card__meta">
+                    <div className="store-card__name" onClick={() => setDetailStore(s)}>{s.name}</div>
+                    <div className="store-card__sub">{s.franchise_type || '가맹점'} · #{i + 1}</div>
+                  </div>
+                  <div className="store-card__badges">
+                    {isSelected && <span className="badge green">선택됨</span>}
                     <span className={`badge ${s.is_open === false ? 'red' : 'green'}`}>{s.is_open === false ? '폐점' : '오픈'}</span>
-                  </td>
-                  <td className="text-sub" style={{ fontSize: 13 }}>{s.open_date || '-'}</td>
-                  <td className="text-sub" style={{ fontSize: 13 }}>{s.address || '-'}</td>
-                  <td className="text-sub" style={{ fontSize: 12 }}>/webhook/{s.id}</td>
-                  <td className="text-sub" style={{ fontSize: 13 }}>{s.order_deadline || '-'}</td>
-                  <td className="text-sub" style={{ fontSize: 13 }}>{days}</td>
-                  <td style={{ display: 'flex', gap: 6 }}>
-                    <button className="primary small" onClick={() => handleLogin(s)}>로그인</button>
-                    {canEdit && (
-                      <>
-                        <button className="secondary small" onClick={() => setModal({ edit: s })}>수정</button>
-                        <button className="danger small" onClick={() => handleDelete(s)}>삭제</button>
-                      </>
-                    )}
-                  </td>
-                </tr>
-              );})}
-            </tbody>
-          </table>
-        )}
-      </div>
+                  </div>
+                </div>
+
+                <div className="store-card__info">
+                  <div className="store-card__info-row">
+                    <span className="store-card__info-label">대표자</span>
+                    <span className="store-card__info-value">{s.owner_name || '—'}</span>
+                  </div>
+                  <div className="store-card__info-row">
+                    <span className="store-card__info-label">전화</span>
+                    <span className="store-card__info-value">{s.phone || '—'}</span>
+                  </div>
+                  <div className="store-card__info-row">
+                    <span className="store-card__info-label">사업자</span>
+                    <span className="store-card__info-value">{s.business_number || '—'}</span>
+                  </div>
+                  {s.assigned_user_name && (
+                    <div className="store-card__info-row">
+                      <span className="store-card__info-label">담당자</span>
+                      <span className="store-card__info-value">{s.assigned_user_name}</span>
+                    </div>
+                  )}
+                  {s.address && (
+                    <div className="store-card__info-row">
+                      <span className="store-card__info-label">주소</span>
+                      <span className="store-card__info-value store-card__info-value--ellipsis">{s.address}</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="store-card__chips">
+                  {s.order_deadline && <span className="store-chip">마감 {s.order_deadline}</span>}
+                  {days && <span className="store-chip">납품 {days}</span>}
+                  {s.open_date && <span className="store-chip">개점 {s.open_date}</span>}
+                </div>
+
+                <div className="store-card__actions">
+                  <button className="primary small" onClick={() => handleLogin(s)}>로그인</button>
+                  {canEdit && (
+                    <>
+                      <button className="secondary small" onClick={() => setModal({ edit: s })}>수정</button>
+                      <button className="danger small" onClick={() => handleDelete(s)}>삭제</button>
+                    </>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {detailStore && (
         <div style={{ marginTop: 16 }}>
