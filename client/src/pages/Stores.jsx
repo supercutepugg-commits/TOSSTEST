@@ -107,7 +107,7 @@ function StoreDetailPanel({ store, onClose }) {
   const maxRevenue = Math.max(1, ...(dashboard?.weeklyStats || []).map(d => d.revenue));
 
   return (
-    <div className="card" style={{ position: 'sticky', top: 0, maxHeight: '90vh', overflowY: 'auto' }}>
+    <div className="card">
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
         <div style={{ fontWeight: 700, fontSize: 16 }}>{store.name}</div>
         <button className="secondary small" onClick={onClose}>닫기</button>
@@ -115,7 +115,7 @@ function StoreDetailPanel({ store, onClose }) {
 
       {loading ? <div className="empty">불러오는 중...</div> : (
         <>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 20 }}>
             <div className="elevated-card" style={{ padding: 12 }}>
               <div className="text-sub" style={{ fontSize: 12 }}>오늘 매출</div>
               <div style={{ fontWeight: 700, fontSize: 16, marginTop: 4 }}>{won(dashboard?.todayRevenue)}</div>
@@ -134,43 +134,49 @@ function StoreDetailPanel({ store, onClose }) {
             </div>
           </div>
 
-          <div style={{ fontWeight: 700, marginBottom: 8, fontSize: 13 }}>최근 7일 매출</div>
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, height: 80, marginBottom: 16 }}>
-            {(dashboard?.weeklyStats || []).map(d => (
-              <div key={d.date} style={{ flex: 1, textAlign: 'center' }}>
-                <div style={{
-                  background: 'var(--purple)', borderRadius: 3, margin: '0 auto',
-                  height: Math.max(2, (d.revenue / maxRevenue) * 60), width: '70%',
-                }} title={won(d.revenue)} />
-                <div className="text-sub" style={{ fontSize: 11, marginTop: 4 }}>{d.weekday}</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 20 }}>
+            <div>
+              <div style={{ fontWeight: 700, marginBottom: 8, fontSize: 13 }}>최근 7일 매출</div>
+              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, height: 80 }}>
+                {(dashboard?.weeklyStats || []).map(d => (
+                  <div key={d.date} style={{ flex: 1, textAlign: 'center' }}>
+                    <div style={{
+                      background: 'var(--purple)', borderRadius: 3, margin: '0 auto',
+                      height: Math.max(2, (d.revenue / maxRevenue) * 60), width: '70%',
+                    }} title={won(d.revenue)} />
+                    <div className="text-sub" style={{ fontSize: 11, marginTop: 4 }}>{d.weekday}</div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-
-          <div style={{ fontWeight: 700, marginBottom: 8, fontSize: 13 }}>미확인 리스크 ({dashboard?.risks?.length || 0})</div>
-          {(!dashboard?.risks || dashboard.risks.length === 0) ? (
-            <div className="empty" style={{ padding: 12, marginBottom: 16 }}>없음</div>
-          ) : (
-            <div style={{ marginBottom: 16 }}>
-              {dashboard.risks.slice(0, 5).map(r => (
-                <div key={r.id} className="text-muted" style={{ fontSize: 12.5, marginBottom: 4 }}>
-                  {new Date(r.created_at).toLocaleDateString('ko-KR')} — {r.description || r.type}
-                </div>
-              ))}
             </div>
-          )}
 
-          <div style={{ fontWeight: 700, marginBottom: 8, fontSize: 13 }}>최근 발주</div>
-          {orders.length === 0 ? (
-            <div className="empty" style={{ padding: 12 }}>발주 내역 없음</div>
-          ) : (
-            orders.slice(0, 5).map(o => (
-              <div key={o.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, marginBottom: 4 }}>
-                <span className="text-muted">{new Date(o.created_at).toLocaleDateString('ko-KR')} — 발주서 #{o.id}</span>
-                <span>{won(o.confirmed_amount ?? o.total_amount)}</span>
-              </div>
-            ))
-          )}
+            <div>
+              <div style={{ fontWeight: 700, marginBottom: 8, fontSize: 13 }}>미확인 리스크 ({dashboard?.risks?.length || 0})</div>
+              {(!dashboard?.risks || dashboard.risks.length === 0) ? (
+                <div className="empty" style={{ padding: 12 }}>없음</div>
+              ) : (
+                dashboard.risks.slice(0, 5).map(r => (
+                  <div key={r.id} className="text-muted" style={{ fontSize: 12.5, marginBottom: 4 }}>
+                    {new Date(r.created_at).toLocaleDateString('ko-KR')} — {r.description || r.type}
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div>
+              <div style={{ fontWeight: 700, marginBottom: 8, fontSize: 13 }}>최근 발주</div>
+              {orders.length === 0 ? (
+                <div className="empty" style={{ padding: 12 }}>발주 내역 없음</div>
+              ) : (
+                orders.slice(0, 5).map(o => (
+                  <div key={o.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, marginBottom: 4 }}>
+                    <span className="text-muted">{new Date(o.created_at).toLocaleDateString('ko-KR')} — 발주서 #{o.id}</span>
+                    <span>{won(o.confirmed_amount ?? o.total_amount)}</span>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
         </>
       )}
     </div>
@@ -392,7 +398,6 @@ export default function Stores() {
         </div>
       </div>
 
-      <div className="split-layout" style={{ display: 'grid', gridTemplateColumns: detailStore ? '1fr 380px' : '1fr', gap: 20 }}>
       <div className="card">
         {stores.length === 0 ? (
           <div className="empty">가맹점을 추가해주세요</div>
@@ -456,8 +461,12 @@ export default function Stores() {
           </table>
         )}
       </div>
-      {detailStore && <StoreDetailPanel store={detailStore} onClose={() => setDetailStore(null)} />}
-      </div>
+
+      {detailStore && (
+        <div style={{ marginTop: 16 }}>
+          <StoreDetailPanel store={detailStore} onClose={() => setDetailStore(null)} />
+        </div>
+      )}
 
       <div className="elevated-card" style={{ marginTop: 16 }}>
         <div style={{ fontWeight: 700, marginBottom: 8 }}>웹훅 URL 안내</div>
