@@ -210,8 +210,18 @@ function HQLayout() {
   );
 }
 
+const STORE_MENU_GROUPS = [
+  { title: '발주 · 재고', items: [
+    { to: '/store', end: true, label: '발주하기' },
+    { to: '/store/stock', end: false, label: '재고 확인' },
+    { to: '/store/waste', end: false, label: '폐기 입력' },
+    { to: '/store/stock-adjustments', end: false, label: '실사 재고 조정' },
+  ] },
+];
+
 function StoreLayout() {
   const { user } = useAuth();
+  const [collapsed, setCollapsed] = useState(false);
   return (
     <div className="kicc-layout">
       <header className="topnav">
@@ -224,19 +234,22 @@ function StoreLayout() {
         </nav>
       </header>
       <TopBar name={user?.name} />
-      <main className="kicc-main">
-        <div className="kicc-main-inner">
-          <Routes>
-            <Route path="/store" element={<StoreOrder />} />
-            <Route path="/store/orders/:id/invoice" element={<OrderInvoice />} />
-            <Route path="/store/payment/:id/result" element={<PaymentResult />} />
-            <Route path="/store/stock" element={<StoreStock />} />
-            <Route path="/store/waste" element={<Waste />} />
-            <Route path="/store/stock-adjustments" element={<StockAdjustment />} />
-            <Route path="*" element={<Navigate to="/store" />} />
-          </Routes>
-        </div>
-      </main>
+      <div className="kicc-body">
+        <SideMenu collapsed={collapsed} onToggle={() => setCollapsed(c => !c)} groups={STORE_MENU_GROUPS} badgeCounts={{}} />
+        <main className="kicc-main">
+          <div className="kicc-main-inner">
+            <Routes>
+              <Route path="/store" element={<StoreOrder />} />
+              <Route path="/store/orders/:id/invoice" element={<OrderInvoice />} />
+              <Route path="/store/payment/:id/result" element={<PaymentResult />} />
+              <Route path="/store/stock" element={<StoreStock />} />
+              <Route path="/store/waste" element={<Waste />} />
+              <Route path="/store/stock-adjustments" element={<StockAdjustment />} />
+              <Route path="*" element={<Navigate to="/store" />} />
+            </Routes>
+          </div>
+        </main>
+      </div>
       <StockAlert storeId={user?.store_id} storeName={user?.store_name} />
       <NoticeBanner storeId={user?.store_id} />
       <OrderAttentionBanner storeId={user?.store_id} />
