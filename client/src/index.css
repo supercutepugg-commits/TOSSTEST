@@ -2,16 +2,16 @@
 
 /* ── 라이트 테마 (기본) ─────────────────────────────── */
 :root {
-  --bg:          #f5f6fa;
+  --bg:          #fafbff;
   --bg-card:     #ffffff;
-  --bg-elevated: #f1f5f9;
+  --bg-elevated: #f0f4ff;
   --bg-input:    #ffffff;
-  --bg-muted:    #f8f9fb;
+  --bg-muted:    #f5f8ff;
   --text:        #1a1a2e;
   --text-2:      #4b5563;
   --text-3:      #6b7280;
-  --border:      #e2e8f0;
-  --border-input:#d1d5db;
+  --border:      #dde3f0;
+  --border-input:#c9d3e8;
   --shadow:      0 2px 8px rgba(15,23,42,0.05), 0 1px 2px rgba(15,23,42,0.04);
   --purple:      #0064ff;
   --purple-dark: #0050cc;
@@ -58,12 +58,15 @@ body {
   display: flex;
   align-items: stretch;
   height: 72px;
-  background: linear-gradient(105deg, #0a2a6b 0%, var(--purple-dark) 50%, var(--purple) 100%);
+  background: linear-gradient(105deg, rgba(10,42,107,0.96) 0%, rgba(0,80,204,0.95) 50%, rgba(0,100,255,0.94) 100%);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   color: #fff;
   flex-shrink: 0;
-  box-shadow: 0 4px 24px rgba(0, 80, 204, 0.4);
-  position: relative;
-  z-index: 5;
+  box-shadow: 0 4px 32px rgba(0, 80, 204, 0.45), 0 1px 0 rgba(255,255,255,0.08) inset;
+  position: sticky;
+  top: 0;
+  z-index: 50;
 }
 
 .topnav-brand {
@@ -295,9 +298,12 @@ h2 { font-size: 27px; font-weight: 700; letter-spacing: -0.3px; margin-bottom: 0
   background: var(--bg-card);
   border-radius: 20px;
   padding: 28px 30px;
-  box-shadow: 0 1px 2px rgba(15,23,42,0.03), 0 16px 40px -16px rgba(15,23,42,0.14);
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.9) inset,
+    0 1px 2px rgba(15,23,42,0.04),
+    0 20px 48px -16px rgba(15,23,42,0.12);
   margin-bottom: 24px;
-  border: 1px solid var(--border);
+  border: 1px solid rgba(0,100,255,0.08);
   position: relative;
   overflow: hidden;
 }
@@ -306,7 +312,7 @@ h2 { font-size: 27px; font-weight: 700; letter-spacing: -0.3px; margin-bottom: 0
   position: absolute;
   top: 0; left: 0; right: 0;
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.8), transparent);
+  background: linear-gradient(90deg, transparent 5%, rgba(255,255,255,0.95) 50%, transparent 95%);
   pointer-events: none;
 }
 
@@ -359,6 +365,7 @@ td {
   border-bottom: 1px solid var(--border);
   vertical-align: middle;
   color: var(--text);
+  font-feature-settings: 'tnum';
 }
 tr:last-child td { border-bottom: none; }
 tr:hover td { background: var(--bg-elevated); }
@@ -839,9 +846,10 @@ input[readonly], input:read-only {
   border-bottom: none;
 }
 .store-table td {
-  padding: 16px 18px;
+  padding: 18px 18px;
   border-bottom: 1px solid var(--border);
   vertical-align: middle;
+  font-feature-settings: 'tnum';
 }
 .store-table tbody tr:last-child td { border-bottom: none; }
 .store-table tbody tr { transition: background 0.13s; position: relative; }
