@@ -31,13 +31,13 @@ function StatusBadge({ status }) {
 function QtyControl({ qty, onMinus, onPlus, onChange }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 0, border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', flexShrink: 0 }}>
-      <button type="button" onClick={onMinus}
+      <button type="button" className="qty-btn" onClick={onMinus}
         style={{ width: 32, height: 32, background: 'var(--bg-muted)', border: 'none', borderRadius: 0, fontSize: 18, fontWeight: 300, color: 'var(--text-2)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, flexShrink: 0 }}>
         −
       </button>
-      <input type="number" value={qty} min={1} onChange={e => onChange(Number(e.target.value))}
+      <input type="number" className="qty-input" value={qty} min={1} onChange={e => onChange(Number(e.target.value))}
         style={{ width: 44, height: 32, textAlign: 'center', border: 'none', borderLeft: '1px solid var(--border)', borderRight: '1px solid var(--border)', borderRadius: 0, fontSize: 14, fontWeight: 700, padding: 0, outline: 'none', background: 'var(--bg-card)', boxShadow: 'none' }} />
-      <button type="button" onClick={onPlus}
+      <button type="button" className="qty-btn" onClick={onPlus}
         style={{ width: 32, height: 32, background: 'var(--bg-muted)', border: 'none', borderRadius: 0, fontSize: 18, fontWeight: 300, color: 'var(--text-2)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, flexShrink: 0 }}>
         +
       </button>
@@ -56,7 +56,7 @@ function CartPanel({ cart, total, updateQty, memo, setMemo, submitOrder, submitt
       {/* 헤더 */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 17, fontWeight: 800, color: 'var(--text)' }}>장바구니</span>
+          <span className="cart-title" style={{ fontSize: 17, fontWeight: 800, color: 'var(--text)' }}>장바구니</span>
           {cart.length > 0 && (
             <span style={{ background: 'var(--purple)', color: '#fff', borderRadius: 99, minWidth: 20, height: 20, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, padding: '0 5px' }}>
               {cart.length}
@@ -92,8 +92,8 @@ function CartPanel({ cart, total, updateQty, memo, setMemo, submitOrder, submitt
               {/* 상품명 + 삭제 */}
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', lineHeight: 1.4 }}>{item.product.name}</div>
-                  <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>{item.product.unit}</div>
+                  <div className="cart-item-name" style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', lineHeight: 1.4 }}>{item.product.name}</div>
+                  <div className="cart-item-unit" style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>{item.product.unit}</div>
                 </div>
                 <button type="button" onClick={() => updateQty(item.product.id, 0)}
                   style={{ background: 'none', border: 'none', color: 'var(--text-3)', fontSize: 16, cursor: 'pointer', padding: '0 2px', lineHeight: 1, flexShrink: 0, opacity: 0.6 }}
@@ -109,7 +109,7 @@ function CartPanel({ cart, total, updateQty, memo, setMemo, submitOrder, submitt
                   onPlus={() => updateQty(item.product.id, item.quantity + 1)}
                   onChange={v => updateQty(item.product.id, v)}
                 />
-                <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>
+                <div className="cart-item-price" style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>
                   {item.product.price > 0 ? `${(item.product.price * item.quantity).toLocaleString()}원` : '—'}
                 </div>
               </div>
@@ -181,17 +181,71 @@ export default function StoreOrder() {
   const [templates, setTemplates] = useState([]);
   const [myStore, setMyStore] = useState(null);
   const [cartOpen, setCartOpen] = useState(false); // 모바일 장바구니 드로어
+  const [productsLoaded, setProductsLoaded] = useState(false);
+  const [ordersLoaded, setOrdersLoaded] = useState(false);
+  const cartRestoredRef = useRef(false);
+  const autosaveTimerRef = useRef(null);
 
-  const loadOrders = () => api.getOrders().then(setOrders).catch(() => {});
+  const loadOrders = () => api.getOrders().then(o => { setOrders(o); setOrdersLoaded(true); }).catch(() => setOrdersLoaded(true));
   const loadTemplates = () => api.getOrderTemplates().then(setTemplates).catch(() => {});
 
   useEffect(() => {
-    api.getProducts().then(setProducts).catch(() => {});
+    api.getProducts().then(p => { setProducts(p); setProductsLoaded(true); }).catch(() => setProductsLoaded(true));
     api.getProductRecommendations().then(setRecommendations).catch(() => {});
     api.getMyStore().then(setMyStore).catch(() => {});
     loadTemplates();
     loadOrders();
   }, []);
+
+  // 장바구니를 서버의 임시저장(DRAFT) 발주서로 보관 — 기기를 바꿔도, 다시 로그인해도 그대로 남아있도록
+  // 가장 최근 DRAFT를 자동으로 장바구니에 복원한다 (최초 1회만)
+  useEffect(() => {
+    if (cartRestoredRef.current || !productsLoaded || !ordersLoaded) return;
+    cartRestoredRef.current = true;
+    const draft = orders.find(o => o.status === 'DRAFT');
+    if (draft) loadOrderToCart(draft).catch(() => {});
+  }, [productsLoaded, ordersLoaded, orders]);
+
+  // 장바구니/메모가 바뀔 때마다 잠시 후 서버에 DRAFT로 자동 저장 — "임시저장" 버튼을 누르지 않아도
+  // 다음에 와서(다른 기기 포함) 이어서 결제할 수 있게 함
+  useEffect(() => {
+    if (!cartRestoredRef.current) return;
+    clearTimeout(autosaveTimerRef.current);
+    autosaveTimerRef.current = setTimeout(async () => {
+      try {
+        if (cart.length === 0) {
+          if (editingOrderId) {
+            await api.cancelOrder(editingOrderId).catch(() => {});
+            setEditingOrderId(null);
+            setEditingOrderUpdatedAt(null);
+            loadOrders();
+          }
+          return;
+        }
+        const payload = {
+          memo, submit: false,
+          items: cart.map(i => ({
+            product_id: i.product.id, product_name: i.product.name,
+            unit: i.product.unit, unit_price: i.product.price, quantity: i.quantity,
+          })),
+          updated_at: editingOrderUpdatedAt,
+        };
+        if (editingOrderId) {
+          const res = await api.updateOrder(editingOrderId, payload);
+          setEditingOrderUpdatedAt(res.updated_at);
+        } else {
+          const res = await api.createOrder(payload);
+          setEditingOrderId(res.id);
+          const fresh = await api.getOrder(res.id);
+          setEditingOrderUpdatedAt(fresh.updated_at || null);
+        }
+        loadOrders();
+      } catch {
+        // 자동 저장 실패는 조용히 넘어감 — "발주하기"를 직접 누를 때 다시 시도됨
+      }
+    }, 800);
+    return () => clearTimeout(autosaveTimerRef.current);
+  }, [cart, memo]);
 
   const addToCart = (product) => {
     setCart(c => {
@@ -250,6 +304,7 @@ export default function StoreOrder() {
   const submitOrder = async (draft) => {
     if (cart.length === 0) { toast('상품을 선택해주세요', 'error'); return; }
     if (submitting) return;
+    clearTimeout(autosaveTimerRef.current); // 자동저장과 동시에 들어가 updated_at 충돌이 나지 않도록
     setSubmitting(true);
     const payload = {
       memo, submit: !draft,
@@ -357,7 +412,31 @@ export default function StoreOrder() {
   };
 
   return (
-    <div style={{ paddingBottom: 80 }}>
+    <div className="store-order-page" style={{ paddingBottom: 80 }}>
+      <style>{`
+        @media (max-width: 768px) {
+          .store-order-page { padding-left: 4px; padding-right: 4px; }
+          .store-order-page h2 { font-size: 18px !important; }
+          .store-order-page .cart-desktop-panel { display: none !important; }
+          .store-order-page .split-layout { grid-template-columns: 1fr !important; }
+          .store-order-page .product-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)) !important; gap: 8px !important; }
+          .store-order-page .product-card { padding: 10px 12px !important; }
+          .store-order-page .product-name { font-size: 13px !important; }
+          .store-order-page .product-unit { font-size: 11px !important; }
+          .store-order-page .product-price { font-size: 12px !important; }
+          .store-order-page .cart-title { font-size: 15px !important; }
+          .store-order-page .cart-item-name { font-size: 13px !important; }
+          .store-order-page .cart-item-unit { font-size: 11px !important; }
+          .store-order-page .cart-item-price { font-size: 14px !important; }
+          .store-order-page .qty-btn { width: 28px !important; height: 28px !important; font-size: 16px !important; }
+          .store-order-page .qty-input { width: 36px !important; height: 28px !important; font-size: 13px !important; }
+          .store-order-page .cart-mobile-btn { font-size: 13px !important; padding: 12px 14px !important; }
+          .store-order-page .table-scroll { overflow-x: auto; }
+          .store-order-page table { font-size: 12px !important; }
+          .store-order-page table th, .store-order-page table td { padding: 6px 4px !important; }
+          .store-order-page .hide-mobile { display: none !important; }
+        }
+      `}</style>
       <h2>발주하기</h2>
 
       {deadlineWarning !== null && (
@@ -416,13 +495,13 @@ export default function StoreOrder() {
                 ? <div className="empty">등록된 상품 없음</div>
                 : visibleProducts.length === 0
                 ? <div className="empty">검색 결과가 없습니다</div>
-                : <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 10 }}>
+                : <div className="product-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 10 }}>
                   {visibleProducts.map(p => {
                     const inCart = cart.find(i => i.product.id === p.id);
                     const recommendedQty = recommendations[p.id];
                     return (
                       <div key={p.id}
-                        className="elevated-card"
+                        className="elevated-card product-card"
                         style={{ padding: '14px 16px', cursor: 'pointer', position: 'relative', transition: 'border-color 0.15s, box-shadow 0.15s', borderColor: inCart ? 'var(--purple)' : 'var(--border)', boxShadow: inCart ? '0 0 0 2px var(--purple-light)' : undefined }}
                         onClick={() => addToCart(p)}
                         onMouseOver={e => e.currentTarget.style.borderColor = 'var(--purple)'}
@@ -433,9 +512,9 @@ export default function StoreOrder() {
                             {inCart.quantity}
                           </span>
                         )}
-                        <div style={{ fontWeight: 600, marginBottom: 4, fontSize: 14 }}>{p.name}</div>
-                        <div className="text-sub" style={{ fontSize: 12 }}>{p.unit}</div>
-                        <div style={{ fontSize: 13, color: 'var(--purple)', fontWeight: 700, marginTop: 6 }}>
+                        <div className="product-name" style={{ fontWeight: 600, marginBottom: 4, fontSize: 14 }}>{p.name}</div>
+                        <div className="text-sub product-unit" style={{ fontSize: 12 }}>{p.unit}</div>
+                        <div className="product-price" style={{ fontSize: 13, color: 'var(--purple)', fontWeight: 700, marginTop: 6 }}>
                           {p.price > 0 ? `${p.price.toLocaleString()}원` : '단가 미설정'}
                         </div>
                         {recommendedQty > 0 && (
@@ -470,7 +549,7 @@ export default function StoreOrder() {
             padding: '12px 16px',
             display: 'flex', alignItems: 'center', gap: 12,
           }}>
-            <button type="button" onClick={() => setCartOpen(true)}
+            <button type="button" className="cart-mobile-btn" onClick={() => setCartOpen(true)}
               style={{
                 flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 background: cart.length > 0 ? 'var(--purple)' : 'var(--bg-muted)',
@@ -520,11 +599,6 @@ export default function StoreOrder() {
               from { transform: translateY(100%); opacity: 0.6; }
               to   { transform: translateY(0);    opacity: 1; }
             }
-            /* 모바일에서 데스크탑 패널 숨기기 */
-            @media (max-width: 768px) {
-              .cart-desktop-panel { display: none !important; }
-              .split-layout { grid-template-columns: 1fr !important; }
-            }
             /* 데스크탑에서 모바일 바 숨기기 */
             @media (min-width: 769px) {
               .cart-mobile-bar { display: none !important; }
@@ -538,8 +612,9 @@ export default function StoreOrder() {
           <div className="card">
             {orders.length === 0
               ? <div className="empty">발주 내역 없음</div>
-              : <table>
-                <thead><tr><th>발주일</th><th>상태</th><th>금액</th><th>메모</th><th style={{ width: 150 }}></th></tr></thead>
+              : <div className="table-scroll">
+                <table>
+                <thead><tr><th>발주일</th><th>상태</th><th>금액</th><th className="hide-mobile">메모</th><th style={{ width: 150 }}></th></tr></thead>
                 <tbody>
                   {orders.map(o => (
                     <tr key={o.id} style={{ cursor: 'pointer', background: detailOrder?.id === o.id ? 'var(--bg-elevated)' : '' }}
@@ -552,7 +627,7 @@ export default function StoreOrder() {
                         )}
                       </td>
                       <td>{(o.confirmed_amount ?? o.total_amount).toLocaleString()}원</td>
-                      <td className="text-muted" style={{ fontSize: 13 }}>{o.memo || '-'}</td>
+                      <td className="text-muted hide-mobile" style={{ fontSize: 13 }}>{o.memo || '-'}</td>
                       <td>
                         <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
                           {['DRAFT', 'REVISION_REQUESTED'].includes(o.status) && (
@@ -564,7 +639,8 @@ export default function StoreOrder() {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+                </table>
+              </div>
             }
           </div>
 
@@ -612,7 +688,8 @@ export default function StoreOrder() {
                   신고 내용: {detailOrder.receipt_issue_note}
                 </div>
               )}
-              <table style={{ marginBottom: 12 }}>
+              <div className="table-scroll">
+                <table style={{ marginBottom: 12 }}>
                 <thead><tr><th>상품</th><th>수량</th><th>금액</th></tr></thead>
                 <tbody>
                   {detailOrder.items?.map(item => {
@@ -636,7 +713,8 @@ export default function StoreOrder() {
                     );
                   })}
                 </tbody>
-              </table>
+                </table>
+              </div>
               <div style={{ fontWeight: 700, textAlign: 'right', marginBottom: 12 }}>
                 {detailOrder.confirmed_amount
                   ? `확정금액: ${detailOrder.confirmed_amount.toLocaleString()}원`
