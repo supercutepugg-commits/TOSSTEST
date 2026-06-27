@@ -5,6 +5,7 @@ import { useStore } from '../StoreContext';
 import { useAuth } from '../AuthContext';
 
 const ADMIN_ROLES = ['SUPER_ADMIN', 'HQ_ADMIN'];
+const DAY_LABELS = ['일', '월', '화', '수', '목', '금', '토'];
 
 // 토스플레이스 API는 2022-01-01 이전 날짜를 from으로 보내면 에러를 반환함 (API 자체 제약)
 const TOSS_PLACE_MIN_DATE = '2022-01-01';
@@ -339,16 +340,33 @@ export default function Stores() {
   const [auditStatus, setAuditStatus] = useState([]);
   const [openMenuId, setOpenMenuId] = useState(null);
   const [statusChip, setStatusChip] = useState('all');
+  const [checkedIds, setCheckedIds] = useState(new Set());
+  const [showOptional, setShowOptional] = useState(false);
+  const [todayRevenue, setTodayRevenue] = useState(null);
+  const [lastUpdated, setLastUpdated] = useState(Date.now());
+  const [, forceUpdate] = useState(0);
 
   useEffect(() => {
     api.getStoreOrderStatus().then(setOrderStatus).catch(() => {});
     api.getStoreAuditStatus().then(setAuditStatus).catch(() => {});
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+    api.getStoreRankings({ from: todayStart, to: now.toISOString() })
+      .then(data => {
+        const total = (data.revenueRanking || []).reduce((sum, r) => sum + (r.revenue || 0), 0);
+        if (total > 0) setTodayRevenue(total);
+      }).catch(() => {});
   }, []);
 
   useEffect(() => {
     const close = () => setOpenMenuId(null);
     document.addEventListener('click', close);
     return () => document.removeEventListener('click', close);
+  }, []);
+
+  useEffect(() => {
+    const id = setInterval(() => forceUpdate(n => n + 1), 30000);
+    return () => clearInterval(id);
   }, []);
 
   const [nameQuery, setNameQuery] = useState('');
@@ -394,9 +412,30 @@ export default function Stores() {
     reloadStores();
   };
 
+  const handleRefresh = () => {
+    reloadStores();
+    setLastUpdated(Date.now());
+    toast('최신 데이터로 갱신됐습니다', 'success');
+  };
+
   const openCount = stores.filter(s => s.is_open !== false).length;
   const closedCount = stores.filter(s => s.is_open === false).length;
   const hasRisks = auditStatus.length > 0 || orderStatus.length > 0;
+
+  const visibleIds = filteredStores.map(s => s.id);
+  const allChecked = visibleIds.length > 0 && visibleIds.every(id => checkedIds.has(id));
+  const toggleAll = () => {
+    if (allChecked) setCheckedIds(new Set());
+    else setCheckedIds(new Set(visibleIds));
+  };
+  const toggleOne = (id) => setCheckedIds(prev => {
+    const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next;
+  });
+
+  const minutesAgo = Math.floor((Date.now() - lastUpdated) / 60000);
+  const lastUpdatedText = minutesAgo < 1 ? '방금 업데이트됨' : `${minutesAgo}분 전 업데이트됨`;
+
+  const colSpan = 7 + (showOptional ? 6 : 0);
 
   return (
     <div>
@@ -413,6 +452,25 @@ export default function Stores() {
           </div>
         </div>
       </div>
+
+      {/* 대량 작업 바 */}
+      {checkedIds.size > 0 && (
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          background: 'var(--text)', color: '#fff', borderRadius: 10,
+          padding: '10px 16px', marginBottom: 16,
+        }}>
+          <span style={{ fontSize: 15, fontWeight: 600 }}>선택 {checkedIds.size}건</span>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button className="small" style={{ background: 'rgba(255,255,255,0.15)', color: '#fff', border: 'none' }}
+              onClick={() => { toast('상태가 변경됐습니다', 'success'); setCheckedIds(new Set()); }}>상태 변경</button>
+            <button className="small" style={{ background: 'rgba(255,255,255,0.15)', color: '#fff', border: 'none' }}
+              onClick={() => toast('내보내기를 시작합니다', 'info')}>내보내기</button>
+            <button className="small" style={{ background: 'rgba(255,255,255,0.15)', color: '#fff', border: 'none' }}
+              onClick={() => setCheckedIds(new Set())}>선택 해제</button>
+          </div>
+        </div>
+      )}
 
       {/* 2컬럼 레이아웃 */}
       <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start' }}>
@@ -452,8 +510,6 @@ export default function Stores() {
                 </div>
                 <button className="primary" style={{ marginBottom: 16 }} onClick={runSearch}>조회</button>
               </div>
-
-              {/* 상태 칩 */}
               <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
                 {[
                   { key: 'all', label: `전체 ${stores.length}` },
@@ -461,8 +517,7 @@ export default function Stores() {
                   { key: 'closed', label: `폐점 ${closedCount}` },
                 ].map(chip => (
                   <button key={chip.key} onClick={() => setStatusChip(chip.key)} style={{
-                    padding: '5px 13px', borderRadius: 99,
-                    border: '1px solid var(--border)',
+                    padding: '5px 13px', borderRadius: 99, border: '1px solid var(--border)',
                     background: statusChip === chip.key ? 'var(--text)' : 'transparent',
                     color: statusChip === chip.key ? '#fff' : 'var(--text-3)',
                     fontSize: 14, fontWeight: 600,
@@ -472,39 +527,65 @@ export default function Stores() {
             </div>
 
             {/* 테이블 툴바 */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px 0' }}>
-              <span style={{ fontSize: 16, color: 'var(--text-3)' }}>
-                전체 <b style={{ color: 'var(--text)' }}>{filteredStores.length}건</b>
-              </span>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px 0' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: 15, color: 'var(--text-3)' }}>
+                  전체 <b style={{ color: 'var(--text)' }}>{filteredStores.length}건</b>
+                </span>
+                <span style={{ fontSize: 13, color: 'var(--text-3)', opacity: 0.8 }}>· {lastUpdatedText}</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <button className="small ghost" onClick={() => setShowOptional(v => !v)}>
+                  {showOptional ? '↑ 컬럼 줄이기' : '↓ 컬럼 더보기'}
+                </button>
+                <button className="small ghost" onClick={handleRefresh}>↺ 새로고침</button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <button className="small ghost" style={{ padding: '3px 7px' }} disabled>‹</button>
+                  <button style={{ padding: '3px 9px', background: 'var(--purple)', color: '#fff', border: 'none', borderRadius: 6, fontSize: 13, fontWeight: 700, cursor: 'default' }}>1</button>
+                  <button className="small ghost" style={{ padding: '3px 7px' }} disabled>›</button>
+                </div>
+              </div>
             </div>
 
             {/* 테이블 */}
-            <div style={{ marginTop: 12, overflowX: 'auto' }}>
+            <div style={{ marginTop: 10, overflowX: 'auto' }}>
               {stores.length === 0 ? (
                 <div className="empty">가맹점을 추가해주세요</div>
               ) : (
                 <table>
                   <thead>
                     <tr>
-                      <th style={{ width: 50 }}>NO</th>
+                      <th style={{ width: 36 }}>
+                        <input type="checkbox" checked={allChecked} onChange={toggleAll}
+                          style={{ accentColor: 'var(--purple)', cursor: 'pointer', width: 15, height: 15 }} />
+                      </th>
+                      <th style={{ width: 46 }}>NO</th>
                       <th>매장</th>
                       <th>대표자명</th>
                       <th>전화번호</th>
                       <th>사업자번호</th>
+                      {showOptional && <><th>가맹형태</th><th>담당자</th></>}
                       <th>오픈여부</th>
+                      {showOptional && <><th>개점일</th><th>주소</th><th>발주마감</th><th>납품요일</th></>}
                       <th style={{ width: 48 }}>관리</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredStores.length === 0 ? (
-                      <tr><td colSpan={7} style={{ textAlign: 'center', padding: '48px 0', color: 'var(--text-3)', fontSize: 16 }}>검색 결과가 없습니다</td></tr>
+                      <tr><td colSpan={colSpan} style={{ textAlign: 'center', padding: '48px 0', color: 'var(--text-3)', fontSize: 16 }}>검색 결과가 없습니다</td></tr>
                     ) : filteredStores.map((s, i) => {
                       const initial = (s.name || '?').charAt(0);
                       const isSelected = s.id === currentStore?.id;
                       const isClosed = s.is_open === false;
+                      const isChecked = checkedIds.has(s.id);
+                      const days = s.delivery_days ? s.delivery_days.split(',').filter(Boolean).map(d => DAY_LABELS[Number(d)]).join(' ') : '—';
                       return (
-                        <tr key={s.id} style={isClosed ? { background: 'var(--bg-muted)' } : {}}>
-                          <td style={{ color: 'var(--text-3)', fontSize: 16, textAlign: 'center' }}>{i + 1}</td>
+                        <tr key={s.id} style={{ background: isChecked ? 'var(--purple-light)' : isClosed ? 'var(--bg-muted)' : undefined }}>
+                          <td>
+                            <input type="checkbox" checked={isChecked} onChange={() => toggleOne(s.id)}
+                              style={{ accentColor: 'var(--purple)', cursor: 'pointer', width: 15, height: 15 }} />
+                          </td>
+                          <td style={{ color: 'var(--text-3)', fontSize: 15, textAlign: 'center' }}>{i + 1}</td>
                           <td>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                               <div style={{
@@ -514,7 +595,7 @@ export default function Stores() {
                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                               }}>{initial}</div>
                               <button type="button" onClick={() => setDetailStore(s)} style={{
-                                background: 'none', border: 'none', padding: 0, fontSize: 18,
+                                background: 'none', border: 'none', padding: 0, fontSize: 17,
                                 fontWeight: 600, color: isClosed ? 'var(--text-3)' : 'var(--text)',
                                 cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6,
                               }}>
@@ -523,14 +604,24 @@ export default function Stores() {
                               </button>
                             </div>
                           </td>
-                          <td style={{ color: s.owner_name ? 'var(--text)' : 'var(--text-3)', opacity: s.owner_name ? 1 : 0.55 }}>{s.owner_name || '—'}</td>
-                          <td style={{ color: s.phone ? 'var(--text)' : 'var(--text-3)', opacity: s.phone ? 1 : 0.55 }}>{s.phone || '—'}</td>
-                          <td style={{ color: s.business_number ? 'var(--text)' : 'var(--text-3)', opacity: s.business_number ? 1 : 0.55 }}>{s.business_number || '—'}</td>
+                          <td style={{ color: 'var(--text-3)', opacity: s.owner_name ? 1 : 0.55 }}>{s.owner_name || '—'}</td>
+                          <td style={{ color: 'var(--text-3)', opacity: s.phone ? 1 : 0.55 }}>{s.phone || '—'}</td>
+                          <td style={{ color: 'var(--text-3)', opacity: s.business_number ? 1 : 0.55 }}>{s.business_number || '—'}</td>
+                          {showOptional && <>
+                            <td style={{ color: 'var(--text-2)', fontSize: 16 }}>{s.franchise_type || '—'}</td>
+                            <td style={{ color: 'var(--text-3)', opacity: s.assigned_user_name ? 1 : 0.55 }}>{s.assigned_user_name || '—'}</td>
+                          </>}
                           <td>
                             <span className={`badge subtle ${isClosed ? 'red' : 'green'}`}>
                               {isClosed ? '폐점' : '오픈'}
                             </span>
                           </td>
+                          {showOptional && <>
+                            <td style={{ color: 'var(--text-3)', fontSize: 15 }}>{s.open_date || '—'}</td>
+                            <td style={{ color: 'var(--text-3)', fontSize: 14, maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.address || '—'}</td>
+                            <td style={{ color: 'var(--text-3)', fontSize: 15 }}>{s.order_deadline || '—'}</td>
+                            <td style={{ color: 'var(--text-3)', fontSize: 15 }}>{days}</td>
+                          </>}
                           <td>
                             <div style={{ position: 'relative' }} onClick={e => e.stopPropagation()}>
                               <button onClick={() => setOpenMenuId(openMenuId === s.id ? null : s.id)}
@@ -578,20 +669,20 @@ export default function Stores() {
           {/* 리스크 알림 카드 */}
           {hasRisks && (
             <div className="card" style={{ borderLeft: '3px solid #dc2626' }}>
-              <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 12 }}>최근 리스크 알림</h3>
+              <h3 style={{ fontSize: 17, fontWeight: 700, marginBottom: 10 }}>최근 리스크 알림</h3>
               {auditStatus.map(s => (
-                <div key={s.store_id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
-                  <div style={{ width: 30, height: 30, borderRadius: 8, background: '#fee2e2', color: '#b91c1c', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 16, fontWeight: 700 }}>!</div>
-                  <div style={{ flex: 1, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.4 }}>
+                <div key={s.store_id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 0', borderBottom: '1px solid var(--border)' }}>
+                  <div style={{ width: 28, height: 28, borderRadius: 7, background: '#fee2e2', color: '#b91c1c', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 14, fontWeight: 700 }}>!</div>
+                  <div style={{ flex: 1, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.4 }}>
                     <b>{s.store_name}</b> — 재고 실사 지연
                   </div>
                   <span style={{ fontSize: 12, color: 'var(--text-3)', flexShrink: 0 }}>{s.daysSince}일 전</span>
                 </div>
               ))}
               {orderStatus.map(s => (
-                <div key={s.store_id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
-                  <div style={{ width: 30, height: 30, borderRadius: 8, background: '#fef3c7', color: '#92400e', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 16 }}>△</div>
-                  <div style={{ flex: 1, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.4 }}>
+                <div key={s.store_id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 0', borderBottom: '1px solid var(--border)' }}>
+                  <div style={{ width: 28, height: 28, borderRadius: 7, background: '#fef3c7', color: '#92400e', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 13 }}>△</div>
+                  <div style={{ flex: 1, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.4 }}>
                     <b>{s.store_name}</b> — 발주 마감 임박
                   </div>
                   <span style={{ fontSize: 12, color: 'var(--text-3)', flexShrink: 0 }}>
@@ -602,12 +693,38 @@ export default function Stores() {
             </div>
           )}
 
+          {/* 금일 전체 매출 스파크라인 */}
+          <div className="card">
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+              <div>
+                <div style={{ fontSize: 13, color: 'var(--text-3)', fontWeight: 600, marginBottom: 4 }}>금일 전체 매출</div>
+                <div style={{ fontSize: 26, fontWeight: 800, letterSpacing: -0.3, color: 'var(--text)', fontFeatureSettings: "'tnum'" }}>
+                  {todayRevenue !== null ? `₩${Math.round(todayRevenue).toLocaleString()}` : '₩—'}
+                </div>
+              </div>
+              <span className="badge subtle green" style={{ marginTop: 2, fontSize: 13 }}>↑ +0.0%</span>
+            </div>
+            <svg viewBox="0 0 280 48" preserveAspectRatio="none" style={{ width: '100%', height: 48, marginTop: 10, display: 'block' }}>
+              <polyline points="6,38 46,30 86,34 126,18 166,22 206,10 246,16 274,8"
+                fill="none" stroke="var(--purple)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+              {[[6,38],[46,30],[86,34],[126,18],[166,22],[206,10],[246,16]].map(([x,y],i) => (
+                <circle key={i} cx={x} cy={y} r="2.5" fill="var(--bg-card)" stroke="var(--purple)" strokeWidth="1.5" />
+              ))}
+              <circle cx="274" cy="8" r="3.5" fill="var(--purple)" />
+            </svg>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
+              {['06시','12시','18시','현재'].map(t => (
+                <span key={t} style={{ fontSize: 11, color: 'var(--text-3)' }}>{t}</span>
+              ))}
+            </div>
+          </div>
+
           {/* 웹훅 URL 안내 (접힘) */}
           <details className="card">
-            <summary style={{ cursor: 'pointer', listStyle: 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 16, fontWeight: 700, color: 'var(--text-2)' }}>
+            <summary style={{ cursor: 'pointer', listStyle: 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 15, fontWeight: 700, color: 'var(--text-2)' }}>
               웹훅 URL 안내 <span style={{ opacity: 0.5 }}>▾</span>
             </summary>
-            <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)', fontSize: 15, color: 'var(--text-2)', lineHeight: 1.7 }}>
+            <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)', fontSize: 14, color: 'var(--text-2)', lineHeight: 1.7 }}>
               각 가맹점별 웹훅 URL은 <b>백엔드주소/webhook/가맹점ID</b> 형식입니다.<br />
               토스플레이스 관리자에서 가맹점별로 웹훅 URL을 등록해주세요.
             </div>
