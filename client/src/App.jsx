@@ -32,22 +32,21 @@ import NoticeBanner from './components/NoticeBanner';
 import OrderAttentionBanner from './components/OrderAttentionBanner';
 import ToastHost from './components/ToastHost';
 
-function TopBar({ name, currentStore, onBackToAdmin }) {
+function TopNavRight({ name, currentStore, onBackToAdmin }) {
   const { logout } = useAuth();
   const { theme, toggle } = useTheme();
   return (
-    <div className="topbar-info">
-      <div className="topbar-info-left">
-        {currentStore && <span className="topbar-current-store">{currentStore.name}</span>}
-        {onBackToAdmin && (
-          <button className="topbar-link" onClick={onBackToAdmin}>관리자로 돌아가기</button>
-        )}
-      </div>
-      <div className="topbar-info-right">
-        <span className="topbar-user">{name} 님</span>
-        <button className="topbar-link" onClick={toggle}>{theme === 'light' ? '다크 모드' : '라이트 모드'}</button>
-        <button className="topbar-link" onClick={logout}>로그아웃</button>
-      </div>
+    <div className="topnav-right">
+      {currentStore && <span style={{ fontSize: 16, opacity: 0.8, borderRight: '1px solid rgba(255,255,255,0.2)', paddingRight: 16, marginRight: 4 }}>{currentStore.name}</span>}
+      {onBackToAdmin && (
+        <button onClick={onBackToAdmin} style={{ fontSize: 15 }}>관리자로 돌아가기</button>
+      )}
+      <span className="user-avatar">{name?.[0] || '?'}</span>
+      <span style={{ fontSize: 16 }}>{name} 님</span>
+      <button onClick={toggle} title={theme === 'light' ? '다크 모드' : '라이트 모드'}>
+        {theme === 'light' ? '🌙' : '☀️'}
+      </button>
+      <button onClick={logout} title="로그아웃">로그아웃</button>
     </div>
   );
 }
@@ -168,14 +167,14 @@ function HQLayout() {
   return (
     <div className="kicc-layout">
       <header className="topnav">
-        <div className="topnav-brand">포스모스</div>
+        <div className="topnav-brand"><span className="brand-mark">P</span>포스모스</div>
         <nav className="topnav-menu">
           {visibleItems.map(item => (
             <NavTab key={item.to} to={item.to} end={item.end} label={item.label} count={badgeCounts[item.to]} />
           ))}
         </nav>
+        <TopNavRight name={user?.name} currentStore={currentStore} onBackToAdmin={storeSelected ? backToAdmin : null} />
       </header>
-      <TopBar name={user?.name} currentStore={currentStore} onBackToAdmin={storeSelected ? backToAdmin : null} />
       <div className="kicc-body">
         <SideMenu collapsed={collapsed} onToggle={() => setCollapsed(c => !c)} groups={visibleGroups} badgeCounts={badgeCounts} />
         <main className="kicc-main">
@@ -225,15 +224,15 @@ function StoreLayout() {
   return (
     <div className="kicc-layout">
       <header className="topnav">
-        <div className="topnav-brand">포스모스</div>
+        <div className="topnav-brand"><span className="brand-mark">P</span>포스모스</div>
         <nav className="topnav-menu">
           <NavTab to="/store" end label="발주하기" />
           <NavTab to="/store/stock" label="재고 확인" />
           <NavTab to="/store/waste" label="폐기 입력" />
           <NavTab to="/store/stock-adjustments" label="실사 재고 조정" />
         </nav>
+        <TopNavRight name={user?.name} />
       </header>
-      <TopBar name={user?.name} />
       <div className="kicc-body">
         <SideMenu collapsed={collapsed} onToggle={() => setCollapsed(c => !c)} groups={STORE_MENU_GROUPS} badgeCounts={{}} />
         <main className="kicc-main">
