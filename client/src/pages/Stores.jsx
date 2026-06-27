@@ -442,7 +442,7 @@ export default function Stores() {
       {/* 페이지 헤더 */}
       <div style={{ marginBottom: 24 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 15, color: 'var(--text-3)', fontWeight: 600, marginBottom: 8 }}>
-          기초정보 <span style={{ opacity: 0.5 }}>›</span> 가맹점관리
+          기초정보 <span style={{ opacity: 0.5 }}>›</span> 가맹점관리 <span style={{ fontSize: 11, background: 'var(--purple)', color: '#fff', borderRadius: 4, padding: '1px 6px' }}>v2</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <h2 style={{ borderLeft: '2px solid var(--border-input)', paddingLeft: 16, fontSize: 27 }}>가맹점조회</h2>
