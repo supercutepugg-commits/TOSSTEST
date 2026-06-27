@@ -144,10 +144,10 @@ export default function Dashboard() {
 
   if (!currentStore) return <div className="empty">가맹점을 선택해주세요</div>;
   if (error) return <div className="empty">{error}</div>;
-  if (!data) return <div className="empty">불러오는 중...</div>;
+  if (!data) return <div className="loading-state">대시보드를 불러오는 중...</div>;
 
   const cmp = data.salesComparison || {};
-  const weekly = data.weeklyStats || [];
+  const weekly = (data.weeklyStats || []).filter(d => d && d.date);
 
   const statTiles = [
     { label: '재고부족', value: data.lowStock.length, warn: data.lowStock.length > 0 },

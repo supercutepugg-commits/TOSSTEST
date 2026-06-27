@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api';
 import { useStore } from '../StoreContext';
+import { toast } from '../toast';
 
 function DailyChart({ dailyRevenue, stores }) {
   const [tooltip, setTooltip] = useState(null);
@@ -71,7 +72,7 @@ function DailyChart({ dailyRevenue, stores }) {
               const total = storeIds.reduce((s, sid) => s + (byDate[date]?.[sid] || 0), 0);
               return (
                 <div key={date} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}
-                  onMouseMove={e => setTooltip({ date, total, x: e.clientX, y: e.clientY })}
+                  onMouseMove={e => setTooltip({ date, total, x: e.pageX, y: e.pageY })}
                   onMouseLeave={() => setTooltip(null)}
                 >
                   {/* 스택 막대 */}
@@ -101,7 +102,7 @@ function DailyChart({ dailyRevenue, stores }) {
           {/* 툴팁 */}
           {tooltip && (
             <div style={{
-              position: 'fixed', background: 'var(--bg-elevated)', border: '1px solid var(--border)',
+              position: 'absolute', background: 'var(--bg-elevated)', border: '1px solid var(--border)',
               borderRadius: 8, padding: '8px 12px', fontSize: 13, pointerEvents: 'none',
               boxShadow: '0 4px 12px rgba(0,0,0,0.15)', zIndex: 200,
               left: tooltip.x, top: tooltip.y, transform: 'translate(-50%, -110%)',
@@ -140,6 +141,7 @@ export default function Analytics() {
 
   const load = async () => {
     setLoading(true);
+    const ctrl = new AbortController();
     try {
       const params = {
         from: new Date(fromDate).toISOString(),
@@ -148,12 +150,13 @@ export default function Analytics() {
       if (selectedStore) params.store_id = selectedStore;
       else if (currentStore) params.store_id = currentStore.id;
       const result = await api.getAnalytics(params);
-      setData(result);
+      if (!ctrl.signal.aborted) setData(result);
     } catch (e) {
-      console.error(e);
+      if (!ctrl.signal.aborted) toast('분석 데이터를 불러오지 못했습니다', 'error');
     } finally {
-      setLoading(false);
+      if (!ctrl.signal.aborted) setLoading(false);
     }
+    return () => ctrl.abort();
   };
 
   useEffect(() => { load(); }, [currentStore?.id]);
@@ -163,10 +166,10 @@ export default function Analytics() {
 
   const getRatioColor = (r) => {
     if (r === null) return 'var(--text-3)';
-    if (r > 2) return '#dc2626';
-    if (r > 1.3) return '#f59e0b';
-    if (r < 0.7) return '#3b82f6';
-    return '#16a34a';
+    if (r > 2) return 'var(--color-danger)';
+    if (r > 1.3) return 'var(--color-warning)';
+    if (r < 0.7) return 'var(--color-info)';
+    return 'var(--color-success)';
   };
 
   return (
@@ -230,7 +233,7 @@ export default function Analytics() {
       {/* 일별 매출 차트 */}
       <div className="card" style={{ marginBottom: 20 }}>
         <div style={{ fontWeight: 700, marginBottom: 16 }}>일별 매출</div>
-        {loading ? <div className="empty">로딩 중...</div> : (
+        {loading ? <div className="loading-state">데이터를 불러오는 중...</div> : (
           <DailyChart dailyRevenue={data?.dailyRevenue} stores={stores} />
         )}
       </div>

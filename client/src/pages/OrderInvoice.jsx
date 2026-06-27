@@ -18,7 +18,7 @@ export default function OrderInvoice() {
 
   useEffect(() => { api.getOrder(id).then(setOrder).catch(() => {}); }, [id]);
 
-  if (!order) return <div className="empty">불러오는 중...</div>;
+  if (!order) return <div className="loading-state">불러오는 중...</div>;
 
   const total = order.confirmed_amount ?? order.total_amount;
 

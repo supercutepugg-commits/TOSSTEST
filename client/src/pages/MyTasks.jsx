@@ -12,7 +12,7 @@ export default function MyTasks() {
     api.getMyTasks().then(setData).catch(() => {});
   }, []);
 
-  if (!data) return <div className="empty">불러오는 중...</div>;
+  if (!data) return <div className="loading-state">불러오는 중...</div>;
 
   const stores = data.stores || [];
   const totalTasks = stores.reduce((s, st) => s + st.pendingReview + st.needsAttention + st.openRisks + (st.receiptIssues || 0), 0);

@@ -126,7 +126,7 @@ function StoreDetailPanel({ store, onClose }) {
         <button className="secondary small" onClick={onClose}>닫기</button>
       </div>
 
-      {loading ? <div className="empty">불러오는 중...</div> : (
+      {loading ? <div className="loading-state">불러오는 중...</div> : (
         <>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10, marginBottom: 20 }}>
             <div className="elevated-card" style={{ padding: 12 }}>
@@ -342,8 +342,6 @@ export default function Stores() {
   const [showOptional, setShowOptional] = useState(false);
   const [todayRevenue, setTodayRevenue] = useState(null);
   const [lastUpdated, setLastUpdated] = useState(Date.now());
-  const [, forceUpdate] = useState(0);
-
   useEffect(() => {
     api.getStoreOrderStatus().then(setOrderStatus).catch(() => {});
     api.getStoreAuditStatus().then(setAuditStatus).catch(() => {});
@@ -351,7 +349,8 @@ export default function Stores() {
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
     api.getStoreRankings({ from: todayStart, to: now.toISOString() })
       .then(data => {
-        const total = (data.revenueRanking || []).reduce((sum, r) => sum + (r.revenue || 0), 0);
+        const arr = Array.isArray(data) ? data[0]?.revenueRanking : data?.revenueRanking;
+        const total = (arr || []).reduce((sum, r) => sum + (r.revenue || 0), 0);
         if (total > 0) setTodayRevenue(total);
       }).catch(() => {});
   }, []);
@@ -360,11 +359,6 @@ export default function Stores() {
     const close = () => setOpenMenuId(null);
     document.addEventListener('click', close);
     return () => document.removeEventListener('click', close);
-  }, []);
-
-  useEffect(() => {
-    const id = setInterval(() => forceUpdate(n => n + 1), 30000);
-    return () => clearInterval(id);
   }, []);
 
   const [nameQuery, setNameQuery] = useState('');
@@ -430,7 +424,12 @@ export default function Stores() {
     const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next;
   });
 
-  const minutesAgo = Math.floor((Date.now() - lastUpdated) / 60000);
+  const [nowTs, setNowTs] = useState(Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNowTs(Date.now()), 30000);
+    return () => clearInterval(id);
+  }, []);
+  const minutesAgo = Math.floor((nowTs - lastUpdated) / 60000);
   const lastUpdatedText = minutesAgo < 1 ? '방금 업데이트됨' : `${minutesAgo}분 전 업데이트됨`;
 
   const colSpan = 7 + (showOptional ? 6 : 0);
@@ -440,7 +439,7 @@ export default function Stores() {
       {/* 페이지 헤더 */}
       <div style={{ marginBottom: 24 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 15, color: 'var(--text-3)', fontWeight: 600, marginBottom: 8 }}>
-          기초정보 <span style={{ opacity: 0.5 }}>›</span> 가맹점관리 <span style={{ fontSize: 11, background: 'var(--purple)', color: '#fff', borderRadius: 4, padding: '1px 6px' }}>v2</span>
+          기초정보 <span style={{ opacity: 0.5 }}>›</span> 가맹점관리
         </div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <h2 style={{ borderLeft: '2px solid var(--border-input)', paddingLeft: 16, fontSize: 27 }}>가맹점조회</h2>
@@ -482,25 +481,25 @@ export default function Stores() {
               <h3 style={{ fontSize: 21, fontWeight: 700, marginBottom: 14 }}>가맹점 목록</h3>
               <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1.4fr 1fr 1fr auto', gap: 16, alignItems: 'end' }}>
                 <div className="form-group">
-                  <label>매장명</label>
-                  <input value={nameQuery} onChange={e => setNameQuery(e.target.value)} placeholder="가맹점명"
+                  <label htmlFor="sq-name">매장명</label>
+                  <input id="sq-name" value={nameQuery} onChange={e => setNameQuery(e.target.value)} placeholder="가맹점명"
                     onKeyDown={e => e.key === 'Enter' && runSearch()} />
                 </div>
                 <div className="form-group">
-                  <label>사업자번호</label>
-                  <input value={bizQuery} onChange={e => setBizQuery(e.target.value)} placeholder="123-45-67890"
+                  <label htmlFor="sq-biz">사업자번호</label>
+                  <input id="sq-biz" value={bizQuery} onChange={e => setBizQuery(e.target.value)} placeholder="123-45-67890"
                     onKeyDown={e => e.key === 'Enter' && runSearch()} />
                 </div>
                 <div className="form-group">
-                  <label>가맹형태</label>
-                  <select value={franchiseType} onChange={e => setFranchiseType(e.target.value)}>
+                  <label htmlFor="sq-ft">가맹형태</label>
+                  <select id="sq-ft" value={franchiseType} onChange={e => setFranchiseType(e.target.value)}>
                     <option value="">전체</option>
                     {FRANCHISE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                   </select>
                 </div>
                 <div className="form-group">
-                  <label>오픈여부</label>
-                  <select value={openStatus} onChange={e => setOpenStatus(e.target.value)}>
+                  <label htmlFor="sq-open">오픈여부</label>
+                  <select id="sq-open" value={openStatus} onChange={e => setOpenStatus(e.target.value)}>
                     <option value="">전체</option>
                     <option value="open">오픈</option>
                     <option value="closed">폐점</option>
@@ -533,10 +532,10 @@ export default function Stores() {
                 <span style={{ fontSize: 13, color: 'var(--text-3)', opacity: 0.8 }}>· {lastUpdatedText}</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <button className="small ghost" onClick={() => setShowOptional(v => !v)}>
+                <button className="small ghost" aria-label={showOptional ? '컬럼 줄이기' : '컬럼 더보기'} onClick={() => setShowOptional(v => !v)}>
                   {showOptional ? '↑ 컬럼 줄이기' : '↓ 컬럼 더보기'}
                 </button>
-                <button className="small ghost" onClick={handleRefresh}>↺ 새로고침</button>
+                <button className="small ghost" aria-label="새로고침" onClick={handleRefresh}>↺ 새로고침</button>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                   <button className="small ghost" style={{ padding: '3px 7px' }} disabled>‹</button>
                   <button style={{ padding: '3px 9px', background: 'var(--purple)', color: '#fff', border: 'none', borderRadius: 6, fontSize: 13, fontWeight: 700, cursor: 'default' }}>1</button>
@@ -616,13 +615,14 @@ export default function Stores() {
                           </td>
                           {showOptional && <>
                             <td style={{ color: 'var(--text-3)', fontSize: 15 }}>{s.open_date || '—'}</td>
-                            <td style={{ color: 'var(--text-3)', fontSize: 14, maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.address || '—'}</td>
+                            <td style={{ color: 'var(--text-3)', fontSize: 14, maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={s.address || ''}>{s.address || '—'}</td>
                             <td style={{ color: 'var(--text-3)', fontSize: 15 }}>{s.order_deadline || '—'}</td>
                             <td style={{ color: 'var(--text-3)', fontSize: 15 }}>{days}</td>
                           </>}
                           <td>
                             <div style={{ position: 'relative' }} onClick={e => e.stopPropagation()}>
                               <button onClick={() => setOpenMenuId(openMenuId === s.id ? null : s.id)}
+                                aria-label="관리 메뉴 열기"
                                 style={{ padding: '4px 8px', background: 'transparent', color: 'var(--text-3)', border: 'none', borderRadius: 6, fontSize: 18, lineHeight: 1 }}>
                                 ⋮
                               </button>
