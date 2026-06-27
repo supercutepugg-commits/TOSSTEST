@@ -1,5 +1,5 @@
 import { toast } from '../toast';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { api } from '../api';
 import { payForOrder } from '../payment';
 
@@ -27,6 +27,144 @@ function StatusBadge({ status }) {
   );
 }
 
+/* ── 수량 스텝퍼 ─────────────────────────────────────── */
+function QtyControl({ qty, onMinus, onPlus, onChange }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 0, border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', flexShrink: 0 }}>
+      <button type="button" onClick={onMinus}
+        style={{ width: 32, height: 32, background: 'var(--bg-muted)', border: 'none', borderRadius: 0, fontSize: 18, fontWeight: 300, color: 'var(--text-2)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, flexShrink: 0 }}>
+        −
+      </button>
+      <input type="number" value={qty} min={1} onChange={e => onChange(Number(e.target.value))}
+        style={{ width: 44, height: 32, textAlign: 'center', border: 'none', borderLeft: '1px solid var(--border)', borderRight: '1px solid var(--border)', borderRadius: 0, fontSize: 14, fontWeight: 700, padding: 0, outline: 'none', background: 'var(--bg-card)', boxShadow: 'none' }} />
+      <button type="button" onClick={onPlus}
+        style={{ width: 32, height: 32, background: 'var(--bg-muted)', border: 'none', borderRadius: 0, fontSize: 18, fontWeight: 300, color: 'var(--text-2)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, flexShrink: 0 }}>
+        +
+      </button>
+    </div>
+  );
+}
+
+/* ── 장바구니 패널 ────────────────────────────────────── */
+function CartPanel({ cart, total, updateQty, memo, setMemo, submitOrder, submitting, saveAsTemplate, templates, loadTemplateToCart, deleteTemplate, editingOrderId, onClose, isMobileDrawer }) {
+  const isEmpty = cart.length === 0;
+
+  return (
+    <div style={{
+      display: 'flex', flexDirection: 'column', height: isMobileDrawer ? '100%' : 'auto',
+    }}>
+      {/* 헤더 */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 17, fontWeight: 800, color: 'var(--text)' }}>장바구니</span>
+          {cart.length > 0 && (
+            <span style={{ background: 'var(--purple)', color: '#fff', borderRadius: 99, minWidth: 20, height: 20, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, padding: '0 5px' }}>
+              {cart.length}
+            </span>
+          )}
+        </div>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          {editingOrderId && <span style={{ fontSize: 11, color: '#f59e0b', fontWeight: 600 }}>#{editingOrderId} 수정 중</span>}
+          {isMobileDrawer && (
+            <button type="button" onClick={onClose}
+              style={{ background: 'none', border: 'none', fontSize: 20, color: 'var(--text-3)', cursor: 'pointer', padding: '0 4px', lineHeight: 1 }}>
+              ✕
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* 아이템 목록 */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: isEmpty ? 0 : '8px 0' }}>
+        {isEmpty ? (
+          <div style={{ textAlign: 'center', padding: '48px 20px', color: 'var(--text-3)' }}>
+            <div style={{ fontSize: 36, marginBottom: 12, opacity: 0.3 }}>🛒</div>
+            <div style={{ fontSize: 14, fontWeight: 500 }}>담은 상품이 없습니다</div>
+            <div style={{ fontSize: 12, marginTop: 4, opacity: 0.7 }}>상품 목록에서 상품을 선택해주세요</div>
+          </div>
+        ) : (
+          cart.map((item, idx) => (
+            <div key={item.product.id} style={{
+              padding: '14px 20px',
+              borderBottom: idx < cart.length - 1 ? '1px solid var(--border)' : 'none',
+              display: 'flex', flexDirection: 'column', gap: 10,
+            }}>
+              {/* 상품명 + 삭제 */}
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', lineHeight: 1.4 }}>{item.product.name}</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>{item.product.unit}</div>
+                </div>
+                <button type="button" onClick={() => updateQty(item.product.id, 0)}
+                  style={{ background: 'none', border: 'none', color: 'var(--text-3)', fontSize: 16, cursor: 'pointer', padding: '0 2px', lineHeight: 1, flexShrink: 0, opacity: 0.6 }}
+                  title="삭제">
+                  ✕
+                </button>
+              </div>
+              {/* 수량 + 금액 */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <QtyControl
+                  qty={item.quantity}
+                  onMinus={() => updateQty(item.product.id, item.quantity - 1)}
+                  onPlus={() => updateQty(item.product.id, item.quantity + 1)}
+                  onChange={v => updateQty(item.product.id, v)}
+                />
+                <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>
+                  {item.product.price > 0 ? `${(item.product.price * item.quantity).toLocaleString()}원` : '—'}
+                </div>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* 템플릿 */}
+      {templates.length > 0 && (
+        <div style={{ padding: '12px 20px', borderTop: '1px solid var(--border)', flexShrink: 0 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-3)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.4 }}>정기 발주 템플릿</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {templates.map(tpl => (
+              <div key={tpl.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: 13, color: 'var(--text-2)' }}>{tpl.name} <span style={{ color: 'var(--text-3)', fontSize: 11 }}>({tpl.items.length}개)</span></span>
+                <div style={{ display: 'flex', gap: 4 }}>
+                  <button className="primary small" onClick={() => loadTemplateToCart(tpl)}>불러오기</button>
+                  <button className="danger small" onClick={() => deleteTemplate(tpl.id)}>삭제</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 메모 */}
+      <div style={{ padding: '12px 20px', borderTop: '1px solid var(--border)', flexShrink: 0 }}>
+        <textarea value={memo} onChange={e => setMemo(e.target.value)}
+          placeholder="메모 (선택)" rows={2}
+          style={{ width: '100%', resize: 'none', fontSize: 13 }} />
+      </div>
+
+      {/* 합계 + 버튼 */}
+      <div style={{ padding: '16px 20px', borderTop: '2px solid var(--border)', background: 'var(--bg-card)', flexShrink: 0 }}>
+        {!isEmpty && (
+          <>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+              <span style={{ fontSize: 14, color: 'var(--text-2)' }}>총 {cart.length}종 {cart.reduce((s, i) => s + i.quantity, 0)}개</span>
+              <span style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)' }}>{total.toLocaleString()}원</span>
+            </div>
+            <button className="secondary small" onClick={saveAsTemplate} style={{ width: '100%', marginBottom: 8 }}>+ 템플릿으로 저장</button>
+          </>
+        )}
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="secondary" onClick={() => submitOrder(true)} disabled={submitting || isEmpty} style={{ flex: 1 }}>임시저장</button>
+          <button className="primary" onClick={() => submitOrder(false)} disabled={submitting || isEmpty} style={{ flex: 2 }}>
+            {submitting ? '처리 중...' : isEmpty ? '상품을 담아주세요' : `발주하기 (${total.toLocaleString()}원)`}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function StoreOrder() {
   const [tab, setTab] = useState('new');
   const [products, setProducts] = useState([]);
@@ -37,18 +175,18 @@ export default function StoreOrder() {
   const [editingOrderUpdatedAt, setEditingOrderUpdatedAt] = useState(null);
   const [detailOrder, setDetailOrder] = useState(null);
   const [submitting, setSubmitting] = useState(false);
-  const [recommendations, setRecommendations] = useState({}); // product_id -> 추천 발주량
+  const [recommendations, setRecommendations] = useState({});
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState('전체');
   const [templates, setTemplates] = useState([]);
   const [myStore, setMyStore] = useState(null);
+  const [cartOpen, setCartOpen] = useState(false); // 모바일 장바구니 드로어
 
   const loadOrders = () => api.getOrders().then(setOrders).catch(() => {});
   const loadTemplates = () => api.getOrderTemplates().then(setTemplates).catch(() => {});
 
   useEffect(() => {
     api.getProducts().then(setProducts).catch(() => {});
-    // 최근 7일 판매량 기준 예상 소진량 대비 추천 발주량 — 참고용이라 실패해도 화면엔 영향 없음
     api.getProductRecommendations().then(setRecommendations).catch(() => {});
     api.getMyStore().then(setMyStore).catch(() => {});
     loadTemplates();
@@ -87,7 +225,6 @@ export default function StoreOrder() {
 
   const resetCart = () => { setCart([]); setMemo(''); setEditingOrderId(null); setEditingOrderUpdatedAt(null); };
 
-  // 지난번처럼 발주: 과거 발주서의 품목을 그대로 새 장바구니에 담음 (수정이 아니라 새 발주로 시작)
   const reorderFromOrder = async (order) => {
     const detail = await api.getOrder(order.id);
     const newCart = [];
@@ -100,10 +237,7 @@ export default function StoreOrder() {
       if (existing) existing.quantity += qty;
       else newCart.push({ product, quantity: qty });
     }
-    if (newCart.length === 0) {
-      toast('현재 판매 중인 상품이 없어 다시 담을 수 없습니다', 'error');
-      return;
-    }
+    if (newCart.length === 0) { toast('현재 판매 중인 상품이 없어 다시 담을 수 없습니다', 'error'); return; }
     setCart(newCart);
     setMemo('');
     setEditingOrderId(null);
@@ -115,7 +249,7 @@ export default function StoreOrder() {
 
   const submitOrder = async (draft) => {
     if (cart.length === 0) { toast('상품을 선택해주세요', 'error'); return; }
-    if (submitting) return; // 연속 클릭 시 같은 발주가 중복 생성되는 것을 방지
+    if (submitting) return;
     setSubmitting(true);
     const payload = {
       memo, submit: !draft,
@@ -130,6 +264,7 @@ export default function StoreOrder() {
       else await api.createOrder(payload);
       toast(draft ? '임시저장 완료' : '발주 완료', 'success');
       resetCart();
+      setCartOpen(false);
       loadOrders();
       if (!draft) setTab('history');
     } catch (e) {
@@ -142,8 +277,6 @@ export default function StoreOrder() {
   const pendingOrders = orders.filter(o => ['DRAFT', 'REVISION_REQUESTED'].includes(o.status));
   const draftOrders = orders.filter(o => o.status === 'DRAFT');
 
-  // 발주 마감시간 임박 리마인더 — 마감은 강제되지만 미리 알려주는 게 없어 임시저장 발주를 놓치는
-  // 경우가 생길 수 있어서, 마감 1시간 이내이고 아직 제출 안 한 임시저장 발주가 있으면 알려준다
   const deadlineWarning = (() => {
     if (!myStore?.order_deadline || draftOrders.length === 0) return null;
     const [h, m] = myStore.order_deadline.split(':').map(Number);
@@ -192,7 +325,6 @@ export default function StoreOrder() {
     loadTemplates();
   };
 
-  // 본사가 "납품완료"로 바꿔도 실제로 받은 게 맞는지는 가맹점만 알 수 있어서, 확인 또는 이상신고를 받는다
   const confirmReceipt = async (ok) => {
     let note;
     if (!ok) {
@@ -212,7 +344,6 @@ export default function StoreOrder() {
     }
   };
 
-  // 카탈로그가 커지면 한눈에 찾기 어려워지므로 카테고리(상품관리에서 설정)와 이름 검색으로 좁힐 수 있게 함
   const categories = ['전체', ...new Set(products.map(p => p.category).filter(Boolean))];
   const visibleProducts = products.filter(p => {
     if (activeCategory !== '전체' && p.category !== activeCategory) return false;
@@ -220,8 +351,13 @@ export default function StoreOrder() {
     return true;
   });
 
+  const cartProps = {
+    cart, total, updateQty, memo, setMemo, submitOrder, submitting,
+    saveAsTemplate, templates, loadTemplateToCart, deleteTemplate, editingOrderId,
+  };
+
   return (
-    <div>
+    <div style={{ paddingBottom: 80 }}>
       <h2>발주하기</h2>
 
       {deadlineWarning !== null && (
@@ -253,120 +389,148 @@ export default function StoreOrder() {
       </div>
 
       {tab === 'new' && (
-        <div className="split-layout" style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 20 }}>
-          <div className="card">
-            <div style={{ fontWeight: 700, marginBottom: 12 }}>
-              상품 목록
-              {editingOrderId && <span style={{ fontSize: 12, color: '#f59e0b', marginLeft: 10 }}>발주서 #{editingOrderId} 수정 중</span>}
-            </div>
-            {products.length > 0 && (
-              <div style={{ marginBottom: 12 }}>
-                <input value={search} onChange={e => setSearch(e.target.value)}
-                  placeholder="상품명 검색" style={{ marginBottom: 8, width: '100%' }} />
-                {categories.length > 1 && (
-                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                    {categories.map(c => (
-                      <button key={c} type="button"
-                        className={activeCategory === c ? 'primary small' : 'secondary small'}
-                        onClick={() => setActiveCategory(c)}>
-                        {c}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-            {products.length === 0
-              ? <div className="empty">등록된 상품 없음</div>
-              : visibleProducts.length === 0
-              ? <div className="empty">검색 결과가 없습니다</div>
-              : <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 10 }}>
-                {visibleProducts.map(p => {
-                  const inCart = cart.find(i => i.product.id === p.id);
-                  const recommendedQty = recommendations[p.id];
-                  return (
-                    <div key={p.id} onClick={() => addToCart(p)}
-                      className="elevated-card"
-                      style={{ padding: '14px 16px', cursor: 'pointer', position: 'relative', transition: 'border-color 0.15s', borderColor: inCart ? 'var(--purple)' : 'var(--border)' }}
-                      onMouseOver={e => e.currentTarget.style.borderColor = 'var(--purple)'}
-                      onMouseOut={e => e.currentTarget.style.borderColor = inCart ? 'var(--purple)' : 'var(--border)'}
-                    >
-                      {inCart && (
-                        <span style={{ position: 'absolute', top: 8, right: 8, background: 'var(--purple)', color: '#fff', borderRadius: '50%', width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700 }}>
-                          {inCart.quantity}
-                        </span>
-                      )}
-                      <div style={{ fontWeight: 600, marginBottom: 4 }}>{p.name}</div>
-                      <div className="text-sub" style={{ fontSize: 12 }}>{p.unit}</div>
-                      <div style={{ fontSize: 13, color: 'var(--purple)', fontWeight: 700, marginTop: 6 }}>
-                        {p.price > 0 ? `${p.price.toLocaleString()}원` : '단가 미설정'}
-                      </div>
-                      {recommendedQty > 0 && (
-                        <div
-                          onClick={e => { e.stopPropagation(); if (!inCart) addToCart(p); updateQty(p.id, recommendedQty); }}
-                          style={{ marginTop: 8, fontSize: 11.5, fontWeight: 700, color: '#16a34a', background: '#dcfce7', borderRadius: 6, padding: '3px 8px', display: 'inline-block' }}
-                          title="최근 7일 판매 추세 기준 추천 발주량 — 클릭하면 이 수량으로 담깁니다"
-                        >
-                          추천 {recommendedQty}{p.unit}
+        <>
+          {/* 데스크탑: 좌우 분할 / 모바일: 상품 목록만 */}
+          <div className="split-layout" style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 20 }}>
+            {/* 상품 목록 */}
+            <div className="card">
+              <div style={{ fontWeight: 700, marginBottom: 12 }}>상품 목록</div>
+              {products.length > 0 && (
+                <div style={{ marginBottom: 12 }}>
+                  <input value={search} onChange={e => setSearch(e.target.value)}
+                    placeholder="상품명 검색" style={{ marginBottom: 8, width: '100%' }} />
+                  {categories.length > 1 && (
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      {categories.map(c => (
+                        <button key={c} type="button"
+                          className={activeCategory === c ? 'primary small' : 'secondary small'}
+                          onClick={() => setActiveCategory(c)}>
+                          {c}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+              {products.length === 0
+                ? <div className="empty">등록된 상품 없음</div>
+                : visibleProducts.length === 0
+                ? <div className="empty">검색 결과가 없습니다</div>
+                : <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 10 }}>
+                  {visibleProducts.map(p => {
+                    const inCart = cart.find(i => i.product.id === p.id);
+                    const recommendedQty = recommendations[p.id];
+                    return (
+                      <div key={p.id}
+                        className="elevated-card"
+                        style={{ padding: '14px 16px', cursor: 'pointer', position: 'relative', transition: 'border-color 0.15s, box-shadow 0.15s', borderColor: inCart ? 'var(--purple)' : 'var(--border)', boxShadow: inCart ? '0 0 0 2px var(--purple-light)' : undefined }}
+                        onClick={() => addToCart(p)}
+                        onMouseOver={e => e.currentTarget.style.borderColor = 'var(--purple)'}
+                        onMouseOut={e => e.currentTarget.style.borderColor = inCart ? 'var(--purple)' : 'var(--border)'}
+                      >
+                        {inCart && (
+                          <span style={{ position: 'absolute', top: 8, right: 8, background: 'var(--purple)', color: '#fff', borderRadius: '50%', width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, boxShadow: '0 2px 6px rgba(0,100,255,0.4)' }}>
+                            {inCart.quantity}
+                          </span>
+                        )}
+                        <div style={{ fontWeight: 600, marginBottom: 4, fontSize: 14 }}>{p.name}</div>
+                        <div className="text-sub" style={{ fontSize: 12 }}>{p.unit}</div>
+                        <div style={{ fontSize: 13, color: 'var(--purple)', fontWeight: 700, marginTop: 6 }}>
+                          {p.price > 0 ? `${p.price.toLocaleString()}원` : '단가 미설정'}
                         </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            }
-          </div>
-
-          <div>
-            <div className="card" style={{ marginBottom: 12 }}>
-              <div style={{ fontWeight: 700, marginBottom: 12 }}>장바구니</div>
-              {cart.length === 0
-                ? <div className="empty">상품을 선택해주세요</div>
-                : <>
-                  {cart.map(i => (
-                    <div key={i.product.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                      <div style={{ flex: 1, fontSize: 14 }}>{i.product.name}</div>
-                      <input type="number" value={i.quantity} min={0}
-                        onChange={e => updateQty(i.product.id, Number(e.target.value))}
-                        style={{ width: 60, textAlign: 'center' }} />
-                      <div className="text-sub" style={{ fontSize: 13, minWidth: 70, textAlign: 'right' }}>
-                        {(i.product.price * i.quantity).toLocaleString()}원
+                        {recommendedQty > 0 && (
+                          <div
+                            onClick={e => { e.stopPropagation(); if (!inCart) addToCart(p); updateQty(p.id, recommendedQty); }}
+                            style={{ marginTop: 8, fontSize: 11, fontWeight: 700, color: '#16a34a', background: '#dcfce7', borderRadius: 6, padding: '3px 8px', display: 'inline-block', cursor: 'pointer' }}
+                          >
+                            추천 {recommendedQty}{p.unit}
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  ))}
-                  <div style={{ borderTop: '1px solid var(--border)', marginTop: 12, paddingTop: 12, fontWeight: 700, textAlign: 'right' }}>
-                    합계: {total.toLocaleString()}원
-                  </div>
-                  <button className="secondary small" onClick={saveAsTemplate} style={{ marginTop: 10, width: '100%' }}>+ 정기 발주 템플릿으로 저장</button>
-                </>
+                    );
+                  })}
+                </div>
               }
             </div>
 
-            {templates.length > 0 && (
-              <div className="card" style={{ marginBottom: 12 }}>
-                <div style={{ fontWeight: 700, marginBottom: 10 }}>정기 발주 템플릿</div>
-                {templates.map(tpl => (
-                  <div key={tpl.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                    <span style={{ fontSize: 13 }}>{tpl.name} <span className="text-sub">({tpl.items.length}개 품목)</span></span>
-                    <div style={{ display: 'flex', gap: 4 }}>
-                      <button className="primary small" onClick={() => loadTemplateToCart(tpl)}>불러오기</button>
-                      <button className="danger small" onClick={() => deleteTemplate(tpl.id)}>삭제</button>
-                    </div>
-                  </div>
-                ))}
+            {/* 데스크탑 장바구니 패널 */}
+            <div className="cart-desktop-panel" style={{ position: 'sticky', top: 20, alignSelf: 'flex-start' }}>
+              <div className="card" style={{ padding: 0, overflow: 'hidden', maxHeight: '85vh', display: 'flex', flexDirection: 'column' }}>
+                <CartPanel {...cartProps} isMobileDrawer={false} />
               </div>
-            )}
-
-            <div className="form-group" style={{ marginBottom: 12 }}>
-              <textarea value={memo} onChange={e => setMemo(e.target.value)}
-                placeholder="메모 (선택)" rows={3} />
-            </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button className="secondary" onClick={() => submitOrder(true)} disabled={submitting} style={{ flex: 1 }}>임시저장</button>
-              <button className="primary" onClick={() => submitOrder(false)} disabled={submitting} style={{ flex: 1 }}>{submitting ? '처리 중...' : '발주하기'}</button>
             </div>
           </div>
-        </div>
+
+          {/* ── 모바일 하단 장바구니 바 ── */}
+          <div className="cart-mobile-bar" style={{
+            position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 200,
+            background: 'var(--bg-card)',
+            borderTop: '1px solid var(--border)',
+            boxShadow: '0 -4px 24px rgba(0,0,0,0.12)',
+            padding: '12px 16px',
+            display: 'flex', alignItems: 'center', gap: 12,
+          }}>
+            <button type="button" onClick={() => setCartOpen(true)}
+              style={{
+                flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                background: cart.length > 0 ? 'var(--purple)' : 'var(--bg-muted)',
+                color: cart.length > 0 ? '#fff' : 'var(--text-3)',
+                border: 'none', borderRadius: 12, padding: '14px 18px',
+                fontSize: 15, fontWeight: 700, cursor: 'pointer',
+                boxShadow: cart.length > 0 ? '0 4px 16px rgba(0,100,255,0.35)' : 'none',
+              }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                🛒
+                {cart.length > 0
+                  ? <span>장바구니 <span style={{ background: 'rgba(255,255,255,0.25)', borderRadius: 99, padding: '1px 7px', fontSize: 12 }}>{cart.length}</span></span>
+                  : '장바구니 비어있음'
+                }
+              </span>
+              {cart.length > 0 && <span>{total.toLocaleString()}원 →</span>}
+            </button>
+          </div>
+
+          {/* ── 모바일 장바구니 드로어 ── */}
+          {cartOpen && (
+            <>
+              <div onClick={() => setCartOpen(false)} style={{
+                position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)',
+                backdropFilter: 'blur(4px)', zIndex: 300,
+              }} />
+              <div style={{
+                position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 400,
+                background: 'var(--bg-card)',
+                borderRadius: '20px 20px 0 0',
+                boxShadow: '0 -8px 40px rgba(0,0,0,0.2)',
+                maxHeight: '88vh',
+                display: 'flex', flexDirection: 'column',
+                animation: 'slideUp 0.25s cubic-bezier(0.34,1.1,0.64,1)',
+              }}>
+                {/* 드래그 핸들 */}
+                <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 4px' }}>
+                  <div style={{ width: 36, height: 4, borderRadius: 99, background: 'var(--border)' }} />
+                </div>
+                <CartPanel {...cartProps} isMobileDrawer onClose={() => setCartOpen(false)} />
+              </div>
+            </>
+          )}
+
+          <style>{`
+            @keyframes slideUp {
+              from { transform: translateY(100%); opacity: 0.6; }
+              to   { transform: translateY(0);    opacity: 1; }
+            }
+            /* 모바일에서 데스크탑 패널 숨기기 */
+            @media (max-width: 768px) {
+              .cart-desktop-panel { display: none !important; }
+              .split-layout { grid-template-columns: 1fr !important; }
+            }
+            /* 데스크탑에서 모바일 바 숨기기 */
+            @media (min-width: 769px) {
+              .cart-mobile-bar { display: none !important; }
+            }
+          `}</style>
+        </>
       )}
 
       {tab === 'history' && (
@@ -394,7 +558,7 @@ export default function StoreOrder() {
                           {['DRAFT', 'REVISION_REQUESTED'].includes(o.status) && (
                             <button className="primary small" onClick={e => { e.stopPropagation(); loadOrderToCart(o); }}>이어하기</button>
                           )}
-                          <button className="secondary small" title="지난번처럼 발주" onClick={e => { e.stopPropagation(); reorderFromOrder(o); }}>재주문</button>
+                          <button className="secondary small" onClick={e => { e.stopPropagation(); reorderFromOrder(o); }}>재주문</button>
                         </div>
                       </td>
                     </tr>
@@ -413,7 +577,7 @@ export default function StoreOrder() {
                   <button className="secondary small" onClick={() => setDetailOrder(null)}>닫기</button>
                 </div>
               </div>
-              <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                 <StatusBadge status={detailOrder.status} />
                 {['CONFIRMED', 'PAYMENT_PENDING'].includes(detailOrder.status) && (
                   <button className="primary small" onClick={() => payForOrder(detailOrder).catch(e => toast(e.message || '결제 실패', 'error'))}>
@@ -430,9 +594,7 @@ export default function StoreOrder() {
                     } catch (e) {
                       toast(e.message || '취소에 실패했습니다', 'error');
                     }
-                  }}>
-                    발주 취소
-                  </button>
+                  }}>발주 취소</button>
                 )}
                 {detailOrder.status === 'DELIVERED' && !detailOrder.receipt_confirmed_at && !detailOrder.receipt_issue_note && (
                   <>
@@ -465,9 +627,7 @@ export default function StoreOrder() {
                           )}
                         </td>
                         <td>
-                          {changed && (
-                            <span className="text-muted" style={{ textDecoration: 'line-through', marginRight: 4 }}>{item.quantity}{item.unit}</span>
-                          )}
+                          {changed && <span className="text-muted" style={{ textDecoration: 'line-through', marginRight: 4 }}>{item.quantity}{item.unit}</span>}
                           <span style={{ fontWeight: changed ? 700 : 400 }}>{item.confirmed_quantity ?? item.quantity} {item.unit}</span>
                           {changed && <span className="badge yellow" style={{ marginLeft: 6 }}>변경됨</span>}
                         </td>
