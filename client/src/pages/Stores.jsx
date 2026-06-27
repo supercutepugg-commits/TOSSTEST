@@ -707,9 +707,13 @@ export default function Stores() {
             <svg viewBox="0 0 280 48" preserveAspectRatio="none" style={{ width: '100%', height: 48, marginTop: 10, display: 'block' }}>
               <polyline points="6,38 46,30 86,34 126,18 166,22 206,10 246,16 274,8"
                 fill="none" stroke="var(--purple)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-              {[[6,38],[46,30],[86,34],[126,18],[166,22],[206,10],[246,16]].map(([x,y],i) => (
-                <circle key={i} cx={x} cy={y} r="2.5" fill="var(--bg-card)" stroke="var(--purple)" strokeWidth="1.5" />
-              ))}
+              <circle cx="6" cy="38" r="2.5" fill="var(--bg-card)" stroke="var(--purple)" strokeWidth="1.5" />
+              <circle cx="46" cy="30" r="2.5" fill="var(--bg-card)" stroke="var(--purple)" strokeWidth="1.5" />
+              <circle cx="86" cy="34" r="2.5" fill="var(--bg-card)" stroke="var(--purple)" strokeWidth="1.5" />
+              <circle cx="126" cy="18" r="2.5" fill="var(--bg-card)" stroke="var(--purple)" strokeWidth="1.5" />
+              <circle cx="166" cy="22" r="2.5" fill="var(--bg-card)" stroke="var(--purple)" strokeWidth="1.5" />
+              <circle cx="206" cy="10" r="2.5" fill="var(--bg-card)" stroke="var(--purple)" strokeWidth="1.5" />
+              <circle cx="246" cy="16" r="2.5" fill="var(--bg-card)" stroke="var(--purple)" strokeWidth="1.5" />
               <circle cx="274" cy="8" r="3.5" fill="var(--purple)" />
             </svg>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
