@@ -4,12 +4,22 @@ import { api } from '../api';
 const CHECK_INTERVAL_MS = 60000; // 5초는 너무 잦아서 1분으로 완화
 const REALERT_COOLDOWN_MS = 30 * 60000; // 재고가 기준선 근처에서 오르내려도 같은 재료는 30분 동안 재알림 안 함
 
+function loadCooldown(storeId) {
+  try {
+    const raw = sessionStorage.getItem(`stock_alert_${storeId}`);
+    return raw ? new Map(JSON.parse(raw)) : new Map();
+  } catch { return new Map(); }
+}
+function saveCooldown(storeId, map) {
+  try { sessionStorage.setItem(`stock_alert_${storeId}`, JSON.stringify([...map])); } catch {}
+}
+
 export default function StockAlert({ storeId, storeName }) {
   const [alerts, setAlerts] = useState([]);
-  const lastAlertedAt = useRef(new Map()); // ingredient id -> 마지막으로 알림을 띄운 시각
+  const lastAlertedAt = useRef(new Map());
 
   useEffect(() => {
-    lastAlertedAt.current = new Map();
+    lastAlertedAt.current = loadCooldown(storeId);
     setAlerts([]);
   }, [storeId]);
 
@@ -27,6 +37,7 @@ export default function StockAlert({ storeId, storeName }) {
         if (newLow.length > 0) {
           const id = now;
           for (const i of newLow) lastAlertedAt.current.set(i.id, now);
+          saveCooldown(storeId, lastAlertedAt.current);
           setAlerts(prev => [...prev, { id, ingredients: newLow }]);
           setTimeout(() => setAlerts(prev => prev.filter(a => a.id !== id)), 10000);
         }
