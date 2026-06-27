@@ -279,7 +279,7 @@ export default function Dashboard() {
         </div>
 
         {data.lowStock.length > 0 && (
-          <div className="card" style={{ borderLeft: '4px solid #dc2626' }}>
+          <div className="card" style={{ borderLeft: '4px solid #dc2626', background: 'linear-gradient(135deg, var(--bg-card) 0%, rgba(220,38,38,0.025) 100%)' }}>
             <div className="dash-section-title" style={{ color: '#dc2626' }}>재고 부족 재료</div>
             <table className="dash-table">
               <thead>
@@ -308,7 +308,7 @@ export default function Dashboard() {
         )}
 
         {data.risks.length > 0 && (
-          <div className="card" style={{ borderLeft: '4px solid #ef4444' }}>
+          <div className="card" style={{ borderLeft: '4px solid #ef4444', background: 'linear-gradient(135deg, var(--bg-card) 0%, rgba(239,68,68,0.02) 100%)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
               <div className="dash-section-title" style={{ color: '#ef4444', marginBottom: 0, paddingBottom: 0, borderBottom: 'none' }}>리스크 알림 (미처리)</div>
               <Link to="/risks" style={{ fontSize: 12.5 }}>전체 보기 &rarr;</Link>

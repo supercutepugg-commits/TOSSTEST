@@ -36,6 +36,7 @@ export default function ToastHost() {
               style={{
                 background: 'linear-gradient(135deg, var(--bg-card) 0%, rgba(0,100,255,0.02) 100%)',
                 border: '1px solid var(--border)',
+                borderLeft: `3px solid ${c.color}`,
                 borderRadius: 12,
                 padding: '14px 16px',
                 boxShadow: '0 12px 40px rgba(0,0,0,0.16), 0 2px 8px rgba(0,0,0,0.08)',
