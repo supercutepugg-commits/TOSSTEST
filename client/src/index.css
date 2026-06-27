@@ -228,6 +228,8 @@ body, body * {
 [data-theme="dark"] .side-menu { background: #131c30; }
 [data-theme="dark"] .topnav { background: linear-gradient(105deg, #0b1220 0%, var(--purple-dark) 55%, var(--purple) 100%); }
 .side-menu.collapsed { width: 64px; }
+.side-menu.collapsed .side-menu-item { justify-content: center; padding: 10px 0; }
+.side-menu.collapsed .side-menu-group-title { display: none; }
 
 .side-menu-collapse {
   position: absolute;

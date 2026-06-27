@@ -3,6 +3,12 @@ import { BrowserRouter, Routes, Route, NavLink, Navigate, useNavigate } from 're
 import { AuthProvider, useAuth } from './AuthContext';
 import { StoreProvider, useStore } from './StoreContext';
 import { ThemeProvider, useTheme } from './ThemeContext';
+import {
+  Store, BarChart2, Receipt, TrendingUp, AlertTriangle,
+  ClipboardList, Package, CheckSquare, ShieldAlert, Bell,
+  Users, History, LayoutDashboard, Box, UtensilsCrossed,
+  Trash2, ClipboardCheck, BookOpen, Moon, Sun, LogOut, ChevronLeft, ChevronRight,
+} from 'lucide-react';
 import { api } from './api';
 import Dashboard from './pages/Dashboard';
 import Ingredients from './pages/Ingredients';
@@ -37,16 +43,22 @@ function TopNavRight({ name, currentStore, onBackToAdmin }) {
   const { theme, toggle } = useTheme();
   return (
     <div className="topnav-right">
-      {currentStore && <span style={{ fontSize: 16, opacity: 0.8, borderRight: '1px solid rgba(255,255,255,0.2)', paddingRight: 16, marginRight: 4 }}>{currentStore.name}</span>}
+      {currentStore && (
+        <span style={{ fontSize: 14, opacity: 0.75, borderRight: '1px solid rgba(255,255,255,0.2)', paddingRight: 12, marginRight: 0, whiteSpace: 'nowrap', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          {currentStore.name}
+        </span>
+      )}
       {onBackToAdmin && (
-        <button onClick={onBackToAdmin} style={{ fontSize: 15 }}>관리자로 돌아가기</button>
+        <button onClick={onBackToAdmin} style={{ fontSize: 13, whiteSpace: 'nowrap' }}>← 관리자</button>
       )}
       <span className="user-avatar">{name?.[0] || '?'}</span>
-      <span style={{ fontSize: 16 }}>{name} 님</span>
-      <button onClick={toggle} title={theme === 'light' ? '다크 모드' : '라이트 모드'}>
-        {theme === 'light' ? '🌙' : '☀️'}
+      <span style={{ fontSize: 14, whiteSpace: 'nowrap', maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</span>
+      <button onClick={toggle} title={theme === 'light' ? '다크 모드' : '라이트 모드'} style={{ padding: 4 }}>
+        {theme === 'light' ? <Moon size={16} /> : <Sun size={16} />}
       </button>
-      <button onClick={logout} title="로그아웃">로그아웃</button>
+      <button onClick={logout} title="로그아웃" style={{ padding: 4 }}>
+        <LogOut size={16} />
+      </button>
     </div>
   );
 }
@@ -67,34 +79,34 @@ function NavTab({ to, end, label, count }) {
 // 상단 탭과 좌측 메뉴 모두 평면화된 전체 항목 목록을 그대로 보여준다
 const SIDE_MENU_GROUPS = [
   { title: '가맹점', storeRequired: false, items: [
-    { to: '/', end: true, label: '가맹점 목록' },
-    { to: '/rankings', end: true, label: '가맹점 순위' },
-    { to: '/settlement', end: true, label: '정산 리포트' },
-    { to: '/analytics', end: true, label: '매출 분석' },
-    { to: '/purchase-anomalies', end: true, label: '사입 이상 모니터링' },
+    { to: '/', end: true, label: '가맹점 목록', icon: Store },
+    { to: '/rankings', end: true, label: '가맹점 순위', icon: BarChart2 },
+    { to: '/settlement', end: true, label: '정산 리포트', icon: Receipt },
+    { to: '/analytics', end: true, label: '매출 분석', icon: TrendingUp },
+    { to: '/purchase-anomalies', end: true, label: '사입 이상 모니터링', icon: AlertTriangle },
   ] },
   { title: '주문 · 발주', storeRequired: false, items: [
-    { to: '/orders', end: true, label: '주문 목록' },
-    { to: '/products', end: true, label: '발주 상품' },
+    { to: '/orders', end: true, label: '주문 목록', icon: ClipboardList },
+    { to: '/products', end: true, label: '발주 상품', icon: Package },
   ] },
   { title: '리스크 · 사용자', storeRequired: false, items: [
-    { to: '/my-tasks', end: true, label: '내 업무' },
-    { to: '/risks', end: true, label: '리스크 알림' },
-    { to: '/notices', end: true, label: '공지사항' },
-    { to: '/users', end: true, label: '사용자 관리' },
+    { to: '/my-tasks', end: true, label: '내 업무', icon: CheckSquare },
+    { to: '/risks', end: true, label: '리스크 알림', icon: ShieldAlert },
+    { to: '/notices', end: true, label: '공지사항', icon: Bell },
+    { to: '/users', end: true, label: '사용자 관리', icon: Users },
   ] },
   { title: '감사', storeRequired: false, hqAdminOnly: true, items: [
-    { to: '/audit-log', end: true, label: '변경 이력' },
+    { to: '/audit-log', end: true, label: '변경 이력', icon: History },
   ] },
   { title: '대시보드', storeRequired: true, items: [
-    { to: '/dashboard', end: true, label: '대시보드 홈' },
+    { to: '/dashboard', end: true, label: '대시보드 홈', icon: LayoutDashboard },
   ] },
   { title: '재고 · 메뉴', storeRequired: true, items: [
-    { to: '/ingredients', end: true, label: '재료 목록' },
-    { to: '/menus', end: true, label: '메뉴 & 레시피' },
-    { to: '/waste', end: true, label: '폐기 내역' },
-    { to: '/stock-adjustments', end: true, label: '실사 재고 조정' },
-    { to: '/stock-ledger', end: true, label: '상품별 거래 수불' },
+    { to: '/ingredients', end: true, label: '재료 목록', icon: Box },
+    { to: '/menus', end: true, label: '메뉴 & 레시피', icon: UtensilsCrossed },
+    { to: '/waste', end: true, label: '폐기 내역', icon: Trash2 },
+    { to: '/stock-adjustments', end: true, label: '실사 재고 조정', icon: ClipboardCheck },
+    { to: '/stock-ledger', end: true, label: '상품별 거래 수불', icon: BookOpen },
   ] },
 ];
 
@@ -102,26 +114,31 @@ function SideMenu({ collapsed, onToggle, groups, badgeCounts }) {
   return (
     <aside className={'side-menu' + (collapsed ? ' collapsed' : '')}>
       <button className="side-menu-collapse" onClick={onToggle} title={collapsed ? '펼치기' : '접기'}>
-        {collapsed ? '»' : '«'}
+        {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
       </button>
-      {!collapsed && (
-        <div className="side-menu-list">
-          {groups.map((group, gi) => (
-            <div key={gi} className="side-menu-group">
-              <div className="side-menu-group-title">{group.title}</div>
-              {group.items.map(item => (
+      <div className="side-menu-list">
+        {groups.map((group, gi) => (
+          <div key={gi} className="side-menu-group">
+            {!collapsed && <div className="side-menu-group-title">{group.title}</div>}
+            {group.items.map(item => {
+              const Icon = item.icon;
+              return (
                 <NavLink key={item.to} to={item.to} end={item.end}
-                  className={({ isActive }) => 'side-menu-item' + (isActive ? ' active' : '')}>
-                  <span>{item.label}</span>
-                  {badgeCounts?.[item.to] > 0 && (
+                  className={({ isActive }) => 'side-menu-item' + (isActive ? ' active' : '')}
+                  title={collapsed ? item.label : undefined}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                    {Icon && <Icon size={18} style={{ flexShrink: 0, opacity: 0.75 }} />}
+                    {!collapsed && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.label}</span>}
+                  </span>
+                  {!collapsed && badgeCounts?.[item.to] > 0 && (
                     <span className="nav-badge">{badgeCounts[item.to] > 99 ? '99+' : badgeCounts[item.to]}</span>
                   )}
                 </NavLink>
-              ))}
-            </div>
-          ))}
-        </div>
-      )}
+              );
+            })}
+          </div>
+        ))}
+      </div>
     </aside>
   );
 }
@@ -211,10 +228,10 @@ function HQLayout() {
 
 const STORE_MENU_GROUPS = [
   { title: '발주 · 재고', items: [
-    { to: '/store', end: true, label: '발주하기' },
-    { to: '/store/stock', end: false, label: '재고 확인' },
-    { to: '/store/waste', end: false, label: '폐기 입력' },
-    { to: '/store/stock-adjustments', end: false, label: '실사 재고 조정' },
+    { to: '/store', end: true, label: '발주하기', icon: Package },
+    { to: '/store/stock', end: false, label: '재고 확인', icon: Box },
+    { to: '/store/waste', end: false, label: '폐기 입력', icon: Trash2 },
+    { to: '/store/stock-adjustments', end: false, label: '실사 재고 조정', icon: ClipboardCheck },
   ] },
 ];
 
