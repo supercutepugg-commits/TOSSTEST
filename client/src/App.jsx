@@ -4,11 +4,16 @@ import { AuthProvider, useAuth } from './AuthContext';
 import { StoreProvider, useStore } from './StoreContext';
 import { ThemeProvider, useTheme } from './ThemeContext';
 import {
-  Store, BarChart2, Receipt, TrendingUp, AlertTriangle,
-  ClipboardList, Package, CheckSquare, ShieldAlert, Bell,
-  Users, History, LayoutDashboard, Box, UtensilsCrossed,
-  Trash2, ClipboardCheck, BookOpen, Moon, Sun, LogOut, ChevronLeft, ChevronRight,
-} from 'lucide-react';
+  IconStore as Store, IconBarChart as BarChart2, IconReceipt as Receipt,
+  IconTrendingUp as TrendingUp, IconAlertTriangle as AlertTriangle,
+  IconClipboardList as ClipboardList, IconPackage as Package,
+  IconCheckSquare as CheckSquare, IconShieldAlert as ShieldAlert,
+  IconBell as Bell, IconUsers as Users, IconHistory as History,
+  IconDashboard as LayoutDashboard, IconBox as Box, IconUtensils as UtensilsCrossed,
+  IconTrash as Trash2, IconClipboardCheck as ClipboardCheck,
+  IconBookOpen as BookOpen, IconMoon as Moon, IconSun as Sun,
+  IconLogOut as LogOut, IconChevronLeft as ChevronLeft, IconChevronRight as ChevronRight,
+} from './icons';
 import { api } from './api';
 import Dashboard from './pages/Dashboard';
 import Ingredients from './pages/Ingredients';
