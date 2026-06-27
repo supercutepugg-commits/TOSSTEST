@@ -189,7 +189,7 @@ function HQLayout() {
   return (
     <div className="kicc-layout">
       <header className="topnav">
-        <div className="topnav-brand"><span className="brand-mark">P</span>포스모스</div>
+        <NavLink to="/" className="topnav-brand" style={{ textDecoration: 'none', color: '#fff' }}><span className="brand-mark">P</span>포스모스</NavLink>
         <nav className="topnav-menu">
           {visibleItems.map(item => (
             <NavTab key={item.to} to={item.to} end={item.end} label={item.label} count={badgeCounts[item.to]} />
