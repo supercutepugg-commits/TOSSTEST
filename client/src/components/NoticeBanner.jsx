@@ -23,20 +23,22 @@ export default function NoticeBanner({ storeId }) {
   return (
     <div style={{
       position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-      background: 'rgba(0,0,0,0.55)',
+      background: 'rgba(0,0,0,0.45)',
+      backdropFilter: 'blur(8px)',
+      WebkitBackdropFilter: 'blur(8px)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       zIndex: 9999,
     }}>
       <div style={{
         background: 'var(--bg-card)',
-        borderRadius: 18,
+        borderRadius: 20,
         padding: '32px 36px',
-        boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+        boxShadow: '0 24px 64px rgba(0,0,0,0.2), 0 4px 16px rgba(0,0,0,0.1)',
         border: '1px solid var(--border)',
         maxWidth: 440,
         width: '90vw',
       }}>
-        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.4, textTransform: 'uppercase', color: 'var(--purple)', marginBottom: 8 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.8, textTransform: 'uppercase', color: 'var(--purple)', marginBottom: 10, borderTop: '3px solid var(--purple)', paddingTop: 12 }}>
           공지사항{unread.length > 1 ? ` (${unread.length}건)` : ''}
         </div>
         <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 12, color: 'var(--text)' }}>{current.title}</div>

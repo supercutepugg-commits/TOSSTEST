@@ -34,11 +34,11 @@ export default function ToastHost() {
             <div key={t.id}
               onClick={() => dismiss(t.id)}
               style={{
-                background: 'var(--bg-card)',
+                background: 'linear-gradient(135deg, var(--bg-card) 0%, rgba(0,100,255,0.02) 100%)',
                 border: '1px solid var(--border)',
                 borderRadius: 12,
                 padding: '14px 16px',
-                boxShadow: '0 8px 32px rgba(0,0,0,0.14), 0 2px 8px rgba(0,0,0,0.08)',
+                boxShadow: '0 12px 40px rgba(0,0,0,0.16), 0 2px 8px rgba(0,0,0,0.08)',
                 color: 'var(--text)',
                 cursor: 'pointer',
                 display: 'flex', alignItems: 'flex-start', gap: 12,
@@ -51,6 +51,7 @@ export default function ToastHost() {
                 background: c.bg, color: c.color,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: 14, fontWeight: 700,
+                boxShadow: 'inset 0 1px 2px rgba(255,255,255,0.4), 0 1px 3px rgba(0,0,0,0.06)',
               }}>{c.icon}</div>
               {/* 메시지 */}
               <div style={{ flex: 1, paddingTop: 3, fontSize: 14, lineHeight: 1.5, fontWeight: 500 }}>
