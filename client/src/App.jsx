@@ -4,15 +4,15 @@ import { AuthProvider, useAuth } from './AuthContext';
 import { StoreProvider, useStore } from './StoreContext';
 import { ThemeProvider, useTheme } from './ThemeContext';
 import {
-  IconStore as Store, IconBarChart as BarChart2, IconReceipt as Receipt,
-  IconTrendingUp as TrendingUp, IconAlertTriangle as AlertTriangle,
-  IconClipboardList as ClipboardList, IconPackage as Package,
-  IconCheckSquare as CheckSquare, IconShieldAlert as ShieldAlert,
-  IconBell as Bell, IconUsers as Users, IconHistory as History,
-  IconDashboard as LayoutDashboard, IconBox as Box, IconUtensils as UtensilsCrossed,
-  IconTrash as Trash2, IconClipboardCheck as ClipboardCheck,
-  IconBookOpen as BookOpen, IconMoon as Moon, IconSun as Sun,
-  IconLogOut as LogOut, IconChevronLeft as ChevronLeft, IconChevronRight as ChevronRight,
+  IconStore, IconBarChart, IconReceipt,
+  IconTrendingUp, IconAlertTriangle,
+  IconClipboardList, IconPackage,
+  IconCheckSquare, IconShieldAlert,
+  IconBell, IconUsers, IconHistory,
+  IconDashboard, IconBox, IconUtensils,
+  IconTrash, IconClipboardCheck,
+  IconBookOpen, IconMoon, IconSun,
+  IconLogOut, IconChevronLeft, IconChevronRight,
 } from './icons';
 import { api } from './api';
 import Dashboard from './pages/Dashboard';
@@ -59,10 +59,10 @@ function TopNavRight({ name, currentStore, onBackToAdmin }) {
       <span className="user-avatar">{name?.[0] || '?'}</span>
       <span style={{ fontSize: 14, whiteSpace: 'nowrap', maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</span>
       <button onClick={toggle} title={theme === 'light' ? '다크 모드' : '라이트 모드'} style={{ padding: 4 }}>
-        {theme === 'light' ? <Moon size={16} /> : <Sun size={16} />}
+        {theme === 'light' ? <IconMoon size={16} /> : <IconSun size={16} />}
       </button>
       <button onClick={logout} title="로그아웃" style={{ padding: 4 }}>
-        <LogOut size={16} />
+        <IconLogOut size={16} />
       </button>
     </div>
   );
@@ -84,34 +84,34 @@ function NavTab({ to, end, label, count }) {
 // 상단 탭과 좌측 메뉴 모두 평면화된 전체 항목 목록을 그대로 보여준다
 const SIDE_MENU_GROUPS = [
   { title: '가맹점', storeRequired: false, items: [
-    { to: '/', end: true, label: '가맹점 목록', icon: Store },
-    { to: '/rankings', end: true, label: '가맹점 순위', icon: BarChart2 },
-    { to: '/settlement', end: true, label: '정산 리포트', icon: Receipt },
-    { to: '/analytics', end: true, label: '매출 분석', icon: TrendingUp },
-    { to: '/purchase-anomalies', end: true, label: '사입 이상 모니터링', icon: AlertTriangle },
+    { to: '/', end: true, label: '가맹점 목록', icon: IconStore },
+    { to: '/rankings', end: true, label: '가맹점 순위', icon: IconBarChart },
+    { to: '/settlement', end: true, label: '정산 리포트', icon: IconReceipt },
+    { to: '/analytics', end: true, label: '매출 분석', icon: IconTrendingUp },
+    { to: '/purchase-anomalies', end: true, label: '사입 이상 모니터링', icon: IconAlertTriangle },
   ] },
   { title: '주문 · 발주', storeRequired: false, items: [
-    { to: '/orders', end: true, label: '주문 목록', icon: ClipboardList },
-    { to: '/products', end: true, label: '발주 상품', icon: Package },
+    { to: '/orders', end: true, label: '주문 목록', icon: IconClipboardList },
+    { to: '/products', end: true, label: '발주 상품', icon: IconPackage },
   ] },
   { title: '리스크 · 사용자', storeRequired: false, items: [
-    { to: '/my-tasks', end: true, label: '내 업무', icon: CheckSquare },
-    { to: '/risks', end: true, label: '리스크 알림', icon: ShieldAlert },
-    { to: '/notices', end: true, label: '공지사항', icon: Bell },
-    { to: '/users', end: true, label: '사용자 관리', icon: Users },
+    { to: '/my-tasks', end: true, label: '내 업무', icon: IconCheckSquare },
+    { to: '/risks', end: true, label: '리스크 알림', icon: IconShieldAlert },
+    { to: '/notices', end: true, label: '공지사항', icon: IconBell },
+    { to: '/users', end: true, label: '사용자 관리', icon: IconUsers },
   ] },
   { title: '감사', storeRequired: false, hqAdminOnly: true, items: [
-    { to: '/audit-log', end: true, label: '변경 이력', icon: History },
+    { to: '/audit-log', end: true, label: '변경 이력', icon: IconHistory },
   ] },
   { title: '대시보드', storeRequired: true, items: [
-    { to: '/dashboard', end: true, label: '대시보드 홈', icon: LayoutDashboard },
+    { to: '/dashboard', end: true, label: '대시보드 홈', icon: IconDashboard },
   ] },
   { title: '재고 · 메뉴', storeRequired: true, items: [
-    { to: '/ingredients', end: true, label: '재료 목록', icon: Box },
-    { to: '/menus', end: true, label: '메뉴 & 레시피', icon: UtensilsCrossed },
-    { to: '/waste', end: true, label: '폐기 내역', icon: Trash2 },
-    { to: '/stock-adjustments', end: true, label: '실사 재고 조정', icon: ClipboardCheck },
-    { to: '/stock-ledger', end: true, label: '상품별 거래 수불', icon: BookOpen },
+    { to: '/ingredients', end: true, label: '재료 목록', icon: IconBox },
+    { to: '/menus', end: true, label: '메뉴 & 레시피', icon: IconUtensils },
+    { to: '/waste', end: true, label: '폐기 내역', icon: IconTrash },
+    { to: '/stock-adjustments', end: true, label: '실사 재고 조정', icon: IconClipboardCheck },
+    { to: '/stock-ledger', end: true, label: '상품별 거래 수불', icon: IconBookOpen },
   ] },
 ];
 
@@ -119,7 +119,7 @@ function SideMenu({ collapsed, onToggle, groups, badgeCounts }) {
   return (
     <aside className={'side-menu' + (collapsed ? ' collapsed' : '')}>
       <button className="side-menu-collapse" onClick={onToggle} title={collapsed ? '펼치기' : '접기'}>
-        {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+        {collapsed ? <IconChevronRight size={14} /> : <IconChevronLeft size={14} />}
       </button>
       <div className="side-menu-list">
         {groups.map((group, gi) => (
@@ -233,10 +233,10 @@ function HQLayout() {
 
 const STORE_MENU_GROUPS = [
   { title: '발주 · 재고', items: [
-    { to: '/store', end: true, label: '발주하기', icon: Package },
-    { to: '/store/stock', end: false, label: '재고 확인', icon: Box },
-    { to: '/store/waste', end: false, label: '폐기 입력', icon: Trash2 },
-    { to: '/store/stock-adjustments', end: false, label: '실사 재고 조정', icon: ClipboardCheck },
+    { to: '/store', end: true, label: '발주하기', icon: IconPackage },
+    { to: '/store/stock', end: false, label: '재고 확인', icon: IconBox },
+    { to: '/store/waste', end: false, label: '폐기 입력', icon: IconTrash },
+    { to: '/store/stock-adjustments', end: false, label: '실사 재고 조정', icon: IconClipboardCheck },
   ] },
 ];
 
