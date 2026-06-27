@@ -698,7 +698,7 @@ export default function Stores() {
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
               <div>
                 <div style={{ fontSize: 13, color: 'var(--text-3)', fontWeight: 600, marginBottom: 4 }}>금일 전체 매출</div>
-                <div style={{ fontSize: 26, fontWeight: 800, letterSpacing: -0.3, color: 'var(--text)', fontFeatureSettings: "'tnum'" }}>
+                <div style={{ fontSize: 26, fontWeight: 800, letterSpacing: -0.3, color: 'var(--text)' }}>
                   {todayRevenue !== null ? `₩${Math.round(todayRevenue).toLocaleString()}` : '₩—'}
                 </div>
               </div>
