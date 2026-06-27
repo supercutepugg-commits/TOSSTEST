@@ -207,8 +207,6 @@ function StoreDetailPanel({ store, onClose }) {
   );
 }
 
-const DAY_LABELS = ['일', '월', '화', '수', '목', '금', '토'];
-
 const FRANCHISE_TYPES = ['가맹점', '직영점'];
 
 const HQ_ROLES = ['SUPER_ADMIN', 'HQ_ADMIN', 'HQ_LOGISTICS', 'HQ_ACCOUNTING'];
