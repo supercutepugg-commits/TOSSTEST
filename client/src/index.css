@@ -262,25 +262,26 @@ body, body * {
 
 .side-menu-collapse {
   position: absolute;
-  top: 20px;
-  right: -13px;
-  width: 26px;
-  height: 26px;
+  top: 50%;
+  right: -14px;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: var(--bg-card);
-  border: 1px solid var(--border);
+  border: 1.5px solid var(--border);
   border-radius: 50%;
   color: var(--text-2);
-  font-size: 18px;
+  font-size: 14px;
   line-height: 1;
   cursor: pointer;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.14);
   z-index: 2;
-  transition: color 0.15s, border-color 0.15s, transform 0.15s;
+  transition: color 0.15s, background 0.15s, border-color 0.15s, box-shadow 0.15s;
 }
-.side-menu-collapse:hover { color: #fff; background: var(--purple); border-color: var(--purple); transform: scale(1.08); }
+.side-menu-collapse:hover { color: #fff; background: var(--purple); border-color: var(--purple); box-shadow: 0 4px 12px rgba(0,100,255,0.35); }
 
 .side-menu-list {
   padding: 8px 10px;
@@ -303,10 +304,10 @@ body, body * {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 10px 14px 10px 16px;
+  padding: 9px 12px 9px 14px;
   border-radius: 8px;
   border: 1px solid transparent;
-  font-size: 19.5px;
+  font-size: 16px;
   font-weight: 500;
   color: var(--text-2);
   text-decoration: none;
