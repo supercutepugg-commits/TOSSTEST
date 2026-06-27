@@ -1114,3 +1114,134 @@ details[open] > summary::after { transform: rotate(270deg); }
   .kicc-main, .kicc-main-inner, .kicc-body { padding: 0 !important; margin: 0 !important; display: block !important; }
   .print-invoice { box-shadow: none !important; border: none !important; }
 }
+
+/* ── 프리미엄 폴리시: 등장 애니메이션 / 스켈레톤 / 상단 진행바 / 마이크로 인터랙션 ───── */
+
+/* 카드·행이 순서대로 살짝 떠오르며 나타나는 효과 — 색감은 그대로, 입장 모션만 추가 */
+@keyframes fadeUpIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.fade-stagger { animation: fadeUpIn 0.32s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.fade-stagger:nth-child(1)  { animation-delay: 0ms; }
+.fade-stagger:nth-child(2)  { animation-delay: 22ms; }
+.fade-stagger:nth-child(3)  { animation-delay: 44ms; }
+.fade-stagger:nth-child(4)  { animation-delay: 66ms; }
+.fade-stagger:nth-child(5)  { animation-delay: 88ms; }
+.fade-stagger:nth-child(6)  { animation-delay: 110ms; }
+.fade-stagger:nth-child(7)  { animation-delay: 132ms; }
+.fade-stagger:nth-child(8)  { animation-delay: 154ms; }
+.fade-stagger:nth-child(9)  { animation-delay: 176ms; }
+.fade-stagger:nth-child(10) { animation-delay: 198ms; }
+.fade-stagger:nth-child(n+11) { animation-delay: 210ms; }
+
+/* 숫자 카운트업 시 살짝 도드라지는 펄스 — 갑자기 바뀌었다는 느낌을 부드럽게 */
+@keyframes countPulse {
+  0%   { opacity: 0.4; }
+  100% { opacity: 1; }
+}
+.count-up { animation: countPulse 0.4s ease; font-variant-numeric: tabular-nums; }
+
+/* 스켈레톤 로딩 — 빈 화면 대신 카드/행 모양을 미리 보여줌 */
+@keyframes skeletonShimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.skeleton {
+  border-radius: 8px;
+  background: linear-gradient(90deg, var(--bg-muted) 25%, var(--border) 50%, var(--bg-muted) 75%);
+  background-size: 200% 100%;
+  animation: skeletonShimmer 1.4s ease-in-out infinite;
+}
+.skeleton-row td { padding: 14px 16px !important; }
+.skeleton-line { height: 14px; width: 100%; }
+
+/* 새로고침 시 상단에 잠깐 보이는 얇은 진행바 (유튜브 스타일) */
+@keyframes topProgressMove {
+  0%   { transform: translateX(-100%); }
+  60%  { transform: translateX(10%); }
+  100% { transform: translateX(100%); }
+}
+.top-progress-bar {
+  position: fixed; top: 0; left: 0; right: 0; height: 3px; z-index: 999;
+  background: var(--purple-light); overflow: hidden;
+}
+.top-progress-bar::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(90deg, var(--purple-light), var(--purple), var(--purple-dark));
+  animation: topProgressMove 0.85s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+/* 버튼 눌림 피드백 — 살짝 눌리는 느낌으로 고급스러운 터치감 */
+button:not(:disabled):active { transform: scale(0.97); }
+
+/* 카드 hover 시 미세하게 떠오르는 elevation (기존 색감 유지, 그림자만 강조) */
+.card.hoverable { transition: transform 0.18s ease, box-shadow 0.18s ease; cursor: pointer; }
+.card.hoverable:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(15,23,42,0.12), inset 0 1px 0 rgba(255,255,255,0.4); }
+
+/* 즐겨찾기 별 토글 */
+.fav-star {
+  background: none; border: none; cursor: pointer; padding: 2px; line-height: 1;
+  font-size: 16px; color: var(--border-input); transition: color 0.15s, transform 0.15s;
+}
+.fav-star:hover { transform: scale(1.15); }
+.fav-star.active { color: #f59e0b; }
+
+/* 가맹점 이니셜 아바타 색상 팔레트 — 기존에 쓰이던 배지/리스크 색상을 재사용해 톤을 통일 */
+.avatar-ring {
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 8px; flex-shrink: 0; font-weight: 700;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.25), 0 1px 3px rgba(0,0,0,0.08);
+}
+.avatar-ring.c0 { background: var(--purple-light); color: var(--purple-dark); }
+.avatar-ring.c1 { background: #dcfce7; color: #15803d; }
+.avatar-ring.c2 { background: #fef3c7; color: #92400e; }
+.avatar-ring.c3 { background: #fee2e2; color: #b91c1c; }
+.avatar-ring.c4 { background: #e0e7ff; color: #4338ca; }
+.avatar-ring.c5 { background: #cffafe; color: #0e7490; }
+[data-theme="dark"] .avatar-ring.c0 { background: rgba(49,130,246,0.18); color: #93c5fd; }
+[data-theme="dark"] .avatar-ring.c1 { background: rgba(34,197,94,0.16); color: #86efac; }
+[data-theme="dark"] .avatar-ring.c2 { background: rgba(245,158,11,0.16); color: #fcd34d; }
+[data-theme="dark"] .avatar-ring.c3 { background: rgba(239,68,68,0.16); color: #fca5a5; }
+[data-theme="dark"] .avatar-ring.c4 { background: rgba(99,102,241,0.18); color: #c7d2fe; }
+[data-theme="dark"] .avatar-ring.c5 { background: rgba(6,182,212,0.16); color: #67e8f9; }
+
+/* 최근 검색 칩 */
+.search-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 10px; border-radius: 99px; border: 1px solid var(--border);
+  background: var(--bg-muted); color: var(--text-3); font-size: 12px; cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.search-chip:hover { background: var(--purple-light); color: var(--purple-dark); border-color: var(--purple-light); }
+
+/* KPI 스트립 카드 */
+.kpi-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.kpi-card {
+  background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-elevated) 100%);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 16px;
+  box-shadow: 0 1px 2px rgba(15,23,42,0.04), inset 0 1px 0 rgba(255,255,255,0.4);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  position: relative;
+  overflow: hidden;
+}
+.kpi-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: var(--text-3); opacity: 0.25;
+}
+.kpi-card:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(15,23,42,0.1), inset 0 1px 0 rgba(255,255,255,0.4); }
+.kpi-card.accent::before { background: var(--purple); opacity: 1; }
+.kpi-card.warn::before { background: #dc2626; opacity: 1; }
+.kpi-card-label { font-size: 12.5px; color: var(--text-3); font-weight: 600; letter-spacing: 0.2px; }
+.kpi-card-value { font-size: 24px; font-weight: 800; color: var(--text); letter-spacing: -0.3px; margin-top: 4px; }
+.kpi-card.warn .kpi-card-value { color: #dc2626; }
+
+/* 대량 작업 바 슬라이드인 */
+@keyframes barSlideUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.bulk-bar { animation: barSlideUp 0.22s cubic-bezier(0.22, 1, 0.36, 1); }

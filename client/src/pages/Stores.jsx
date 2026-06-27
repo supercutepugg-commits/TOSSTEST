@@ -3,6 +3,30 @@ import { useEffect, useState } from 'react';
 import { api } from '../api';
 import { useStore } from '../StoreContext';
 import { useAuth } from '../AuthContext';
+import { useCountUp } from '../useCountUp';
+
+const AVATAR_PALETTE_SIZE = 6;
+const avatarClass = (id) => `avatar-ring c${Number(id) % AVATAR_PALETTE_SIZE}`;
+
+const FAVORITES_KEY = 'storeFavoriteIds';
+const loadFavorites = () => {
+  try { return new Set(JSON.parse(localStorage.getItem(FAVORITES_KEY) || '[]')); } catch { return new Set(); }
+};
+
+const SEARCH_HISTORY_KEY = 'storeSearchHistory';
+const loadSearchHistory = () => {
+  try { return JSON.parse(localStorage.getItem(SEARCH_HISTORY_KEY) || '[]'); } catch { return []; }
+};
+
+function KpiCard({ label, value, tone, suffix }) {
+  const display = useCountUp(value);
+  return (
+    <div className={`kpi-card fade-stagger${tone ? ` ${tone}` : ''}`}>
+      <div className="kpi-card-label">{label}</div>
+      <div className="kpi-card-value count-up">{Math.round(display).toLocaleString()}{suffix || ''}</div>
+    </div>
+  );
+}
 
 const ADMIN_ROLES = ['SUPER_ADMIN', 'HQ_ADMIN'];
 const DAY_LABELS = ['일', '월', '화', '수', '목', '금', '토'];
@@ -330,7 +354,7 @@ function StoreModal({ item, onClose, onSave }) {
 export default function Stores() {
   const { user } = useAuth();
   const canEdit = ADMIN_ROLES.includes(user?.role);
-  const { stores, currentStore, reloadStores } = useStore();
+  const { stores, currentStore, reloadStores, loaded } = useStore();
   const [modal, setModal] = useState(null);
   const [bulkSyncOpen, setBulkSyncOpen] = useState(false);
   const [detailStore, setDetailStore] = useState(null);
@@ -342,6 +366,20 @@ export default function Stores() {
   const [showOptional, setShowOptional] = useState(false);
   const [todayRevenue, setTodayRevenue] = useState(null);
   const [lastUpdated, setLastUpdated] = useState(Date.now());
+  const [favoriteIds, setFavoriteIds] = useState(loadFavorites);
+  const [searchHistory, setSearchHistory] = useState(loadSearchHistory);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const todaySparkValue = useCountUp(todayRevenue || 0);
+
+  const toggleFavorite = (id) => {
+    setFavoriteIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      localStorage.setItem(FAVORITES_KEY, JSON.stringify([...next]));
+      return next;
+    });
+  };
   useEffect(() => {
     api.getStoreOrderStatus().then(setOrderStatus).catch(() => {});
     api.getStoreAuditStatus().then(setAuditStatus).catch(() => {});
@@ -372,7 +410,22 @@ export default function Stores() {
     window.open(`${window.location.origin}/dashboard`, '_blank');
   };
 
-  const runSearch = () => setFilters({ nameQuery, bizQuery, franchiseType, openStatus });
+  const runSearch = () => {
+    setFilters({ nameQuery, bizQuery, franchiseType, openStatus });
+    const term = nameQuery.trim();
+    if (term) {
+      setSearchHistory(prev => {
+        const next = [term, ...prev.filter(t => t !== term)].slice(0, 5);
+        localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(next));
+        return next;
+      });
+    }
+  };
+
+  const applyHistoryChip = (term) => {
+    setNameQuery(term);
+    setFilters({ nameQuery: term, bizQuery, franchiseType, openStatus });
+  };
 
   const filteredStores = stores.filter(s => {
     if (statusChip === 'open' && s.is_open === false) return false;
@@ -384,6 +437,10 @@ export default function Stores() {
     if (filters.openStatus === 'open' && s.is_open === false) return false;
     if (filters.openStatus === 'closed' && s.is_open !== false) return false;
     return true;
+  }).sort((a, b) => {
+    const fa = favoriteIds.has(a.id) ? 1 : 0;
+    const fb = favoriteIds.has(b.id) ? 1 : 0;
+    return fb - fa;
   });
 
   const handleSave = async (form) => {
@@ -405,9 +462,11 @@ export default function Stores() {
   };
 
   const handleRefresh = () => {
+    setRefreshing(true);
     reloadStores();
     setLastUpdated(Date.now());
     toast('최신 데이터로 갱신됐습니다', 'success');
+    setTimeout(() => setRefreshing(false), 700);
   };
 
   const openCount = stores.filter(s => s.is_open !== false).length;
@@ -436,6 +495,8 @@ export default function Stores() {
 
   return (
     <div>
+      {refreshing && <div className="top-progress-bar" />}
+
       {/* 페이지 헤더 */}
       <div style={{ marginBottom: 24 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 15, color: 'var(--text-3)', fontWeight: 600, marginBottom: 8 }}>
@@ -450,9 +511,18 @@ export default function Stores() {
         </div>
       </div>
 
+      {/* KPI 스트립 */}
+      <div className="kpi-strip">
+        <KpiCard label="전체 가맹점" value={stores.length} suffix="개" />
+        <KpiCard label="오픈" value={openCount} tone="accent" suffix="개" />
+        <KpiCard label="폐점" value={closedCount} suffix="개" />
+        <KpiCard label="주의 필요" value={auditStatus.length + orderStatus.length} tone={hasRisks ? 'warn' : undefined} suffix="건" />
+        <KpiCard label="금일 전체 매출" value={Math.round((todayRevenue || 0) / 1000)} suffix="천원" />
+      </div>
+
       {/* 대량 작업 바 */}
       {checkedIds.size > 0 && (
-        <div style={{
+        <div className="bulk-bar" style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           background: 'var(--text)', color: '#fff', borderRadius: 10,
           padding: '10px 16px', marginBottom: 16,
@@ -484,6 +554,15 @@ export default function Stores() {
                   <label htmlFor="sq-name">매장명</label>
                   <input id="sq-name" value={nameQuery} onChange={e => setNameQuery(e.target.value)} placeholder="가맹점명"
                     onKeyDown={e => e.key === 'Enter' && runSearch()} />
+                  {searchHistory.length > 0 && (
+                    <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
+                      {searchHistory.map(term => (
+                        <button key={term} type="button" className="search-chip" onClick={() => applyHistoryChip(term)}>
+                          🕐 {term}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <div className="form-group">
                   <label htmlFor="sq-biz">사업자번호</label>
@@ -546,7 +625,17 @@ export default function Stores() {
 
             {/* 테이블 */}
             <div style={{ marginTop: 10, overflowX: 'auto' }}>
-              {stores.length === 0 ? (
+              {!loaded ? (
+                <table>
+                  <tbody>
+                    {[...Array(5)].map((_, i) => (
+                      <tr key={i} className="skeleton-row">
+                        <td colSpan={colSpan}><div className="skeleton skeleton-line" style={{ animationDelay: `${i * 60}ms` }} /></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : stores.length === 0 ? (
                 <div className="empty">가맹점을 추가해주세요</div>
               ) : (
                 <table>
@@ -575,22 +664,23 @@ export default function Stores() {
                       const isSelected = s.id === currentStore?.id;
                       const isClosed = s.is_open === false;
                       const isChecked = checkedIds.has(s.id);
+                      const isFavorite = favoriteIds.has(s.id);
                       const days = s.delivery_days ? s.delivery_days.split(',').filter(Boolean).map(d => DAY_LABELS[Number(d)]).join(' ') : '—';
                       return (
-                        <tr key={s.id} style={{ background: isChecked ? 'var(--purple-light)' : isClosed ? 'var(--bg-muted)' : undefined }}>
+                        <tr key={s.id} className="fade-stagger" style={{ background: isChecked ? 'var(--purple-light)' : isClosed ? 'var(--bg-muted)' : undefined }}>
                           <td>
                             <input type="checkbox" checked={isChecked} onChange={() => toggleOne(s.id)}
                               style={{ accentColor: 'var(--purple)', cursor: 'pointer', width: 15, height: 15 }} />
                           </td>
                           <td style={{ color: 'var(--text-3)', fontSize: 15, textAlign: 'center' }}>{i + 1}</td>
                           <td>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                              <div style={{
-                                width: 30, height: 30, borderRadius: 8, flexShrink: 0,
-                                background: 'var(--bg-muted)', border: '1px solid var(--border)',
-                                color: 'var(--text-2)', fontSize: 14, fontWeight: 700,
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                              }}>{initial}</div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <button type="button" className={`fav-star${isFavorite ? ' active' : ''}`}
+                                onClick={e => { e.stopPropagation(); toggleFavorite(s.id); }}
+                                title={isFavorite ? '즐겨찾기 해제' : '즐겨찾기 추가'}>
+                                {isFavorite ? '★' : '☆'}
+                              </button>
+                              <div className={avatarClass(s.id)} style={{ width: 30, height: 30, fontSize: 14 }}>{initial}</div>
                               <button type="button" onClick={() => setDetailStore(s)} style={{
                                 background: 'none', border: 'none', padding: 0, fontSize: 17,
                                 fontWeight: 600, color: isClosed ? 'var(--text-3)' : 'var(--text)',
@@ -674,7 +764,7 @@ export default function Stores() {
 
           {/* 리스크 알림 카드 */}
           {hasRisks && (
-            <div className="card" style={{ borderLeft: '3px solid #dc2626' }}>
+            <div className="card fade-stagger" style={{ borderLeft: '3px solid #dc2626' }}>
               <h3 style={{ fontSize: 17, fontWeight: 700, marginBottom: 10 }}>최근 리스크 알림</h3>
               {auditStatus.map(s => (
                 <div key={s.store_id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 0', borderBottom: '1px solid var(--border)' }}>
@@ -700,12 +790,12 @@ export default function Stores() {
           )}
 
           {/* 금일 전체 매출 스파크라인 */}
-          <div className="card">
+          <div className="card fade-stagger">
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
               <div>
                 <div style={{ fontSize: 13, color: 'var(--text-3)', fontWeight: 600, marginBottom: 4 }}>금일 전체 매출</div>
-                <div style={{ fontSize: 26, fontWeight: 800, letterSpacing: -0.3, color: 'var(--text)' }}>
-                  {todayRevenue !== null ? `₩${Math.round(todayRevenue).toLocaleString()}` : '₩—'}
+                <div className="count-up" style={{ fontSize: 26, fontWeight: 800, letterSpacing: -0.3, color: 'var(--text)' }}>
+                  {todayRevenue !== null ? `₩${Math.round(todaySparkValue).toLocaleString()}` : '₩—'}
                 </div>
               </div>
               <span className="badge subtle green" style={{ marginTop: 2, fontSize: 13 }}>↑ +0.0%</span>
@@ -730,7 +820,7 @@ export default function Stores() {
           </div>
 
           {/* 웹훅 URL 안내 (접힘) */}
-          <details className="card">
+          <details className="card fade-stagger">
             <summary style={{ cursor: 'pointer', listStyle: 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 15, fontWeight: 700, color: 'var(--text-2)' }}>
               웹훅 URL 안내 <span style={{ opacity: 0.5 }}>▾</span>
             </summary>

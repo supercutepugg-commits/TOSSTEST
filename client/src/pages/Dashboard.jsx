@@ -4,6 +4,7 @@ import { api } from '../api';
 import { useStore } from '../StoreContext';
 import { useAuth } from '../AuthContext';
 import { toast } from '../toast';
+import { useCountUp } from '../useCountUp';
 
 const SEVERITY_COLOR = { HIGH: '#ef4444', MEDIUM: '#f59e0b', LOW: '#6366f1' };
 const TYPE_LABEL = {
@@ -22,6 +23,12 @@ const QUICK_LINKS = [
 ];
 
 const won = (v) => `${Math.round(v || 0).toLocaleString()}원`;
+
+// 값이 갑자기 바뀌는 대신 짧게 카운트업되며 채워지도록 — 숫자 표시 자리에만 적용
+function CountUpValue({ value, format }) {
+  const display = useCountUp(value);
+  return <span className="count-up">{format(display)}</span>;
+}
 
 // 하루 단위로 끊어진 이산 데이터라서, 점 사이를 곡선으로 이으면 실제론 존재하지 않는 "중간값"이
 // 있는 것처럼 보여 오해를 줄 수 있음 — 직선으로 또렷하게 점만 정확히 잇는다
@@ -144,7 +151,21 @@ export default function Dashboard() {
 
   if (!currentStore) return <div className="empty">가맹점을 선택해주세요</div>;
   if (error) return <div className="empty">{error}</div>;
-  if (!data) return <div className="loading-state">대시보드를 불러오는 중...</div>;
+  if (!data) return (
+    <div className="dash-layout">
+      <div className="dash-side">
+        <div className="skeleton" style={{ height: 150, borderRadius: 18, marginBottom: 16 }} />
+        <div className="dash-stat-tiles">
+          {[...Array(5)].map((_, i) => <div key={i} className="skeleton" style={{ height: 70 }} />)}
+        </div>
+        <div className="skeleton" style={{ height: 90, marginTop: 16, borderRadius: 16 }} />
+      </div>
+      <div className="dash-main">
+        <div className="skeleton" style={{ height: 280, borderRadius: 16 }} />
+        <div className="skeleton" style={{ height: 200, marginTop: 16, borderRadius: 16 }} />
+      </div>
+    </div>
+  );
 
   const cmp = data.salesComparison || {};
   const weekly = (data.weeklyStats || []).filter(d => d && d.date);
@@ -165,7 +186,7 @@ export default function Dashboard() {
     <div className="dash-layout">
       {/* 좌측 패널 */}
       <div className="dash-side">
-        <div className="dash-info-card">
+        <div className="dash-info-card fade-stagger">
           <div className="dash-info-avatar">{currentStore.name?.slice(0, 1)}</div>
           <div className="dash-date">{new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
           <div className="dash-store-name">{currentStore.name}</div>
@@ -173,17 +194,17 @@ export default function Dashboard() {
         </div>
 
         <div className="dash-stat-tiles">
-          {statTiles.map(t => (
-            <div key={t.label} className={'dash-stat-tile' + (t.warn ? ' warn' : '')}>
-              <span className="dash-stat-value">{t.value}</span>
+          {statTiles.map((t, i) => (
+            <div key={t.label} className={'dash-stat-tile fade-stagger' + (t.warn ? ' warn' : '')} style={{ animationDelay: `${i * 30}ms` }}>
+              <span className="dash-stat-value"><CountUpValue value={t.value} format={v => Math.round(v)} /></span>
               <span className="dash-stat-label">{t.label}</span>
             </div>
           ))}
         </div>
 
-        <div className="dash-revenue-card">
+        <div className="dash-revenue-card fade-stagger">
           <div className="dash-revenue-label">오늘 매출</div>
-          <div className="dash-revenue-amount">{won(data.todayRevenue)}</div>
+          <div className="dash-revenue-amount"><CountUpValue value={data.todayRevenue} format={won} /></div>
           {todayVsYesterday !== null && (
             <div className={'dash-revenue-trend' + (todayVsYesterday >= 0 ? ' up' : ' down')}>
               {todayVsYesterday >= 0 ? '▲' : '▼'} 전일 대비 {Math.abs(todayVsYesterday)}%
@@ -191,13 +212,13 @@ export default function Dashboard() {
           )}
         </div>
 
-        <div className="dash-revenue-card">
+        <div className="dash-revenue-card fade-stagger">
           <div className="dash-revenue-label">재고 자산가치</div>
-          <div className="dash-revenue-amount" style={{ fontSize: 22 }}>{won(data.stockValue)}</div>
+          <div className="dash-revenue-amount" style={{ fontSize: 22 }}><CountUpValue value={data.stockValue} format={won} /></div>
           <div className="text-muted" style={{ fontSize: 11.5, marginTop: 8 }}>현재 재고 × 발주 단가 기준 추정값</div>
         </div>
 
-        <div className="dash-quicklinks">
+        <div className="dash-quicklinks fade-stagger">
           {QUICK_LINKS.map(l => (
             <Link key={l.to} to={l.to} className="dash-quicklink">
               <span>{l.label}</span>
@@ -210,7 +231,7 @@ export default function Dashboard() {
       {/* 우측 메인 */}
       <div className="dash-main">
         {/* 전주/전일 매출현황 */}
-        <div className="card">
+        <div className="card fade-stagger">
           <div className="dash-section-title">전주/전일 매출현황</div>
           <table className="dash-table dash-table-finance">
             <thead>
@@ -254,7 +275,7 @@ export default function Dashboard() {
         </div>
 
         {/* 1주일간 매출통계 */}
-        <div className="card">
+        <div className="card fade-stagger">
           <div className="dash-section-title">1주일간 매출통계</div>
           <table className="dash-table dash-table-finance">
             <thead>
@@ -279,7 +300,7 @@ export default function Dashboard() {
         </div>
 
         {data.lowStock.length > 0 && (
-          <div className="card" style={{ borderLeft: '4px solid #dc2626', background: 'linear-gradient(135deg, var(--bg-card) 0%, rgba(220,38,38,0.025) 100%)' }}>
+          <div className="card fade-stagger" style={{ borderLeft: '4px solid #dc2626', background: 'linear-gradient(135deg, var(--bg-card) 0%, rgba(220,38,38,0.025) 100%)' }}>
             <div className="dash-section-title" style={{ color: '#dc2626' }}>재고 부족 재료</div>
             <table className="dash-table">
               <thead>
@@ -308,7 +329,7 @@ export default function Dashboard() {
         )}
 
         {data.risks.length > 0 && (
-          <div className="card" style={{ borderLeft: '4px solid #ef4444', background: 'linear-gradient(135deg, var(--bg-card) 0%, rgba(239,68,68,0.02) 100%)' }}>
+          <div className="card fade-stagger" style={{ borderLeft: '4px solid #ef4444', background: 'linear-gradient(135deg, var(--bg-card) 0%, rgba(239,68,68,0.02) 100%)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
               <div className="dash-section-title" style={{ color: '#ef4444', marginBottom: 0, paddingBottom: 0, borderBottom: 'none' }}>리스크 알림 (미처리)</div>
               <Link to="/risks" style={{ fontSize: 12.5 }}>전체 보기 &rarr;</Link>
@@ -330,7 +351,7 @@ export default function Dashboard() {
           </div>
         )}
 
-        <div className="card">
+        <div className="card fade-stagger">
           <div className="dash-section-title">최근 재고 알림 내역</div>
           {data.recentAlerts.length === 0 ? (
             <div className="empty">알림 내역 없음</div>

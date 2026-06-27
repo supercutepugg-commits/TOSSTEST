@@ -6,6 +6,7 @@ const StoreContext = createContext(null);
 export function StoreProvider({ children }) {
   const [stores, setStores] = useState([]);
   const [currentStore, setCurrentStore] = useState(null);
+  const [loaded, setLoaded] = useState(false);
 
   const loadStores = async () => {
     try {
@@ -18,7 +19,9 @@ export function StoreProvider({ children }) {
           if (found) setCurrentStore(found);
         }
       }
-    } catch {}
+    } catch {} finally {
+      setLoaded(true);
+    }
   };
 
   useEffect(() => { loadStores(); }, []);
@@ -29,7 +32,7 @@ export function StoreProvider({ children }) {
   };
 
   return (
-    <StoreContext.Provider value={{ stores, currentStore, reloadStores: loadStores, clearStore }}>
+    <StoreContext.Provider value={{ stores, currentStore, reloadStores: loadStores, clearStore, loaded }}>
       {children}
     </StoreContext.Provider>
   );
