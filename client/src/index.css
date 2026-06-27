@@ -619,8 +619,6 @@ input[readonly], input:read-only {
   animation: spin 0.7s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
-  letter-spacing: 6px;
-}
 
 /* ── 모달 ────────────────────────────────────────────── */
 .modal-overlay {
