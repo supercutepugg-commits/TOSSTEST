@@ -337,28 +337,36 @@ export default function Stores() {
   const [detailStore, setDetailStore] = useState(null);
   const [orderStatus, setOrderStatus] = useState([]);
   const [auditStatus, setAuditStatus] = useState([]);
+  const [openMenuId, setOpenMenuId] = useState(null);
+  const [statusChip, setStatusChip] = useState('all');
 
   useEffect(() => {
     api.getStoreOrderStatus().then(setOrderStatus).catch(() => {});
     api.getStoreAuditStatus().then(setAuditStatus).catch(() => {});
   }, []);
 
+  useEffect(() => {
+    const close = () => setOpenMenuId(null);
+    document.addEventListener('click', close);
+    return () => document.removeEventListener('click', close);
+  }, []);
+
   const [nameQuery, setNameQuery] = useState('');
   const [bizQuery, setBizQuery] = useState('');
   const [franchiseType, setFranchiseType] = useState('');
   const [openStatus, setOpenStatus] = useState('');
-  const [filters, setFilters] = useState(null); // 조회 버튼 눌렀을 때 적용되는 값
+  const [filters, setFilters] = useState(null);
 
-  // 새 탭에서 해당 가맹점이 선택된 상태로 관리자 화면(대시보드)을 바로 연다
   const handleLogin = (store) => {
     localStorage.setItem('currentStoreId', store.id);
     window.open(`${window.location.origin}/dashboard`, '_blank');
   };
 
-
   const runSearch = () => setFilters({ nameQuery, bizQuery, franchiseType, openStatus });
 
   const filteredStores = stores.filter(s => {
+    if (statusChip === 'open' && s.is_open === false) return false;
+    if (statusChip === 'closed' && s.is_open !== false) return false;
     if (!filters) return true;
     if (filters.nameQuery && !String(s.name || '').toLowerCase().includes(filters.nameQuery.toLowerCase())) return false;
     if (filters.bizQuery && !String(s.business_number || '').includes(filters.bizQuery)) return false;
@@ -386,166 +394,229 @@ export default function Stores() {
     reloadStores();
   };
 
+  const openCount = stores.filter(s => s.is_open !== false).length;
+  const closedCount = stores.filter(s => s.is_open === false).length;
+  const hasRisks = auditStatus.length > 0 || orderStatus.length > 0;
+
   return (
     <div>
-      <div className="breadcrumb">기초정보 &gt; 가맹점관리 &gt; <b>가맹점조회</b></div>
-
-      <div className="top-bar">
-        <h2>가맹점조회</h2>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button className="secondary" onClick={() => setBulkSyncOpen(true)}>매출 동기화</button>
-          {canEdit && <button className="primary" onClick={() => setModal('add')}>+ 가맹점 추가</button>}
+      {/* 페이지 헤더 */}
+      <div style={{ marginBottom: 24 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 15, color: 'var(--text-3)', fontWeight: 600, marginBottom: 8 }}>
+          기초정보 <span style={{ opacity: 0.5 }}>›</span> 가맹점관리
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <h2 style={{ borderLeft: '2px solid var(--border-input)', paddingLeft: 16, fontSize: 27 }}>가맹점조회</h2>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button className="secondary" onClick={() => setBulkSyncOpen(true)}>매출 동기화</button>
+            {canEdit && <button className="primary" onClick={() => setModal('add')}>+ 가맹점 추가</button>}
+          </div>
         </div>
       </div>
 
-      {orderStatus.length > 0 && (
-        <div className="card" style={{ borderLeft: '4px solid #ef4444', marginBottom: 16, background: '#fef2f2' }}>
-          <div style={{ fontWeight: 700, color: '#ef4444', marginBottom: 6 }}>발주 마감 임박/누락 가맹점 {orderStatus.length}건</div>
-          {orderStatus.map(s => (
-            <div key={s.store_id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 4 }}>
-              <span>{s.store_name} — 마감 {s.order_deadline}</span>
-              <span style={{ fontWeight: 700 }}>
-                {s.diffMin <= 0 ? `마감 ${Math.abs(s.diffMin)}분 경과 (미발주)` : `마감 ${s.diffMin}분 전 (미발주)`}
+      {/* 2컬럼 레이아웃 */}
+      <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start' }}>
+
+        {/* 메인 콘텐츠 */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+
+            {/* 검색 필터 헤더 */}
+            <div style={{ padding: '24px 24px 20px', borderBottom: '1px solid var(--border)', background: 'var(--bg-muted)' }}>
+              <h3 style={{ fontSize: 21, fontWeight: 700, marginBottom: 14 }}>가맹점 목록</h3>
+              <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1.4fr 1fr 1fr auto', gap: 16, alignItems: 'end' }}>
+                <div className="form-group">
+                  <label>매장명</label>
+                  <input value={nameQuery} onChange={e => setNameQuery(e.target.value)} placeholder="가맹점명"
+                    onKeyDown={e => e.key === 'Enter' && runSearch()} />
+                </div>
+                <div className="form-group">
+                  <label>사업자번호</label>
+                  <input value={bizQuery} onChange={e => setBizQuery(e.target.value)} placeholder="123-45-67890"
+                    onKeyDown={e => e.key === 'Enter' && runSearch()} />
+                </div>
+                <div className="form-group">
+                  <label>가맹형태</label>
+                  <select value={franchiseType} onChange={e => setFranchiseType(e.target.value)}>
+                    <option value="">전체</option>
+                    {FRANCHISE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>오픈여부</label>
+                  <select value={openStatus} onChange={e => setOpenStatus(e.target.value)}>
+                    <option value="">전체</option>
+                    <option value="open">오픈</option>
+                    <option value="closed">폐점</option>
+                  </select>
+                </div>
+                <button className="primary" style={{ marginBottom: 16 }} onClick={runSearch}>조회</button>
+              </div>
+
+              {/* 상태 칩 */}
+              <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+                {[
+                  { key: 'all', label: `전체 ${stores.length}` },
+                  { key: 'open', label: `오픈 ${openCount}` },
+                  { key: 'closed', label: `폐점 ${closedCount}` },
+                ].map(chip => (
+                  <button key={chip.key} onClick={() => setStatusChip(chip.key)} style={{
+                    padding: '5px 13px', borderRadius: 99,
+                    border: '1px solid var(--border)',
+                    background: statusChip === chip.key ? 'var(--text)' : 'transparent',
+                    color: statusChip === chip.key ? '#fff' : 'var(--text-3)',
+                    fontSize: 14, fontWeight: 600,
+                  }}>{chip.label}</button>
+                ))}
+              </div>
+            </div>
+
+            {/* 테이블 툴바 */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px 0' }}>
+              <span style={{ fontSize: 16, color: 'var(--text-3)' }}>
+                전체 <b style={{ color: 'var(--text)' }}>{filteredStores.length}건</b>
               </span>
             </div>
-          ))}
-        </div>
-      )}
 
-      {auditStatus.length > 0 && (
-        <div className="card" style={{ borderLeft: '4px solid #f59e0b', marginBottom: 16, background: '#fffbeb' }}>
-          <div style={{ fontWeight: 700, color: '#f59e0b', marginBottom: 6 }}>재고 실사 지연 가맹점 {auditStatus.length}건 (30일 이상)</div>
-          {auditStatus.map(s => (
-            <div key={s.store_id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 4 }}>
-              <span>{s.store_name}</span>
-              <span className="text-sub">{s.lastAuditAt ? `마지막 실사: ${new Date(s.lastAuditAt).toLocaleDateString('ko-KR')} (${s.daysSince}일 전)` : '실사 기록 없음'}</span>
+            {/* 테이블 */}
+            <div style={{ marginTop: 12, overflowX: 'auto' }}>
+              {stores.length === 0 ? (
+                <div className="empty">가맹점을 추가해주세요</div>
+              ) : (
+                <table>
+                  <thead>
+                    <tr>
+                      <th style={{ width: 50 }}>NO</th>
+                      <th>매장</th>
+                      <th>대표자명</th>
+                      <th>전화번호</th>
+                      <th>사업자번호</th>
+                      <th>오픈여부</th>
+                      <th style={{ width: 48 }}>관리</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredStores.length === 0 ? (
+                      <tr><td colSpan={7} style={{ textAlign: 'center', padding: '48px 0', color: 'var(--text-3)', fontSize: 16 }}>검색 결과가 없습니다</td></tr>
+                    ) : filteredStores.map((s, i) => {
+                      const initial = (s.name || '?').charAt(0);
+                      const isSelected = s.id === currentStore?.id;
+                      const isClosed = s.is_open === false;
+                      return (
+                        <tr key={s.id} style={isClosed ? { background: 'var(--bg-muted)' } : {}}>
+                          <td style={{ color: 'var(--text-3)', fontSize: 16, textAlign: 'center' }}>{i + 1}</td>
+                          <td>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                              <div style={{
+                                width: 30, height: 30, borderRadius: 8, flexShrink: 0,
+                                background: 'var(--bg-muted)', border: '1px solid var(--border)',
+                                color: 'var(--text-2)', fontSize: 14, fontWeight: 700,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              }}>{initial}</div>
+                              <button type="button" onClick={() => setDetailStore(s)} style={{
+                                background: 'none', border: 'none', padding: 0, fontSize: 18,
+                                fontWeight: 600, color: isClosed ? 'var(--text-3)' : 'var(--text)',
+                                cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6,
+                              }}>
+                                {s.name}
+                                {isSelected && <span className="badge green" style={{ fontSize: 11 }}>선택됨</span>}
+                              </button>
+                            </div>
+                          </td>
+                          <td style={{ color: s.owner_name ? 'var(--text)' : 'var(--text-3)', opacity: s.owner_name ? 1 : 0.55 }}>{s.owner_name || '—'}</td>
+                          <td style={{ color: s.phone ? 'var(--text)' : 'var(--text-3)', opacity: s.phone ? 1 : 0.55 }}>{s.phone || '—'}</td>
+                          <td style={{ color: s.business_number ? 'var(--text)' : 'var(--text-3)', opacity: s.business_number ? 1 : 0.55 }}>{s.business_number || '—'}</td>
+                          <td>
+                            <span className={`badge subtle ${isClosed ? 'red' : 'green'}`}>
+                              {isClosed ? '폐점' : '오픈'}
+                            </span>
+                          </td>
+                          <td>
+                            <div style={{ position: 'relative' }} onClick={e => e.stopPropagation()}>
+                              <button onClick={() => setOpenMenuId(openMenuId === s.id ? null : s.id)}
+                                style={{ padding: '4px 8px', background: 'transparent', color: 'var(--text-3)', border: 'none', borderRadius: 6, fontSize: 18, lineHeight: 1 }}>
+                                ⋮
+                              </button>
+                              {openMenuId === s.id && (
+                                <div style={{
+                                  position: 'absolute', right: 0, top: '100%', zIndex: 100,
+                                  background: 'var(--bg-card)', border: '1px solid var(--border)',
+                                  borderRadius: 8, boxShadow: '0 8px 24px rgba(15,23,42,0.12)',
+                                  minWidth: 110, padding: 4,
+                                }}>
+                                  <button onClick={() => { handleLogin(s); setOpenMenuId(null); }}
+                                    style={{ width: '100%', background: 'none', color: 'var(--text-2)', fontSize: 15, padding: '8px 12px', borderRadius: 6, justifyContent: 'flex-start', display: 'flex' }}>로그인</button>
+                                  {canEdit && <>
+                                    <button onClick={() => { setModal({ edit: s }); setOpenMenuId(null); }}
+                                      style={{ width: '100%', background: 'none', color: 'var(--text-2)', fontSize: 15, padding: '8px 12px', borderRadius: 6, justifyContent: 'flex-start', display: 'flex' }}>수정</button>
+                                    <button onClick={() => { handleDelete(s); setOpenMenuId(null); }}
+                                      style={{ width: '100%', background: 'none', color: '#b91c1c', fontSize: 15, padding: '8px 12px', borderRadius: 6, justifyContent: 'flex-start', display: 'flex' }}>삭제</button>
+                                  </>}
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
             </div>
-          ))}
+          </div>
+
+          {detailStore && (
+            <div style={{ marginTop: 16 }}>
+              <StoreDetailPanel store={detailStore} onClose={() => setDetailStore(null)} />
+            </div>
+          )}
         </div>
-      )}
 
-      {/* 검색 필터 패널 */}
-      <div className="card kicc-search-panel">
-        <div className="kicc-search-row">
-          <div className="filter-field">
-            <label>매장명</label>
-            <input value={nameQuery} onChange={e => setNameQuery(e.target.value)} placeholder="가맹점명" />
-          </div>
-          <div className="filter-field">
-            <label>사업자번호</label>
-            <input value={bizQuery} onChange={e => setBizQuery(e.target.value)} placeholder="123-45-67890" />
-          </div>
-          <div className="filter-field">
-            <label>가맹형태</label>
-            <select value={franchiseType} onChange={e => setFranchiseType(e.target.value)}>
-              <option value="">전체</option>
-              {FRANCHISE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-            </select>
-          </div>
-          <div className="filter-field">
-            <label>오픈여부</label>
-            <select value={openStatus} onChange={e => setOpenStatus(e.target.value)}>
-              <option value="">전체</option>
-              <option value="open">오픈</option>
-              <option value="closed">폐점</option>
-            </select>
-          </div>
-          <button className="primary kicc-search-btn" onClick={runSearch}>조회</button>
-        </div>
-      </div>
+        {/* 우측 사이드바 */}
+        <div style={{ width: 300, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 16, position: 'sticky', top: 24 }}>
 
-      <div className="card store-list-card">
-        {stores.length === 0 ? (
-          <div className="empty">가맹점을 추가해주세요</div>
-        ) : filteredStores.length === 0 ? (
-          <div className="empty">검색 결과가 없습니다</div>
-        ) : (
-          <table className="store-table">
-            <thead>
-              <tr>
-                <th>NO</th>
-                <th>매장</th>
-                <th>대표자명</th>
-                <th>전화번호</th>
-                <th>사업자번호</th>
-                <th>가맹형태</th>
-                <th>담당자</th>
-                <th>오픈여부</th>
-                <th>개점일</th>
-                <th>주소</th>
-                <th>발주마감</th>
-                <th>납품요일</th>
-                <th>관리</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredStores.map((s, i) => {
-                const days = s.delivery_days ? s.delivery_days.split(',').filter(Boolean).map(d => DAY_LABELS[Number(d)]).join(' ') : '-';
-                const isSelected = s.id === currentStore?.id;
-                const initial = (s.name || '?').charAt(0);
-                return (
-                  <tr key={s.id} className={`store-row${isSelected ? ' store-row--selected' : ''}${s.is_open === false ? ' store-row--closed' : ''}`}>
-                    <td className="store-row__no">{i + 1}</td>
-                    <td>
-                      <div className="store-row__name-cell">
-                        <div className="store-row__avatar">{initial}</div>
-                        <div>
-                          <div className="store-row__name" onClick={() => setDetailStore(s)}>{s.name}</div>
-                          {isSelected && <span className="badge green" style={{ fontSize: 10, padding: '2px 7px' }}>선택됨</span>}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="store-row__text">{s.owner_name || '—'}</td>
-                    <td className="store-row__text">{s.phone || '—'}</td>
-                    <td className="store-row__text">{s.business_number || '—'}</td>
-                    <td className="store-row__text">{s.franchise_type || '—'}</td>
-                    <td className="store-row__text">{s.assigned_user_name || '—'}</td>
-                    <td>
-                      <span className={`badge ${s.is_open === false ? 'red' : 'green'}`}>{s.is_open === false ? '폐점' : '오픈'}</span>
-                    </td>
-                    <td className="store-row__text">{s.open_date || '—'}</td>
-                    <td className="store-row__text store-row__text--addr">{s.address || '—'}</td>
-                    <td className="store-row__text">{s.order_deadline || '—'}</td>
-                    <td className="store-row__text">{days}</td>
-                    <td>
-                      <div style={{ display: 'flex', gap: 5 }}>
-                        <button className="primary small" onClick={() => handleLogin(s)}>로그인</button>
-                        {canEdit && (
-                          <>
-                            <button className="secondary small" onClick={() => setModal({ edit: s })}>수정</button>
-                            <button className="danger small" onClick={() => handleDelete(s)}>삭제</button>
-                          </>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        )}
-      </div>
+          {/* 리스크 알림 카드 */}
+          {hasRisks && (
+            <div className="card" style={{ borderLeft: '3px solid #dc2626' }}>
+              <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 12 }}>최근 리스크 알림</h3>
+              {auditStatus.map(s => (
+                <div key={s.store_id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
+                  <div style={{ width: 30, height: 30, borderRadius: 8, background: '#fee2e2', color: '#b91c1c', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 16, fontWeight: 700 }}>!</div>
+                  <div style={{ flex: 1, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.4 }}>
+                    <b>{s.store_name}</b> — 재고 실사 지연
+                  </div>
+                  <span style={{ fontSize: 12, color: 'var(--text-3)', flexShrink: 0 }}>{s.daysSince}일 전</span>
+                </div>
+              ))}
+              {orderStatus.map(s => (
+                <div key={s.store_id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
+                  <div style={{ width: 30, height: 30, borderRadius: 8, background: '#fef3c7', color: '#92400e', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 16 }}>△</div>
+                  <div style={{ flex: 1, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.4 }}>
+                    <b>{s.store_name}</b> — 발주 마감 임박
+                  </div>
+                  <span style={{ fontSize: 12, color: 'var(--text-3)', flexShrink: 0 }}>
+                    {s.diffMin <= 0 ? `${Math.abs(s.diffMin)}분 경과` : `${s.diffMin}분 전`}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
 
-      {detailStore && (
-        <div style={{ marginTop: 16 }}>
-          <StoreDetailPanel store={detailStore} onClose={() => setDetailStore(null)} />
-        </div>
-      )}
-
-      <div className="elevated-card" style={{ marginTop: 16 }}>
-        <div style={{ fontWeight: 700, marginBottom: 8 }}>웹훅 URL 안내</div>
-        <div className="text-muted" style={{ fontSize: 13, lineHeight: 2 }}>
-          각 가맹점별 웹훅 URL은 <b style={{ color: 'var(--text)' }}>백엔드주소/webhook/가맹점ID</b> 형식입니다.<br />
-          토스플레이스 관리자에서 가맹점별로 웹훅 URL을 등록해주세요.
+          {/* 웹훅 URL 안내 (접힘) */}
+          <details className="card">
+            <summary style={{ cursor: 'pointer', listStyle: 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 16, fontWeight: 700, color: 'var(--text-2)' }}>
+              웹훅 URL 안내 <span style={{ opacity: 0.5 }}>▾</span>
+            </summary>
+            <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)', fontSize: 15, color: 'var(--text-2)', lineHeight: 1.7 }}>
+              각 가맹점별 웹훅 URL은 <b>백엔드주소/webhook/가맹점ID</b> 형식입니다.<br />
+              토스플레이스 관리자에서 가맹점별로 웹훅 URL을 등록해주세요.
+            </div>
+          </details>
         </div>
       </div>
 
       {(modal === 'add' || modal?.edit) && (
-        <StoreModal
-          item={modal?.edit}
-          onClose={() => setModal(null)}
-          onSave={handleSave}
-        />
+        <StoreModal item={modal?.edit} onClose={() => setModal(null)} onSave={handleSave} />
       )}
       {bulkSyncOpen && (
         <BulkSyncModal stores={stores} onClose={() => setBulkSyncOpen(false)} />
