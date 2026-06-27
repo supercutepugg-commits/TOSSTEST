@@ -609,9 +609,17 @@ export default function Stores() {
                             <td style={{ color: 'var(--text-3)', opacity: s.assigned_user_name ? 1 : 0.55 }}>{s.assigned_user_name || '—'}</td>
                           </>}
                           <td>
-                            <span className={`badge subtle ${isClosed ? 'red' : 'green'}`}>
-                              {isClosed ? '폐점' : '오픈'}
-                            </span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <span className={`badge subtle ${isClosed ? 'red' : 'green'}`}>
+                                {isClosed ? '폐점' : '오픈'}
+                              </span>
+                              {!isClosed && (
+                                <button className="small secondary" onClick={e => { e.stopPropagation(); handleLogin(s); }}
+                                  style={{ fontSize: 13, padding: '3px 10px', whiteSpace: 'nowrap' }}>
+                                  가맹점 탭으로 이동
+                                </button>
+                              )}
+                            </div>
                           </td>
                           {showOptional && <>
                             <td style={{ color: 'var(--text-3)', fontSize: 15 }}>{s.open_date || '—'}</td>
