@@ -1428,10 +1428,13 @@ a:focus-visible, [tabindex]:focus-visible, summary:focus-visible {
 
 /* 탭 전환 시 콘텐츠가 슬라이드+페이드로 들어오는 효과 — key가 바뀔 때마다(=탭이 바뀔 때마다) 재생됨 */
 @keyframes tabContentIn {
-  from { opacity: 0; transform: translateX(14px); }
-  to   { opacity: 1; transform: translateX(0); }
+  from { opacity: 0; transform: translateX(36px) scale(0.99); }
+  to   { opacity: 1; transform: translateX(0) scale(1); }
 }
-.tab-content { animation: tabContentIn 0.28s cubic-bezier(0.22, 1, 0.36, 1); }
+.tab-content {
+  animation: tabContentIn 0.42s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform, opacity;
+}
 @media (prefers-reduced-motion: reduce) {
   .tab-content { animation: none; }
 }
