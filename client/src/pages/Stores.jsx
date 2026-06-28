@@ -1,5 +1,6 @@
 import { toast } from '../toast';
 import { Fragment, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import { useStore } from '../StoreContext';
 import { useAuth } from '../AuthContext';
@@ -353,6 +354,7 @@ function StoreModal({ item, onClose, onSave }) {
 
 export default function Stores() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const canEdit = ADMIN_ROLES.includes(user?.role);
   const { stores, currentStore, reloadStores, loaded } = useStore();
   const [modal, setModal] = useState(null);
@@ -360,6 +362,7 @@ export default function Stores() {
   const [detailStore, setDetailStore] = useState(null);
   const [orderStatus, setOrderStatus] = useState([]);
   const [auditStatus, setAuditStatus] = useState([]);
+  const [openRisks, setOpenRisks] = useState([]);
   const [openMenuId, setOpenMenuId] = useState(null);
   const [statusChip, setStatusChip] = useState('all');
   const [checkedIds, setCheckedIds] = useState(new Set());
@@ -383,6 +386,7 @@ export default function Stores() {
   useEffect(() => {
     api.getStoreOrderStatus().then(setOrderStatus).catch(() => {});
     api.getStoreAuditStatus().then(setAuditStatus).catch(() => {});
+    api.getRisks({ status: 'OPEN' }).then(setOpenRisks).catch(() => {});
     const now = new Date();
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
     api.getStoreRankings({ from: todayStart, to: now.toISOString() })
@@ -471,7 +475,7 @@ export default function Stores() {
 
   const openCount = stores.filter(s => s.is_open !== false).length;
   const closedCount = stores.filter(s => s.is_open === false).length;
-  const hasRisks = auditStatus.length > 0 || orderStatus.length > 0;
+  const hasRisks = auditStatus.length > 0 || orderStatus.length > 0 || openRisks.length > 0;
 
   const visibleIds = filteredStores.map(s => s.id);
   const allChecked = visibleIds.length > 0 && visibleIds.every(id => checkedIds.has(id));
@@ -516,7 +520,7 @@ export default function Stores() {
         <KpiCard label="전체 가맹점" value={stores.length} suffix="개" />
         <KpiCard label="오픈" value={openCount} tone="accent" suffix="개" />
         <KpiCard label="폐점" value={closedCount} suffix="개" />
-        <KpiCard label="주의 필요" value={auditStatus.length + orderStatus.length} tone={hasRisks ? 'warn' : undefined} suffix="건" />
+        <KpiCard label="주의 필요" value={auditStatus.length + orderStatus.length + openRisks.length} tone={hasRisks ? 'warn' : undefined} suffix="건" />
         <KpiCard label="금일 전체 매출" value={Math.round((todayRevenue || 0) / 1000)} suffix="천원" />
       </div>
 
@@ -773,10 +777,20 @@ export default function Stores() {
 
           {/* 리스크 알림 카드 */}
           {hasRisks && (
-            <div className="card fade-stagger" style={{ borderLeft: '3px solid #dc2626' }}>
+            <div className="card fade-stagger hoverable" style={{ borderLeft: '3px solid #dc2626', cursor: 'pointer' }}
+              onClick={() => navigate('/risks')}>
               <h3 style={{ fontSize: 17, fontWeight: 700, marginBottom: 10 }}>최근 리스크 알림</h3>
+              {openRisks.slice(0, 5).map(r => (
+                <div key={`risk-${r.id}`} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 0', borderBottom: '1px solid var(--border)' }}>
+                  <div style={{ width: 28, height: 28, borderRadius: 7, background: '#fee2e2', color: '#b91c1c', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 14, fontWeight: 700 }}>!</div>
+                  <div style={{ flex: 1, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.4 }}>
+                    <b>{r.store_name}</b> — {r.description || r.type}
+                  </div>
+                  <span style={{ fontSize: 12, color: 'var(--text-3)', flexShrink: 0 }}>{new Date(r.created_at).toLocaleDateString('ko-KR')}</span>
+                </div>
+              ))}
               {auditStatus.map(s => (
-                <div key={s.store_id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 0', borderBottom: '1px solid var(--border)' }}>
+                <div key={`audit-${s.store_id}`} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 0', borderBottom: '1px solid var(--border)' }}>
                   <div style={{ width: 28, height: 28, borderRadius: 7, background: '#fee2e2', color: '#b91c1c', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 14, fontWeight: 700 }}>!</div>
                   <div style={{ flex: 1, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.4 }}>
                     <b>{s.store_name}</b> — 재고 실사 지연
@@ -785,7 +799,7 @@ export default function Stores() {
                 </div>
               ))}
               {orderStatus.map(s => (
-                <div key={s.store_id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 0', borderBottom: '1px solid var(--border)' }}>
+                <div key={`order-${s.store_id}`} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 0', borderBottom: '1px solid var(--border)' }}>
                   <div style={{ width: 28, height: 28, borderRadius: 7, background: '#fef3c7', color: '#92400e', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 13 }}>△</div>
                   <div style={{ flex: 1, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.4 }}>
                     <b>{s.store_name}</b> — 발주 마감 임박
