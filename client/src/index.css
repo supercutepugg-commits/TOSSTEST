@@ -1261,3 +1261,161 @@ button:not(:disabled):active { transform: scale(0.97); }
   to   { opacity: 1; transform: translateY(0); }
 }
 .bulk-bar { animation: barSlideUp 0.22s cubic-bezier(0.22, 1, 0.36, 1); }
+
+/* ════════════════════════════════════════════════════════
+   프리미엄 폴리시 2차 — 카드/버튼/인풋/타이포 디테일
+   (색감·폰트 크기 변경 없음, 기존 변수만 재사용하는 가산형 규칙)
+   ════════════════════════════════════════════════════════ */
+
+/* 그림자 톤을 3단계로 추출 — 기존 --shadow 값은 그대로 두고 옵션만 추가 */
+:root {
+  --shadow-sm: 0 1px 2px rgba(15,23,42,0.04), 0 1px 1px rgba(15,23,42,0.03);
+  --shadow-md: 0 8px 24px rgba(15,23,42,0.10), 0 2px 6px rgba(15,23,42,0.05);
+  --shadow-lg: 0 16px 40px rgba(15,23,42,0.14), 0 4px 12px rgba(15,23,42,0.06);
+}
+[data-theme="dark"] {
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
+  --shadow-md: 0 8px 24px rgba(0,0,0,0.32);
+  --shadow-lg: 0 16px 40px rgba(0,0,0,0.4);
+}
+
+/* 카드 상단 미세 하이라이트 + hover 시 보더만 살짝 진하게 (그림자/배경은 그대로) */
+.card {
+  box-shadow: var(--shadow), inset 0 1px 0 rgba(255,255,255,0.5);
+  transition: border-color 0.18s ease;
+}
+[data-theme="dark"] .card { box-shadow: var(--shadow), inset 0 1px 0 rgba(255,255,255,0.04); }
+.card:hover { border-color: var(--border-input); }
+
+/* elevated-card도 동일하게 hover 시 보더만 살짝 진하게 */
+.elevated-card { transition: border-color 0.18s ease, box-shadow 0.18s ease; }
+.elevated-card:hover { border-color: var(--border-input); }
+
+/* 닫힘/비활성 카드용 옵션 클래스 — 차분하게 채도를 낮춤 */
+.muted-entity { filter: grayscale(0.15); opacity: 0.88; }
+
+/* 그룹 사이 옵션 디바이더 */
+.divider-dotted { border-top: 1px dashed var(--border); margin: 16px 0; }
+
+/* 배지 hover 시 살짝 밝아짐 */
+.badge { transition: filter 0.12s ease; }
+a .badge:hover, button .badge:hover, .badge[data-hoverable]:hover { filter: brightness(1.06); }
+
+/* 버튼 — hover/active 트랜지션을 명시적으로(즉시 전환 대신 부드럽게) */
+button.primary, button.secondary, button.danger {
+  transition: background 0.18s ease, box-shadow 0.18s ease, color 0.18s ease, transform 0.08s ease;
+}
+button.secondary:active:not(:disabled) { box-shadow: inset 0 1px 4px rgba(0,0,0,0.08); }
+button:disabled { opacity: 0.55; cursor: not-allowed; box-shadow: none; }
+
+/* 인풋 — placeholder 톤을 한 단계 더 옅게, focus 전환 명시 */
+input, select, textarea { transition: border-color 0.15s ease, box-shadow 0.15s ease; }
+input::placeholder, textarea::placeholder { color: var(--text-3); opacity: 0.7; }
+
+/* 체크박스/라디오 — 체크 시 짧은 스케일 펑 효과 */
+input[type="checkbox"], input[type="radio"] { transition: transform 0.1s ease; }
+input[type="checkbox"]:active, input[type="radio"]:active { transform: scale(0.88); }
+
+/* select 화살표를 브라우저 기본 대신 텍스트 컬러와 통일된 커스텀 화살표로 */
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' stroke='%236b7280' stroke-width='1.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 32px;
+}
+[data-theme="dark"] select {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' stroke='%23a8b4c8' stroke-width='1.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+}
+
+/* 보조 텍스트 톤 — letter-spacing으로 본문과 구분감만 (크기 변경 없음) */
+.text-muted, .text-sub { letter-spacing: 0.1px; }
+
+/* 숫자는 자릿수가 들쭉날쭉해도 정렬이 흔들리지 않게 tabular 폰트 사용 */
+table td, .kpi-card-value, .dash-stat-value, .dash-revenue-amount, .stat-card .value {
+  font-variant-numeric: tabular-nums;
+}
+
+/* 섹션 타이틀 좌측 작은 컬러 도트 */
+.dash-section-title { position: relative; padding-left: 14px; }
+.dash-section-title::before {
+  content: '';
+  position: absolute; left: 0; top: 50%; transform: translateY(-50%);
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--purple);
+}
+
+/* 브레드크럼 구분자 hover 시 살짝 이동 */
+.breadcrumb span:hover ~ span,
+.breadcrumb-sep { transition: transform 0.15s ease; display: inline-block; }
+.breadcrumb a:hover + .breadcrumb-sep,
+.breadcrumb button:hover + .breadcrumb-sep { transform: translateX(2px); }
+
+/* 폼 그룹 간 간격을 살짝 더 여유롭게 */
+.form-group { margin-bottom: 16px; }
+.form-row { gap: 16px; }
+
+/* 모달 footer 위쪽에 옅은 그림자 디바이더 — 내용이 스크롤될 때 경계가 또렷해짐 */
+.modal-footer {
+  position: relative;
+  box-shadow: 0 -8px 12px -8px rgba(15,23,42,0.06);
+}
+
+/* accordion(details) 내용이 열릴 때 살짝 떠오르며 나타남 */
+details[open] > *:not(summary) { animation: fadeUpIn 0.22s ease both; }
+
+/* 드롭다운/컨텍스트 메뉴(⋮ 등)가 즉시 나타나는 대신 scale+fade로 */
+@keyframes dropdownIn {
+  from { opacity: 0; transform: scale(0.95) translateY(-4px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0); }
+}
+.dropdown-menu { animation: dropdownIn 0.14s cubic-bezier(0.22, 1, 0.36, 1); transform-origin: top right; }
+
+/* 탭 버튼(밑줄형) — 활성 탭 전환 시 색/밑줄이 즉시 바뀌지 않고 부드럽게 */
+.tab-underline {
+  position: relative;
+  padding-bottom: 8px;
+  border-bottom: 2px solid transparent;
+  transition: color 0.18s ease, border-color 0.18s ease;
+}
+.tab-underline.active { border-bottom-color: var(--purple); color: var(--purple-dark); }
+
+/* 검색 인풋에 좌측 아이콘을 위한 래퍼 */
+.search-input-wrap { position: relative; }
+.search-input-wrap input { padding-left: 34px; }
+.search-input-wrap::before {
+  content: '';
+  position: absolute; left: 11px; top: 50%; transform: translateY(-50%);
+  width: 14px; height: 14px;
+  border: 1.6px solid var(--text-3);
+  border-radius: 50%;
+  opacity: 0.6;
+}
+.search-input-wrap::after {
+  content: '';
+  position: absolute; left: 21px; top: calc(50% + 6px);
+  width: 5px; height: 1.6px;
+  background: var(--text-3);
+  opacity: 0.6;
+  transform: rotate(45deg);
+}
+
+/* 삭제 계열 버튼 hover 색상 통일 */
+button.danger:hover, .fav-star.active:hover, .delete-action:hover { filter: brightness(0.95); }
+
+/* 포커스 링을 모든 인터랙티브 요소에 일관 적용 */
+a:focus-visible, [tabindex]:focus-visible, summary:focus-visible {
+  outline: 2px solid var(--purple);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px var(--purple-light);
+}
+
+/* 다크모드에서 카드 보더 대비를 한 단계 또렷하게 */
+[data-theme="dark"] .card, [data-theme="dark"] .elevated-card { border-color: #3d4f6b; }
+
+/* 헤더 버튼 그룹 등장 시 살짝 스태거 — 기존 .fade-stagger 유틸 재사용 */
+.btn-group-stagger > * { animation: fadeUpIn 0.28s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.btn-group-stagger > *:nth-child(2) { animation-delay: 40ms; }
+.btn-group-stagger > *:nth-child(3) { animation-delay: 80ms; }
+.btn-group-stagger > *:nth-child(4) { animation-delay: 120ms; }

@@ -504,7 +504,7 @@ export default function Stores() {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <h2 style={{ borderLeft: '2px solid var(--border-input)', paddingLeft: 16, fontSize: 27 }}>가맹점조회</h2>
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div className="btn-group-stagger" style={{ display: 'flex', gap: 8 }}>
             <button className="secondary" onClick={() => setBulkSyncOpen(true)}>매출 동기화</button>
             {canEdit && <button className="primary" onClick={() => setModal('add')}>+ 가맹점 추가</button>}
           </div>
@@ -552,8 +552,10 @@ export default function Stores() {
               <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1.4fr 1fr 1fr auto', gap: 16, alignItems: 'end' }}>
                 <div className="form-group">
                   <label htmlFor="sq-name">매장명</label>
-                  <input id="sq-name" value={nameQuery} onChange={e => setNameQuery(e.target.value)} placeholder="가맹점명"
-                    onKeyDown={e => e.key === 'Enter' && runSearch()} />
+                  <div className="search-input-wrap">
+                    <input id="sq-name" value={nameQuery} onChange={e => setNameQuery(e.target.value)} placeholder="가맹점명"
+                      onKeyDown={e => e.key === 'Enter' && runSearch()} />
+                  </div>
                   {searchHistory.length > 0 && (
                     <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
                       {searchHistory.map(term => (
@@ -667,7 +669,7 @@ export default function Stores() {
                       const isFavorite = favoriteIds.has(s.id);
                       const days = s.delivery_days ? s.delivery_days.split(',').filter(Boolean).map(d => DAY_LABELS[Number(d)]).join(' ') : '—';
                       return (
-                        <tr key={s.id} className="fade-stagger" style={{ background: isChecked ? 'var(--purple-light)' : isClosed ? 'var(--bg-muted)' : undefined }}>
+                        <tr key={s.id} className={'fade-stagger' + (isClosed ? ' muted-entity' : '')} style={{ background: isChecked ? 'var(--purple-light)' : isClosed ? 'var(--bg-muted)' : undefined }}>
                           <td>
                             <input type="checkbox" checked={isChecked} onChange={() => toggleOne(s.id)}
                               style={{ accentColor: 'var(--purple)', cursor: 'pointer', width: 15, height: 15 }} />
@@ -725,7 +727,7 @@ export default function Stores() {
                                 ⋮
                               </button>
                               {openMenuId === s.id && (
-                                <div style={{
+                                <div className="dropdown-menu" style={{
                                   position: 'absolute', right: 0, top: '100%', zIndex: 100,
                                   background: 'var(--bg-card)', border: '1px solid var(--border)',
                                   borderRadius: 8, boxShadow: '0 8px 24px rgba(15,23,42,0.12)',
