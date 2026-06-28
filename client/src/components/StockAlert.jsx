@@ -58,7 +58,6 @@ export default function StockAlert({ storeId, storeName }) {
 
       const id = now;
       setAlerts(prev => [...prev, { id, ingredients: newLow, risks: newRisks }]);
-      setTimeout(() => setAlerts(prev => prev.filter(a => a.id !== id)), 10000);
     };
 
     check();
