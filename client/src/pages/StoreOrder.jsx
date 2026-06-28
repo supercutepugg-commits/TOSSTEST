@@ -463,7 +463,7 @@ export default function StoreOrder() {
       )}
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-        <button className={tab === 'new' ? 'primary' : 'secondary'} onClick={() => { setTab('new'); resetCart(); }}>새 발주</button>
+        <button className={tab === 'new' ? 'primary' : 'secondary'} onClick={() => { if (tab !== 'new') resetCart(); setTab('new'); }}>새 발주</button>
         <button className={tab === 'history' ? 'primary' : 'secondary'} onClick={() => setTab('history')}>발주 내역</button>
       </div>
 

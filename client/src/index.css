@@ -1285,16 +1285,20 @@ button:not(:disabled):active { transform: scale(0.97); }
   --shadow-lg: 0 16px 40px rgba(0,0,0,0.4);
 }
 
-/* 카드 상단 미세 하이라이트 + hover 시 보더만 살짝 진하게 (그림자/배경은 그대로) */
+/* 카드 상단 미세 하이라이트 + hover 시 보더만 살짝 진하게 (그림자/배경은 그대로)
+   주의: .card의 transition은 위쪽(다크모드 전환 범위 한정 규칙)에도 선언돼 있음 —
+   transition은 shorthand라 나중 규칙이 이전 값을 통째로 덮어쓰므로, 여기서도
+   background-color/color를 같이 포함해야 다크모드 전환 시 끊기지 않음 */
 .card {
   box-shadow: var(--shadow), inset 0 1px 0 rgba(255,255,255,0.5);
-  transition: border-color 0.18s ease;
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.18s ease;
 }
 [data-theme="dark"] .card { box-shadow: var(--shadow), inset 0 1px 0 rgba(255,255,255,0.04); }
 .card:hover { border-color: var(--border-input); }
 
-/* elevated-card도 동일하게 hover 시 보더만 살짝 진하게 */
-.elevated-card { transition: border-color 0.18s ease, box-shadow 0.18s ease; }
+/* elevated-card도 동일하게 hover 시 보더만 살짝 진하게 — background-color/color도 같이 포함해
+   다크모드 전환 트랜지션이 끊기지 않게 함 (위쪽 범위 한정 규칙과 합쳐서 선언) */
+.elevated-card { transition: background-color 0.2s ease, color 0.2s ease, border-color 0.18s ease, box-shadow 0.18s ease; }
 .elevated-card:hover { border-color: var(--border-input); }
 
 /* 닫힘/비활성 카드용 옵션 클래스 — 차분하게 채도를 낮춤 */
@@ -1303,8 +1307,8 @@ button:not(:disabled):active { transform: scale(0.97); }
 /* 그룹 사이 옵션 디바이더 */
 .divider-dotted { border-top: 1px dashed var(--border); margin: 16px 0; }
 
-/* 배지 hover 시 살짝 밝아짐 */
-.badge { transition: filter 0.12s ease; }
+/* 배지 hover 시 살짝 밝아짐 — background-color/color도 같이 포함 (다크모드 전환용) */
+.badge { transition: background-color 0.2s ease, color 0.2s ease, filter 0.12s ease; }
 a .badge:hover, button .badge:hover, .badge[data-hoverable]:hover { filter: brightness(1.06); }
 
 /* 버튼 — hover/active 트랜지션을 명시적으로(즉시 전환 대신 부드럽게) */
@@ -1314,8 +1318,8 @@ button.primary, button.secondary, button.danger {
 button.secondary:active:not(:disabled) { box-shadow: inset 0 1px 4px rgba(0,0,0,0.08); }
 button:disabled { opacity: 0.55; cursor: not-allowed; box-shadow: none; }
 
-/* 인풋 — placeholder 톤을 한 단계 더 옅게, focus 전환 명시 */
-input, select, textarea { transition: border-color 0.15s ease, box-shadow 0.15s ease; }
+/* 인풋 — placeholder 톤을 한 단계 더 옅게, focus 전환 명시 — background-color/color도 같이 포함 (다크모드 전환용) */
+input, select, textarea { transition: background-color 0.2s ease, color 0.2s ease, border-color 0.15s ease, box-shadow 0.15s ease; }
 input::placeholder, textarea::placeholder { color: var(--text-3); opacity: 0.7; }
 
 /* 체크박스/라디오 — 체크 시 짧은 스케일 펑 효과 */
