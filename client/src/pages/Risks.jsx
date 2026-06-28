@@ -128,11 +128,13 @@ export default function Risks() {
                       <div>최근: {new Date(r.last_occurred_at).toLocaleDateString('ko-KR')}</div>
                     )}
                   </td>
-                  <td style={{ display: 'flex', gap: 4 }}>
-                    {r.status === 'OPEN' && <button className="secondary small" onClick={() => updateStatus(r.id, 'ACKNOWLEDGED')}>확인</button>}
-                    {r.status === 'ACKNOWLEDGED' && <button className="secondary small" onClick={() => updateStatus(r.id, 'IN_PROGRESS')}>조치중</button>}
-                    {r.status === 'IN_PROGRESS' && <button className="primary small" onClick={() => updateStatus(r.id, 'RESOLVED')}>완료</button>}
-                    {!['RESOLVED', 'DISMISSED'].includes(r.status) && <button className="danger small" onClick={() => updateStatus(r.id, 'DISMISSED')}>제외</button>}
+                  <td>
+                    <div style={{ display: 'flex', gap: 4 }}>
+                      {r.status === 'OPEN' && <button className="secondary small" onClick={() => updateStatus(r.id, 'ACKNOWLEDGED')}>확인</button>}
+                      {r.status === 'ACKNOWLEDGED' && <button className="secondary small" onClick={() => updateStatus(r.id, 'IN_PROGRESS')}>조치중</button>}
+                      {r.status === 'IN_PROGRESS' && <button className="primary small" onClick={() => updateStatus(r.id, 'RESOLVED')}>완료</button>}
+                      {!['RESOLVED', 'DISMISSED'].includes(r.status) && <button className="danger small" onClick={() => updateStatus(r.id, 'DISMISSED')}>제외</button>}
+                    </div>
                   </td>
                 </tr>
               ))}
