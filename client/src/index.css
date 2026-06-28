@@ -66,7 +66,13 @@ body {
   transition: background 0.2s, color 0.2s;
   -webkit-font-smoothing: antialiased;
 }
-body, body * {
+/* 다크/라이트 전환을 부드럽게 보여줄 필요가 있는 "표면" 요소들만 한정해서 트랜지션을 건다.
+   이전엔 body의 모든 자손 엘리먼트(div/span/td 등 전부)에 걸려 있어서, 리스트 렌더링이나
+   검색·polling으로 화면이 자주 다시 그려질 때마다 브라우저가 모든 노드의 스타일을 재계산해야 했고
+   이게 체감 렉의 큰 원인이었음. 실제로 테마 전환 시 보이는 표면 요소로만 범위를 좁힘 */
+.card, .elevated-card, .modal, .topnav, .side-menu, .side-menu-item,
+table, th, td, input, select, textarea, button,
+.badge, .dash-stat-tile, .dash-revenue-card, .kpi-card {
   transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
 }
 
