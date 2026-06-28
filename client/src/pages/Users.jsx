@@ -1,3 +1,4 @@
+import { toast } from '../toast';
 import { useEffect, useState } from 'react';
 import { api } from '../api';
 
@@ -20,10 +21,20 @@ export default function Users() {
   }, []);
 
   const handleSave = async () => {
-    if (modal?.edit) await api.updateUser(modal.edit.id, form);
-    else await api.createUser(form);
-    setModal(null);
-    load();
+    if (!form.name?.trim()) { toast('이름을 입력해주세요', 'error'); return; }
+    if (!form.email?.trim()) { toast('이메일을 입력해주세요', 'error'); return; }
+    if (!modal?.edit && !form.password) { toast('비밀번호를 입력해주세요', 'error'); return; }
+    if (['STORE_OWNER', 'STORE_STAFF'].includes(form.role) && !form.store_id) {
+      toast('가맹점을 선택해주세요', 'error'); return;
+    }
+    try {
+      if (modal?.edit) await api.updateUser(modal.edit.id, form);
+      else await api.createUser(form);
+      setModal(null);
+      load();
+    } catch (e) {
+      toast(e.message || '저장에 실패했습니다', 'error');
+    }
   };
 
   const openEdit = (u) => {
@@ -43,15 +54,24 @@ export default function Users() {
             <thead><tr><th>이름</th><th>이메일</th><th>역할</th><th>가맹점</th><th>활성</th><th>관리</th></tr></thead>
             <tbody>
               {users.map(u => (
-                <tr key={u.id}>
-                  <td><b>{u.name}</b></td>
+                <tr key={u.id} className="fade-stagger">
+                  <td>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div className={`avatar-ring c${u.id % 6}`} style={{ width: 26, height: 26, fontSize: 12 }}>{(u.name || '?').charAt(0)}</div>
+                      <b>{u.name}</b>
+                    </div>
+                  </td>
                   <td style={{ fontSize: 13 }}>{u.email}</td>
                   <td><span className="badge green">{ROLE_LABEL[u.role] || u.role}</span></td>
                   <td style={{ fontSize: 13, color: '#94a3b8' }}>{stores.find(s => s.id === u.store_id)?.name || '-'}</td>
                   <td><span className={`badge ${u.is_active ? 'green' : 'red'}`}>{u.is_active ? '활성' : '비활성'}</span></td>
                   <td style={{ display: 'flex', gap: 6 }}>
                     <button className="secondary small" onClick={() => openEdit(u)}>수정</button>
-                    <button className="danger small" onClick={async () => { if (confirm('삭제?')) { await api.deleteUser(u.id); load(); } }}>삭제</button>
+                    <button className="danger small" onClick={async () => {
+                      if (!confirm('삭제?')) return;
+                      try { await api.deleteUser(u.id); load(); }
+                      catch (e) { toast(e.message || '삭제에 실패했습니다', 'error'); }
+                    }}>삭제</button>
                   </td>
                 </tr>
               ))}

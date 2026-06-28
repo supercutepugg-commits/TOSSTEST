@@ -97,15 +97,23 @@ export default function Ingredients() {
   };
 
   const handleRestock = async (amount) => {
-    await api.restock(modal.restock.id, amount);
-    setModal(null);
-    load();
+    try {
+      await api.restock(modal.restock.id, amount);
+      setModal(null);
+      load();
+    } catch (e) {
+      toast(e.message || '입고 처리에 실패했습니다', 'error');
+    }
   };
 
   const handleDelete = async (id) => {
     if (!confirm('삭제하시겠습니까?')) return;
-    await api.deleteIngredient(id);
-    load();
+    try {
+      await api.deleteIngredient(id);
+      load();
+    } catch (e) {
+      toast(e.message || '삭제에 실패했습니다', 'error');
+    }
   };
 
   if (!currentStore) return <div className="empty">가맹점을 선택해주세요</div>;

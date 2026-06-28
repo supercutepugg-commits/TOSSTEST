@@ -36,14 +36,22 @@ function RecipeModal({ menu, ingredients, onClose, onRefresh }) {
 
   const addRecipe = async () => {
     if (!form.ingredient_id || !form.amount) return;
-    await api.addRecipe(menu.id, { ingredient_id: Number(form.ingredient_id), amount: Number(form.amount) });
-    setForm({ ingredient_id: '', amount: '' });
-    onRefresh();
+    try {
+      await api.addRecipe(menu.id, { ingredient_id: Number(form.ingredient_id), amount: Number(form.amount) });
+      setForm({ ingredient_id: '', amount: '' });
+      onRefresh();
+    } catch (e) {
+      toast(e.message || '레시피 추가에 실패했습니다', 'error');
+    }
   };
 
   const removeRecipe = async (ingId) => {
-    await api.deleteRecipe(menu.id, ingId);
-    onRefresh();
+    try {
+      await api.deleteRecipe(menu.id, ingId);
+      onRefresh();
+    } catch (e) {
+      toast(e.message || '레시피 삭제에 실패했습니다', 'error');
+    }
   };
 
   return (
