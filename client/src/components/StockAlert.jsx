@@ -1,17 +1,20 @@
 import { useEffect, useState, useRef } from 'react';
 import { api } from '../api';
 
-const CHECK_INTERVAL_MS = 60000; // 5초는 너무 잦아서 1분으로 완화
-const REALERT_COOLDOWN_MS = 30 * 60000; // 같은 항목은 30분 동안 재알림 안 함
+const CHECK_INTERVAL_MS = 3 * 60000; // 같은 항목은 3분에 한 번씩만 재확인
+const REALERT_COOLDOWN_MS = 3 * 60000; // 같은 항목은 3분 동안 재알림 안 함 (새로고침·새 탭에도 동일 적용)
 
+// localStorage 사용 — sessionStorage는 탭마다 따로 저장되어 새 탭을 열면 쿨다운이 풀려서
+// 같은 알림이 또 뜨는 문제가 있었음. localStorage는 같은 브라우저의 모든 탭이 공유하므로
+// 새로고침·새 탭 여부와 관계없이 3분 주기가 그대로 유지됨
 function loadCooldown(storeId) {
   try {
-    const raw = sessionStorage.getItem(`stock_alert_${storeId}`);
+    const raw = localStorage.getItem(`stock_alert_${storeId}`);
     return raw ? new Map(JSON.parse(raw)) : new Map();
   } catch { return new Map(); }
 }
 function saveCooldown(storeId, map) {
-  try { sessionStorage.setItem(`stock_alert_${storeId}`, JSON.stringify([...map])); } catch {}
+  try { localStorage.setItem(`stock_alert_${storeId}`, JSON.stringify([...map])); } catch {}
 }
 
 export default function StockAlert({ storeId, storeName }) {
