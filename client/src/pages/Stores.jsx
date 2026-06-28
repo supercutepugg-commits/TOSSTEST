@@ -626,7 +626,7 @@ export default function Stores() {
             </div>
 
             {/* 테이블 */}
-            <div style={{ marginTop: 10, overflowX: 'auto' }}>
+            <div className="tab-content" key={statusChip} style={{ marginTop: 10, overflowX: 'auto' }}>
               {!loaded ? (
                 <table>
                   <tbody>
