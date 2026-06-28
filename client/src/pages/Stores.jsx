@@ -1,5 +1,5 @@
 import { toast } from '../toast';
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { api } from '../api';
 import { useStore } from '../StoreContext';
 import { useAuth } from '../AuthContext';
@@ -667,9 +667,11 @@ export default function Stores() {
                       const isClosed = s.is_open === false;
                       const isChecked = checkedIds.has(s.id);
                       const isFavorite = favoriteIds.has(s.id);
+                      const isDetailOpen = detailStore?.id === s.id;
                       const days = s.delivery_days ? s.delivery_days.split(',').filter(Boolean).map(d => DAY_LABELS[Number(d)]).join(' ') : '—';
                       return (
-                        <tr key={s.id} className={'fade-stagger' + (isClosed ? ' muted-entity' : '')} style={{ background: isChecked ? 'var(--purple-light)' : isClosed ? 'var(--bg-muted)' : undefined }}>
+                        <Fragment key={s.id}>
+                        <tr className={'fade-stagger' + (isClosed ? ' muted-entity' : '')} style={{ background: isChecked ? 'var(--purple-light)' : isClosed ? 'var(--bg-muted)' : undefined }}>
                           <td>
                             <input type="checkbox" checked={isChecked} onChange={() => toggleOne(s.id)}
                               style={{ accentColor: 'var(--purple)', cursor: 'pointer', width: 15, height: 15 }} />
@@ -683,13 +685,14 @@ export default function Stores() {
                                 {isFavorite ? '★' : '☆'}
                               </button>
                               <div className={avatarClass(s.id)} style={{ width: 30, height: 30, fontSize: 14 }}>{initial}</div>
-                              <button type="button" onClick={() => setDetailStore(s)} style={{
+                              <button type="button" onClick={() => setDetailStore(isDetailOpen ? null : s)} style={{
                                 background: 'none', border: 'none', padding: 0, fontSize: 17,
                                 fontWeight: 600, color: isClosed ? 'var(--text-3)' : 'var(--text)',
                                 cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6,
                               }}>
                                 {s.name}
                                 {isSelected && <span className="badge green" style={{ fontSize: 11 }}>선택됨</span>}
+                                <span style={{ fontSize: 11, color: 'var(--text-3)', transition: 'transform 0.18s ease', transform: isDetailOpen ? 'rotate(180deg)' : 'none', display: 'inline-block' }}>▾</span>
                               </button>
                             </div>
                           </td>
@@ -746,6 +749,16 @@ export default function Stores() {
                             </div>
                           </td>
                         </tr>
+                        {isDetailOpen && (
+                          <tr>
+                            <td colSpan={colSpan} style={{ padding: 0, background: 'var(--bg-muted)' }}>
+                              <div className="fade-stagger" style={{ padding: 16 }}>
+                                <StoreDetailPanel store={detailStore} onClose={() => setDetailStore(null)} />
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                        </Fragment>
                       );
                     })}
                   </tbody>
@@ -753,12 +766,6 @@ export default function Stores() {
               )}
             </div>
           </div>
-
-          {detailStore && (
-            <div style={{ marginTop: 16 }}>
-              <StoreDetailPanel store={detailStore} onClose={() => setDetailStore(null)} />
-            </div>
-          )}
         </div>
 
         {/* 우측 사이드바 */}
