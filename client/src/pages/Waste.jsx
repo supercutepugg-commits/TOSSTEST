@@ -106,7 +106,11 @@ export default function Waste() {
                   <td className="text-muted" style={{ fontSize: 13 }}>{l.memo || '-'}</td>
                   {!isHQ && (
                     <td>
-                      <button className="danger small" onClick={async () => { await api.deleteWaste(l.id); load(); }}>삭제</button>
+                      <button className="danger small" onClick={async () => {
+                        if (!confirm('삭제하시겠습니까?')) return;
+                        try { await api.deleteWaste(l.id); load(); }
+                        catch (e) { toast(e.message || '삭제에 실패했습니다', 'error'); }
+                      }}>삭제</button>
                     </td>
                   )}
                 </tr>

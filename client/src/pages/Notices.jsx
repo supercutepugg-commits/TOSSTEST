@@ -46,14 +46,22 @@ export default function Notices() {
   };
 
   const toggleActive = async (n) => {
-    await api.updateNotice(n.id, { is_active: !n.is_active });
-    load();
+    try {
+      await api.updateNotice(n.id, { is_active: !n.is_active });
+      load();
+    } catch (e) {
+      toast(e.message || '처리에 실패했습니다', 'error');
+    }
   };
 
   const remove = async (n) => {
     if (!confirm('이 공지를 삭제하시겠습니까?')) return;
-    await api.deleteNotice(n.id);
-    load();
+    try {
+      await api.deleteNotice(n.id);
+      load();
+    } catch (e) {
+      toast(e.message || '삭제에 실패했습니다', 'error');
+    }
   };
 
   const targetCount = (n) => n.store_id ? 1 : stores.length;

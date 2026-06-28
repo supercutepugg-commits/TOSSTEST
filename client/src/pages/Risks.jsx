@@ -77,8 +77,12 @@ export default function Risks() {
 
   const updateStatus = async (id, status) => {
     const memo = ['RESOLVED', 'DISMISSED'].includes(status) ? prompt('메모 (선택)') : null;
-    await api.updateRiskStatus(id, status, memo || undefined);
-    load();
+    try {
+      await api.updateRiskStatus(id, status, memo || undefined);
+      load();
+    } catch (e) {
+      toast(e.message || '처리에 실패했습니다', 'error');
+    }
   };
 
   return (

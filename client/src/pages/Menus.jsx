@@ -175,8 +175,12 @@ export default function Menus() {
 
   const handleDelete = async (id) => {
     if (!confirm('메뉴를 삭제하시겠습니까? 레시피도 함께 삭제됩니다.')) return;
-    await api.deleteMenu(id);
-    loadMenus();
+    try {
+      await api.deleteMenu(id);
+      loadMenus();
+    } catch (e) {
+      toast(e.message || '삭제에 실패했습니다', 'error');
+    }
   };
 
   const getMenuWithLatest = (id) => menus.find(m => m.id === id);
@@ -214,8 +218,12 @@ export default function Menus() {
                       <button
                         className={m.is_key ? 'primary small' : 'secondary small'}
                         onClick={async () => {
-                          await api.updateMenu(m.id, { ...m, is_key: !m.is_key });
-                          loadMenus();
+                          try {
+                            await api.updateMenu(m.id, { ...m, is_key: !m.is_key });
+                            loadMenus();
+                          } catch (e) {
+                            toast(e.message || '수정에 실패했습니다', 'error');
+                          }
                         }}
                       >
                         {m.is_key ? '핵심' : '일반'}

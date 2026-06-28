@@ -161,8 +161,12 @@ export default function Ingredients() {
                         <button
                           className={i.is_key ? 'primary small' : 'secondary small'}
                           onClick={async () => {
-                            await api.updateIngredient(i.id, { ...i, is_key: !i.is_key });
-                            load();
+                            try {
+                              await api.updateIngredient(i.id, { ...i, is_key: !i.is_key });
+                              load();
+                            } catch (e) {
+                              toast(e.message || '수정에 실패했습니다', 'error');
+                            }
                           }}
                         >
                           {i.is_key ? '핵심' : '일반'}
