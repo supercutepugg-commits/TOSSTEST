@@ -227,7 +227,8 @@ function HQLayout() {
           </div>
         </main>
       </div>
-      <StockAlert storeId={currentStore?.id} storeName={currentStore?.name} />
+      {/* 본사 화면에서는 어떤 가맹점을 선택해 보고 있는지와 상관없이 항상 전체 가맹점 기준으로 알림 */}
+      <StockAlert />
     </div>
   );
 }
