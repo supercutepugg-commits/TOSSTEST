@@ -431,10 +431,12 @@ router.get('/dashboard', requireAuth, async (req, res) => {
     const financeQ = knex('orders').where({ brand_id, order_state: 'COMPLETED' })
       .where('processed_at', '>=', start.toISOString()).where('processed_at', '<=', end.toISOString());
     if (sid) financeQ.where({ store_id: sid });
-    const finance = await financeQ.clone()
-      .sum({ listPrice: 'list_price', discountAmount: 'discount_amount', totalAmount: 'total_amount', supplyAmount: 'supply_amount',
-             cashAmount: 'cash_amount', cardAmount: 'card_amount', otherAmount: 'other_amount' }).first();
-    const cnt = await financeQ.clone().count('id as cnt').first();
+    const [finance, cnt] = await Promise.all([
+      financeQ.clone()
+        .sum({ listPrice: 'list_price', discountAmount: 'discount_amount', totalAmount: 'total_amount', supplyAmount: 'supply_amount',
+               cashAmount: 'cash_amount', cardAmount: 'card_amount', otherAmount: 'other_amount' }).first(),
+      financeQ.clone().count('id as cnt').first(),
+    ]);
 
     return {
       revenue: Number(finance?.listPrice || 0), orderCount: Number(cnt?.cnt || 0),
@@ -453,14 +455,15 @@ router.get('/dashboard', requireAuth, async (req, res) => {
     dayStats(new Date()), dayStats(yesterday), dayStats(sameWeekdayLastWeek),
   ]);
 
-  // 최근 7일 일별 매출 통계
+  // 최근 7일 일별 매출 통계 — 하루씩 순차 조회하면 DB 왕복이 누적돼 대시보드 응답이
+  // 몇 초씩 느려지므로(특히 이 데이터를 기다리는 재고/리스크 팝업까지 늦게 뜨는 원인이었음)
+  // 7일치를 한꺼번에 병렬로 조회
   const WEEKDAY_LABEL = ['일', '월', '화', '수', '목', '금', '토'];
-  const weeklyStats = [];
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date(Date.now() - i * 86400000);
-    const stats = await dayStats(d);
-    weeklyStats.push({ date: d.toISOString().split('T')[0], weekday: WEEKDAY_LABEL[d.getDay()], ...stats });
-  }
+  const weekDates = Array.from({ length: 7 }, (_, idx) => new Date(Date.now() - (6 - idx) * 86400000));
+  const weeklyStatsResults = await Promise.all(weekDates.map(d => dayStats(d)));
+  const weeklyStats = weekDates.map((d, idx) => ({
+    date: d.toISOString().split('T')[0], weekday: WEEKDAY_LABEL[d.getDay()], ...weeklyStatsResults[idx],
+  }));
 
   // 재고 자산가치 — 현재 재고(가맹점) × 발주 단가로, 이 가맹점에 자금이 재고로 얼마나 묶여있는지 추정
   // (재료 단가는 그 재료에 연결된 발주상품의 price를 기본단위 기준으로 환산해서 사용)

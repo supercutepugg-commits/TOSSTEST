@@ -32,26 +32,32 @@ export default function StockAlert({ storeId, storeName }) {
       let newLow = [];
       let newRisks = [];
 
-      try {
-        const { lowStock } = await api.getDashboard(storeId);
+      // 두 요청을 순차로 기다리면 팝업이 그만큼 늦게 뜨므로 병렬로 조회
+      const [dashboardResult, risksResult] = await Promise.allSettled([
+        api.getDashboard(storeId),
+        // 본사 권한이 없는 가맹점 계정에서는 403이 날 수 있음 — allSettled로 묶어서 그 경우만 조용히 무시
+        api.getRisks({ status: 'OPEN', store_id: storeId }),
+      ]);
+
+      if (dashboardResult.status === 'fulfilled') {
         // 한 번도 안 알렸거나, 쿨다운이 지난 재료만 새로 알림
-        newLow = lowStock.filter(i => {
+        newLow = dashboardResult.value.lowStock.filter(i => {
           const last = lastAlertedAt.current.get(`ing_${i.id}`);
           return !last || now - last > REALERT_COOLDOWN_MS;
         });
-      } catch (e) { console.error('StockAlert error:', e); }
+      } else {
+        console.error('StockAlert error:', dashboardResult.reason);
+      }
 
-      try {
-        // 본사 권한이 없는 가맹점 계정에서는 403이 날 수 있음 — 그 경우 조용히 무시 (재고부족 알림은 그대로 동작)
-        const risks = await api.getRisks({ status: 'OPEN', store_id: storeId });
-        newRisks = risks.filter(r => {
+      if (risksResult.status === 'fulfilled') {
+        newRisks = risksResult.value.filter(r => {
           const key = `risk_${r.id}`;
           const last = lastAlertedAt.current.get(key);
           // last_occurred_at이 쿨다운 기록 이후로 갱신됐으면(재발생) 다시 알림
           const occurredAt = new Date(r.last_occurred_at || r.created_at).getTime();
           return !last || (now - last > REALERT_COOLDOWN_MS) || occurredAt > last;
         });
-      } catch { /* 가맹점 계정 등 권한 없는 경우 무시 */ }
+      }
 
       if (newLow.length === 0 && newRisks.length === 0) return;
 
