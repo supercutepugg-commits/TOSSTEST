@@ -17,8 +17,12 @@ const corsOriginCheck = (origin, callback) => {
   callback(allowed ? null : new Error('CORS blocked'), allowed);
 };
 app.use(cors({ origin: corsOriginCheck }));
-// 토스 결제 웹훅은 서명 검증을 위해 raw body가 필요해서 express.json()보다 먼저 등록
+// 토스 결제/토스플레이스 웹훅은 서명 검증을 위해 raw body가 필요해서 express.json()보다 먼저 등록
+// (이 등록이 없으면 express.json()이 먼저 바디를 다 읽어버려서, 아래 webhook.js의 express.raw()는
+// 빈 스트림만 보게 되어 서명(HMAC)이 항상 빈 바디로 계산되고 실제 토스 서명과 일치하지 않아 모든
+// 서명된 웹훅이 401로 거부되는 문제가 있었음)
 app.use('/api/orders/toss-webhook', express.raw({ type: 'application/json' }));
+app.use('/webhook', express.raw({ type: 'application/json' }));
 app.use(express.json());
 
 const apiRoutes = require('./routes/api');
