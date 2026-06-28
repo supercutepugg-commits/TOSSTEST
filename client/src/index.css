@@ -325,14 +325,21 @@ body, body * {
   font-weight: 700;
   box-shadow: inset -2px 0 8px rgba(0,100,255,0.1);
 }
-.side-menu-item.active::before {
+.side-menu-item::before {
   content: '';
   position: absolute;
   left: 0; top: 6px; bottom: 6px;
   width: 4px;
   border-radius: 0 4px 4px 0;
+  background: transparent;
+  box-shadow: none;
+  transform: scaleY(0.4);
+  transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.side-menu-item.active::before {
   background: linear-gradient(180deg, var(--purple) 0%, var(--purple-dark) 100%);
   box-shadow: 0 0 16px rgba(0,100,255,0.6), 0 0 32px rgba(0,100,255,0.3), inset 0 1px 0 rgba(255,255,255,0.3);
+  transform: scaleY(1);
 }
 .side-menu-item.disabled { color: var(--text-3); opacity: 0.5; cursor: not-allowed; }
 .side-menu-item.disabled:hover { background: none; }
@@ -481,15 +488,24 @@ tr:hover td { background: var(--bg-elevated); box-shadow: inset 0 1px 0 rgba(0,0
 .dash-trend-chart { margin-top: 20px; }
 .dash-trend-svg { width: 100%; height: 190px; overflow: visible; display: block; }
 .dash-trend-baseline { stroke: var(--border); stroke-width: 1; }
-.dash-trend-area { fill: url(#dashTrendGradient); }
+.dash-trend-area { fill: url(#dashTrendGradient); transform-box: fill-box; transform-origin: bottom; animation: dashTrendGrow 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
 .dash-trend-line {
   fill: none;
   stroke: url(#dashTrendStroke);
   stroke-width: 3;
   stroke-linecap: round;
   stroke-linejoin: round;
+  animation: dashTrendFadeIn 0.5s ease 0.1s both;
 }
-.dash-trend-dot { fill: var(--bg-card); stroke: var(--purple); stroke-width: 2.5; filter: drop-shadow(0 2px 4px rgba(0,100,255,0.22)); }
+.dash-trend-dot { fill: var(--bg-card); stroke: var(--purple); stroke-width: 2.5; filter: drop-shadow(0 2px 4px rgba(0,100,255,0.22)); animation: dashTrendFadeIn 0.4s ease 0.25s both; }
+@keyframes dashTrendGrow {
+  from { transform: scaleY(0.6); opacity: 0; }
+  to   { transform: scaleY(1);   opacity: 1; }
+}
+@keyframes dashTrendFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
 .dash-trend-dot.current { fill: var(--purple); }
 .dash-trend-dot.peak { fill: #f59e0b; stroke: #f59e0b; }
 .dash-trend-labels {
