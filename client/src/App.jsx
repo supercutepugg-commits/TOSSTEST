@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, NavLink, Navigate, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, NavLink, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './AuthContext';
 import { StoreProvider, useStore } from './StoreContext';
 import { ThemeProvider, useTheme } from './ThemeContext';
@@ -157,6 +157,7 @@ function HQLayout() {
   const [openRiskCount, setOpenRiskCount] = useState(0);
   const [myTaskCount, setMyTaskCount] = useState(0);
   const navigate = useNavigate();
+  const location = useLocation();
 
   // 미확인 리스크 개수를 메뉴에 배지로 표시 — 1분마다 갱신
   useEffect(() => {
@@ -200,7 +201,7 @@ function HQLayout() {
       <div className="kicc-body">
         <SideMenu collapsed={collapsed} onToggle={() => setCollapsed(c => !c)} groups={visibleGroups} badgeCounts={badgeCounts} />
         <main className="kicc-main">
-          <div className="kicc-main-inner">
+          <div className="kicc-main-inner tab-content" key={location.pathname}>
             <Routes>
               <Route path="/" element={<Stores />} />
               <Route path="/rankings" element={<StoreRankings />} />
@@ -243,6 +244,7 @@ const STORE_MENU_GROUPS = [
 function StoreLayout() {
   const { user } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
+  const location = useLocation();
   return (
     <div className="kicc-layout">
       <header className="topnav">
@@ -258,7 +260,7 @@ function StoreLayout() {
       <div className="kicc-body">
         <SideMenu collapsed={collapsed} onToggle={() => setCollapsed(c => !c)} groups={STORE_MENU_GROUPS} badgeCounts={{}} />
         <main className="kicc-main">
-          <div className="kicc-main-inner">
+          <div className="kicc-main-inner tab-content" key={location.pathname}>
             <Routes>
               <Route path="/store" element={<StoreOrder />} />
               <Route path="/store/orders/:id/invoice" element={<OrderInvoice />} />
