@@ -468,7 +468,7 @@ export default function StoreOrder() {
       </div>
 
       {tab === 'new' && (
-        <>
+        <div className="tab-content" key="new">
           {/* 데스크탑: 좌우 분할 / 모바일: 상품 목록만 */}
           <div className="split-layout" style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 20 }}>
             {/* 상품 목록 */}
@@ -604,11 +604,11 @@ export default function StoreOrder() {
               .cart-mobile-bar { display: none !important; }
             }
           `}</style>
-        </>
+        </div>
       )}
 
       {tab === 'history' && (
-        <div className="split-layout" style={{ display: 'grid', gridTemplateColumns: detailOrder ? '1fr 400px' : '1fr', gap: 20 }}>
+        <div className="split-layout tab-content" key="history" style={{ display: 'grid', gridTemplateColumns: detailOrder ? '1fr 400px' : '1fr', gap: 20 }}>
           <div className="card">
             {orders.length === 0
               ? <div className="empty">발주 내역 없음</div>

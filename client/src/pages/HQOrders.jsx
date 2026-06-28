@@ -225,7 +225,7 @@ export default function HQOrders() {
               ))}
           </div>
         )}
-        <div className="card">
+        <div className="card tab-content" key={tab}>
           {visibleOrders.length === 0
             ? <div className="empty">{tab === 'active' ? '처리할 주문 없음' : '완료된 주문 없음'}</div>
             : <table>
