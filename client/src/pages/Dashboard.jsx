@@ -152,7 +152,7 @@ export default function Dashboard() {
   if (!currentStore) return <div className="empty">가맹점을 선택해주세요</div>;
   if (error) return <div className="empty">{error}</div>;
   if (!data) return (
-    <div className="dash-layout">
+    <div className="dash-layout" key="dash-skeleton">
       <div className="dash-side">
         <div className="skeleton" style={{ height: 150, borderRadius: 18, marginBottom: 16 }} />
         <div className="dash-stat-tiles">
@@ -183,7 +183,7 @@ export default function Dashboard() {
     : null;
 
   return (
-    <div className="dash-layout">
+    <div className="dash-layout tab-content" key="dash-loaded">
       {/* 좌측 패널 */}
       <div className="dash-side">
         <div className="dash-info-card fade-stagger">

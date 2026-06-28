@@ -626,9 +626,9 @@ export default function Stores() {
             </div>
 
             {/* 테이블 */}
-            <div className="tab-content" key={statusChip} style={{ marginTop: 10, overflowX: 'auto' }}>
+            <div style={{ marginTop: 10, overflowX: 'auto' }}>
               {!loaded ? (
-                <table>
+                <table key="store-skeleton">
                   <tbody>
                     {[...Array(5)].map((_, i) => (
                       <tr key={i} className="skeleton-row">
@@ -638,9 +638,9 @@ export default function Stores() {
                   </tbody>
                 </table>
               ) : stores.length === 0 ? (
-                <div className="empty">가맹점을 추가해주세요</div>
+                <div className="empty" key="store-empty">가맹점을 추가해주세요</div>
               ) : (
-                <table>
+                <table className="tab-content" key={`store-list-${statusChip}`}>
                   <thead>
                     <tr>
                       <th style={{ width: 36 }}>
